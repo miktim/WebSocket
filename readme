@@ -1,7 +1,8 @@
-# WebSocketServer MIT (c) 2020 miktim@mail.ru
+# WsServer MIT (c) 2020 miktim@mail.ru
+Lightweight WebSocket Server
 ...in progress
 Release notice:
-  - java SE 1.8 +;
+  - java SE 1.8+;
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - WebSocket extensions not supported;
-  - localhos self signed certificates does not work.
+  - localhost self signed certificates does not work.

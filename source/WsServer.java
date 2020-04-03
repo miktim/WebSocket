@@ -17,19 +17,15 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.PrintStream;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ProtocolException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyStore;
 import java.util.Collections;
-import java.util.Date;
 import java.util.NoSuchElementException;
 import java.util.SortedMap;
 import java.util.Timer;
@@ -38,16 +34,13 @@ import java.util.TreeMap;
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
-import javax.net.ssl.TrustManagerFactory;
 import static org.samples.java.wsserver.WsConnection.GOING_AWAY;
 
 public class WsServer {
-
+    public static final String LOG_FILE_NAME ="websocket.log";
     private ServerSocket serverSocket;
     private boolean isRunning;
     private int soTimeout = 0;
@@ -65,7 +58,7 @@ public class WsServer {
 
     public void setLogDirectory(String dir) throws IOException {
         logStream = 
-                new PrintStream(new FileOutputStream(new File(dir,"WebSocket.log")));
+                new PrintStream(new FileOutputStream(new File(dir,LOG_FILE_NAME)));
     }
 
     public void log(String event) {
@@ -264,13 +257,13 @@ public class WsServer {
 
     }
 
-    private String certFile = null;
-    private String certPassphrase = null;
+    private String ksFile = null;
+    private String ksPassphrase = null;
 
-    public void setCertificate(String certFile, String passphrase) {
-        this.certFile = certFile;
-        certPassphrase = passphrase;
-//        System.setProperty("javax.net.ssl.keyStore", certFile);
+    public void setKeystore(String ksFile, String passphrase) {
+        this.ksFile = ksFile;
+        this.ksPassphrase = passphrase;
+//        System.setProperty("javax.net.ssl.keyStore", ksFile);
 //        System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
 
@@ -281,12 +274,12 @@ public class WsServer {
             SSLContext ctx;
             KeyManagerFactory kmf;
             KeyStore ks;
-            char[] passphrase = certPassphrase.toCharArray();
+            char[] passphrase = this.ksPassphrase.toCharArray();
 
             ctx = SSLContext.getInstance("TLS");
             kmf = KeyManagerFactory.getInstance("SunX509");
             ks = KeyStore.getInstance("JKS");
-            ks.load(new FileInputStream(certFile), passphrase);
+            ks.load(new FileInputStream(this.ksFile), passphrase);
             kmf.init(ks, passphrase);
             ctx.init(kmf.getKeyManagers(), null, null);
 
@@ -352,10 +345,9 @@ public class WsServer {
         WsServer wsServer = new WssServer();
         wsServer.createContext("/", handler);
         wsServer.bind(8080);
-        wsServer.setCertificate("/home/miktim/Test/localhost.jks", "password");
-//        wsServer.setCertificate("/home/miktim/Test/keystore", "password");
-//        wsServer.setCertificate("/home/miktim/Test/rsa.keystore", "password");
+        wsServer.setKeystore("/home/miktim/Test/localhost.jks", "password");
         wsServer.setSoTimeout(10000);
+        wsServer.setLogDirectory("/home/miktim/Test");
         wsServer.start();
         /*        
         Timer timer = new Timer();
