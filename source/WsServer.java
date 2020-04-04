@@ -40,37 +40,49 @@ import javax.net.ssl.SSLSocket;
 import static org.samples.java.wsserver.WsConnection.GOING_AWAY;
 
 public class WsServer {
-    public static final String LOG_FILE_NAME ="websocket.log";
+
+    public static final int DEFAULT_SERVER_PORT = 80;
+    public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
+    public static final int DEFAULT_MAX_MESSAGE_LENGTH
+            = WsConnection.DEFAULT_MAX_MESSAGE_LENGTH;
+    public static final String LOG_FILE_NAME = "websocket.log";
+
     private ServerSocket serverSocket;
     private boolean isRunning;
-    private int soTimeout = 0;
+    private int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
     private int ssoBacklog = 20;
-    InetSocketAddress ssoAddress = null;
+    private InetSocketAddress ssoAddress = null;
     boolean isSSL = false;
-    File logDir = null;
-    PrintStream logStream;
+    private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH;
+    private PrintStream logStream;
 
     public WsServer() {
         this.logStream = System.out;
         this.isSSL = false;
-        ssoAddress = new InetSocketAddress(80);
+        ssoAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
+    }
+
+    public void setMaxMessageLength(int len) {
+        this.maxMessageLength = len;
     }
 
     public void setLogDirectory(String dir) throws IOException {
-        logStream = 
-                new PrintStream(new FileOutputStream(new File(dir,LOG_FILE_NAME)));
+        logStream
+                = new PrintStream(new FileOutputStream(new File(dir, LOG_FILE_NAME)));
     }
 
     public void log(String event) {
-        String logMsg = 
-                String.format("%1$tY%1$tm%1$td %1$tH%1$tM%1$tS ", System.currentTimeMillis())
+        String logMsg
+                = String.format("%1$tY%1$tm%1$td %1$tH%1$tM%1$tS ", System.currentTimeMillis())
                 + getClass().getSimpleName() + " " + event;
         logStream.println(logMsg);
         logStream.flush();
     }
-    void logException(String stage, Exception e){
+
+    void logException(String stage, Exception e) {
         log(stage + " " + e.getMessage());
     }
+
     public void bind(int port) {
         ssoAddress = new InetSocketAddress(port);
     }
@@ -81,12 +93,8 @@ public class WsServer {
     }
 
 // socket timeout for websocket handshaking & ping    
-    public void setSoTimeout(int millis) {
-        soTimeout = millis;
-    }
-
-    public int getSoTimeout() {
-        return soTimeout;
+    public void setConnectionSoTimeout(int millis) {
+        connectionSoTimeout = millis;
     }
 
     public void start() throws Exception {
@@ -155,7 +163,7 @@ public class WsServer {
                             socket = wss.serverSocket.accept();
                         }
 
-                        socket.setSoTimeout(wss.soTimeout); // ms for handshake & ping
+                        socket.setSoTimeout(wss.connectionSoTimeout); // ms for handshake & ping
                         Thread th = new Thread(threadGroup,
                                 new WsConnectionProcessor(wss, socket));
 //                    th.setDaemon(true);
@@ -206,17 +214,18 @@ public class WsServer {
                             && upgrade != null && upgrade.equals("websocket")) {
                         handler = server.getContext((new URI(parts[1])).getPath());
                         connection = new WsConnection(socket, requestHeaders, handler);
+                        connection.setMaxMessageLength(server.maxMessageLength);
                         connection.start();
                     } else {
                         connection.sendResponseHeaders(null, "400 Bad request");
-                        throw new ProtocolException("bad request");
+                        throw new ProtocolException("bad_request");
                     }
                 } else {
                     closeConnection(); // server stopped
                 }
             } catch (Exception e) {
                 server.logException("wsHandShake", e);
-//                e.printStackTrace(); // WebSocket handshake exception
+                e.printStackTrace(); // WebSocket handshake exception
             }
             if (!this.socket.isClosed()) {
                 try {
@@ -229,7 +238,11 @@ public class WsServer {
 
         void closeConnection() {
             if (connection != null && connection.isOpen() && handler != null) {
-                connection.close(GOING_AWAY); // server stopped
+                try {
+                    connection.close(GOING_AWAY); // server stopped
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
 
@@ -278,7 +291,7 @@ public class WsServer {
 
             ctx = SSLContext.getInstance("TLS");
             kmf = KeyManagerFactory.getInstance("SunX509");
-            ks = KeyStore.getInstance("JKS");
+            ks = KeyStore.getInstance("JKS"); //
             ks.load(new FileInputStream(this.ksFile), passphrase);
             kmf.init(ks, passphrase);
             ctx.init(kmf.getKeyManagers(), null, null);
@@ -345,9 +358,9 @@ public class WsServer {
         WsServer wsServer = new WssServer();
         wsServer.createContext("/", handler);
         wsServer.bind(8080);
-        wsServer.setKeystore("/home/miktim/Test/localhost.jks", "password");
-        wsServer.setSoTimeout(10000);
-        wsServer.setLogDirectory("/home/miktim/Test");
+        wsServer.setKeystore("/home/miktim/Test/Certificates/localhost.jks", "password");
+        wsServer.setConnectionSoTimeout(10000);
+//        wsServer.setLogDirectory("/home/miktim/Test");
         wsServer.start();
         /*        
         Timer timer = new Timer();

@@ -41,7 +41,7 @@ public class WsConnection {
     public static final int UNSUPPORTED_EXTENSION = 1010; //* 
     public static final int INTERNAL_ERROR = 1011; //*
 // 
-    public static final int MAX_MESSAGE_LENGTH = 2048;
+    static final int DEFAULT_MAX_MESSAGE_LENGTH = 2048;
 // request line header name
     static final String REQUEST_LINE_HEADER = "_RequestLine";
 
@@ -49,7 +49,7 @@ public class WsConnection {
     private final Headers requestHeaders;
     private final WsHandler handler;
     private int closureCode = 0;
-    private int maxMessageLength = MAX_MESSAGE_LENGTH;
+    private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH;
 
     public void streamText(InputStream is) throws IOException {
         stream(OP_TEXT, is, true);
@@ -84,7 +84,11 @@ public class WsConnection {
     }
 
     public void close() {
-        close(NORMAL_CLOSURE);
+        try {
+            close(NORMAL_CLOSURE);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public String getPath() {
@@ -139,7 +143,7 @@ public class WsConnection {
                 || !upgrade.equals("websocket") || version != 13) {
             sendResponseHeaders(null, "400 Bad Request");
             socket.close();
-            throw new ProtocolException();
+            throw new ProtocolException("bad request");
         } else {
             Headers responseHeaders = new Headers();
             responseHeaders.set("Upgrade", "websocket");
@@ -202,7 +206,7 @@ public class WsConnection {
             try {
                 int b1 = is.read();
                 if (b1 == -1) {
-                    throw new WSException(PROTOCOL_ERROR, new EOFException());
+                    throw new WSException(GOING_AWAY, new EOFException());
                 }
 
                 if ((b1 & OP_EXTENSONS) > 0) {
@@ -211,13 +215,10 @@ public class WsConnection {
 // check op
                 switch (b1) {
                     case OP_TEXT_FINAL: {
-
                     }
                     case OP_TEXT: {
-
                     }
                     case OP_BINARY_FINAL: {
-
                     }
                     case OP_BINARY: {
                         opData = b1 & 0xF;
@@ -225,10 +226,8 @@ public class WsConnection {
                         break;
                     }
                     case OP_PING: {
-
                     }
                     case OP_PONG: {
-
                     }
                     case OP_CLOSE: {
                         break;
@@ -240,7 +239,7 @@ public class WsConnection {
 
                 int b2 = is.read();
                 if (b2 == -1) {
-                    throw new WSException(PROTOCOL_ERROR, new EOFException());
+                    throw new WSException(GOING_AWAY, new EOFException());
                 }
                 byte[] mask = (b2 & MASKED_DATA) != 0 ? new byte[4] : null;
                 long payloadLen = b2 & 0x7F;
@@ -256,12 +255,12 @@ public class WsConnection {
                     }
                 }
                 if (mask != null && is.read(mask) != mask.length) {
-                    throw new WSException(PROTOCOL_ERROR, new EOFException());
+                    throw new WSException(GOING_AWAY, new EOFException());
                 }
                 byte[] framePayload
                         = new byte[(int) payloadLen & 0xFFFFFFFF];
                 if (is.read(framePayload) != framePayload.length) {
-                    throw new WSException(PROTOCOL_ERROR, new EOFException());
+                    throw new WSException(GOING_AWAY, new EOFException());
                 }
                 if (mask != null) {
                     unmaskPayload(mask, framePayload);
@@ -306,7 +305,7 @@ public class WsConnection {
                         if (closureCode == 0) {
                             if (framePayload.length > 1) {
                                 this.closureCode
-                                        = -((payload[0] << 8) + framePayload[1]);
+                                        = -((framePayload[0] << 8) + framePayload[1]);
                             } else {
                                 closureCode = -NORMAL_CLOSURE;
                             }
@@ -336,12 +335,12 @@ public class WsConnection {
                 close(e.getClosureCode());
                 handler.onError(this, e.getCause());
                 break;
-            } catch (IOException e) {
+            } catch (IOException e) { // Exception?
                 close(INTERNAL_ERROR);
                 handler.onError(this, e);
                 this.socket.close();
                 break;
-            }
+            } 
         }
         handler.onClose(this);
     }
@@ -359,19 +358,19 @@ public class WsConnection {
         return result;
     }
 
-    void close(int code) {
+    void close(int code) throws IOException {
         if (this.closureCode == 0) {
             this.closureCode = code;
             if (isOpen()) {
                 byte[] payload = new byte[2];
                 payload[0] = (byte) (code >>> 8);
                 payload[1] = (byte) (code & 0xFF);
-                try {
+//                try {
 //                    this.socket.shutdownInput();
-                    sendPayload(OP_CLOSE | OP_FINAL, payload, false);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                sendPayload(OP_CLOSE | OP_FINAL, payload, false);
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
             }
         }
     }
@@ -428,11 +427,4 @@ public class WsConnection {
         }
         sendPayload(op | OP_FINAL, Arrays.copyOf(buf, pos), maskData);
     }
-    /*
-    private void printHeaders(Headers hs) {
-        for (String hn : hs.keySet()) {
-            System.out.println(hn + ":" + hs.getFirst(hn));
-        }
-    }
-     */
 }

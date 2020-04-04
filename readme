@@ -1,8 +1,42 @@
-# WsServer MIT (c) 2020 miktim@mail.ru
-Lightweight WebSocket Server
+# java WsServer package MIT (c) 2020 miktim@mail.ru
 ...in progress
+
 Release notice:
   - java SE 1.8+;
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - WebSocket extensions not supported;
   - localhost self signed certificates does not work.
+
+Overview:
+  Constructors:
+    WsServer()
+    WssServer()
+
+    Constants:
+      int DEFAULT_SERVER_PORT
+      int DEFAULT_CONNECTION_SO_TIMEOUT
+      int DEFAULT_MAX_MESSAGE_LENGTH
+      String LOG_FILE_NAME
+    Methods:
+      void createContext(String path, WsHandler handler)
+      void bind(int port)
+      void bind(InetSocketAddress sa, int backlog)
+      void setConnectionSoTimeout(int millis)
+      void setLogDirectory(String logDir)
+      void setMaxMessageLength(int len)
+      void setKeystore(String jksFile, String passphrase)
+      void start()
+      void stop()
+  
+  Interface:
+    WsHandler
+
+  WsConnection:
+    Constants:
+      closure codes
+    Methods:
+      String getPath()
+      void send(String message)
+      void send(byte[] message)
+      int getClosureCode()
+      void close()

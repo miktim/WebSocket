@@ -6,7 +6,6 @@
  */
 package org.samples.java.wsserver;
 
-import java.io.IOException;
 import java.io.InputStream;
 
 public interface WsHandler {
