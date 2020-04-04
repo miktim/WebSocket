@@ -1,5 +1,6 @@
-# java WsServer package MIT (c) 2020 miktim@mail.ru
-...in progress
+# WsServer package  MIT (c) 2020 miktim@mail.ru
+Lightweight WebSocket Server
+preRelease
 
 Release notice:
   - java SE 1.8+;
@@ -13,6 +14,7 @@ Overview:
     WssServer()
 
     Constants:
+      String WSSERVER_VERSION
       int DEFAULT_SERVER_PORT
       int DEFAULT_CONNECTION_SO_TIMEOUT
       int DEFAULT_MAX_MESSAGE_LENGTH

@@ -28,8 +28,6 @@ import java.security.KeyStore;
 import java.util.Collections;
 import java.util.NoSuchElementException;
 import java.util.SortedMap;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.TreeMap;
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.KeyManagerFactory;
@@ -40,7 +38,8 @@ import javax.net.ssl.SSLSocket;
 import static org.samples.java.wsserver.WsConnection.GOING_AWAY;
 
 public class WsServer {
-
+    
+    public static final String WSSERVER_VERSION = "0.0.1";
     public static final int DEFAULT_SERVER_PORT = 80;
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
     public static final int DEFAULT_MAX_MESSAGE_LENGTH
@@ -303,75 +302,4 @@ public class WsServer {
         }
     }
 
-    public static void main(String[] args) throws Exception {
-        WsHandler handler = new WsHandler() {
-            @Override
-            public void onOpen(WsConnection con) {
-                System.out.println("WebSocket connection open");
-                try {
-                    con.send("Hello Web Socket Client!");
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-
-            @Override
-            public void onClose(WsConnection con) {
-                System.out.println("WebSocket connection closed");
-            }
-
-            @Override
-            public void onError(WsConnection con, Exception e) {
-                System.out.println("WebSocket Exception. Closure code:"
-                        + con.getClosureCode());
-                e.printStackTrace();
-            }
-
-            @Override
-            public void onMessage(WsConnection con, String s) {
-                try {
-                    con.send(s);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-
-            @Override
-            public void onMessage(WsConnection con, byte[] b) {
-                try {
-                    con.send(b);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            /*
-            @Override
-            public void onTextStream(WsConnection con, InputStream is) {
-            }
-
-            @Override
-            public void onBinaryStream(WsConnection con, InputStream is) {
-            }
-             */
-        };
-
-        WsServer wsServer = new WssServer();
-        wsServer.createContext("/", handler);
-        wsServer.bind(8080);
-        wsServer.setKeystore("/home/miktim/Test/Certificates/localhost.jks", "password");
-        wsServer.setConnectionSoTimeout(10000);
-//        wsServer.setLogDirectory("/home/miktim/Test");
-        wsServer.start();
-        /*        
-        Timer timer = new Timer();
-        timer.schedule(new TimerTask() {
-
-            @Override
-            public void run() {
-                wsServer.stop();
-                timer.cancel();
-            }
-        }, 60000);
-         */
-    }
 }
