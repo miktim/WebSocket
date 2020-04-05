@@ -8,6 +8,7 @@
 import java.net.URI;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.io.File;
 import org.samples.java.wsserver.WsConnection;
 import org.samples.java.wsserver.WsHandler;
 import org.samples.java.wsserver.WsServer;
@@ -15,7 +16,7 @@ import org.samples.java.wsserver.WssServer;
 
 public class WsServerTest {
     public static void main(String[] args) throws Exception {
-        String path = "./";
+        String path = (new File(".")).getAbsolutePath();
         if (args.length > 0) path = args[0];
         WsHandler handler = new WsHandler() {
             @Override
