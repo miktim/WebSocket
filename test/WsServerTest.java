@@ -15,9 +15,12 @@ import org.samples.java.wsserver.WsServer;
 import org.samples.java.wsserver.WssServer;
 
 public class WsServerTest {
+
     public static void main(String[] args) throws Exception {
         String path = (new File(".")).getAbsolutePath();
-        if (args.length > 0) path = args[0];
+        if (args.length > 0) {
+            path = args[0];
+        }
         WsHandler handler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
@@ -45,6 +48,7 @@ public class WsServerTest {
             public void onMessage(WsConnection con, String s) {
                 try {
                     con.send(s);
+                    con.send(new byte[4]);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -69,13 +73,13 @@ public class WsServerTest {
              */
         };
 
-        WsServer wsServer = new WssServer();
+        WsServer wsServer = new WsServer();
         wsServer.createContext("/", handler);
         wsServer.bind(8080);
-        wsServer.setKeystore(path+"/localhost.jks", "password");
+        wsServer.setKeystore(path + "/localhost.jks", "password");
         wsServer.setConnectionSoTimeout(10000);
 //        wsServer.setLogFile(path, "wsserver.log");
-        int stopTimeout = 30000;        
+        int stopTimeout = 30000;
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
 
@@ -85,11 +89,12 @@ public class WsServerTest {
                 timer.cancel();
             }
         }, stopTimeout);
-        System.out.println("Server will be stopped after 30 seconds");
+        System.out.println("Server will be stopped after "
+                + (stopTimeout / 1000) + " seconds");
         wsServer.start();
         java.awt.Desktop.getDesktop()
-                .browse(new URI("file://"+path+"/WsServerTest.html"));
-        
+                .browse(new URI("file://" + path + "/WsServerTest.html"));
+
     }
-  
+
 }

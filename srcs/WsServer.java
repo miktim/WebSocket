@@ -22,6 +22,7 @@ import java.net.InetSocketAddress;
 import java.net.ProtocolException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyStore;
@@ -38,13 +39,12 @@ import javax.net.ssl.SSLSocket;
 import static org.samples.java.wsserver.WsConnection.GOING_AWAY;
 
 public class WsServer {
-    
+
     public static final String WSSERVER_VERSION = "0.0.1";
     public static final int DEFAULT_SERVER_PORT = 80;
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
     public static final int DEFAULT_MAX_MESSAGE_LENGTH
             = WsConnection.DEFAULT_MAX_MESSAGE_LENGTH;
-    public static final String LOG_FILE_NAME = "websocket.log";
 
     private ServerSocket serverSocket;
     private boolean isRunning;
@@ -99,7 +99,7 @@ public class WsServer {
     public void start() throws Exception {
         serverSocket = getServerSocketFactory().createServerSocket();
         serverSocket.bind(ssoAddress, ssoBacklog);
-        (new WsProcessor(this)).start();
+        (new WsServerThread(this)).start();
         this.log("Started");
     }
 
@@ -133,13 +133,13 @@ public class WsServer {
         throw new NoSuchElementException();
     }
 
-    private class WsProcessor extends Thread {
+    private class WsServerThread extends Thread {
 
         private static final String THREAD_GROUP_NAME = "WSConnections";
         private final WsServer wss;
         private ThreadGroup threadGroup = null;
 
-        WsProcessor(WsServer ws) {
+        WsServerThread(WsServer ws) {
             wss = ws;
         }
 
@@ -164,9 +164,14 @@ public class WsServer {
 
                         socket.setSoTimeout(wss.connectionSoTimeout); // ms for handshake & ping
                         Thread th = new Thread(threadGroup,
-                                new WsConnectionProcessor(wss, socket));
+                                new WsConnectionThread(wss, socket));
 //                    th.setDaemon(true);
                         th.start();
+                    } catch (SocketException e) {
+                        if (wss.isRunning) {
+                            wss.logException("serverSocket", e);
+//                    e.printStackTrace();
+                        }
                     } catch (Exception e) {
                         wss.logException("socketHandshake", e);
 //                        e.printStackTrace(); 
@@ -189,14 +194,14 @@ public class WsServer {
         }
     }
 
-    private class WsConnectionProcessor implements Runnable {
+    private class WsConnectionThread implements Runnable {
 
         private final WsServer server;
         private final Socket socket;
         WsConnection connection = null;
         WsHandler handler = null;
 
-        WsConnectionProcessor(WsServer wss, Socket s) {
+        WsConnectionThread(WsServer wss, Socket s) {
             this.server = wss;
             this.socket = s;
         }

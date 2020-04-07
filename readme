@@ -18,7 +18,6 @@ Overview:
       int DEFAULT_SERVER_PORT
       int DEFAULT_CONNECTION_SO_TIMEOUT
       int DEFAULT_MAX_MESSAGE_LENGTH
-      String LOG_FILE_NAME
     Methods:
       void createContext(String path, WsHandler handler)
       void bind(int port)

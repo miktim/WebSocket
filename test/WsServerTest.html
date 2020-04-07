@@ -9,7 +9,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script>
-            var uri = 'wss://localhost:8080/echo';
+            var uri = 'ws://localhost:8080/echo';
             var msg = "Hello Web Socket Server!";
             var webSocket = new WebSocket(uri);
             function show(msg) {
@@ -21,10 +21,10 @@
                 webSocket.send(msg);
             };
             
-            var count = 3;
+            var count = 1;
             webSocket.onmessage = event => {
-                show('onmessage: ' + event.data);
-                if (count-- > 0) {
+                show('onmessage: ' + count + event.data);
+                if (count++ < 4) {
                     webSocket.send(msg);
                 } else {
                     webSocket.close();
