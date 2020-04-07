@@ -37,9 +37,10 @@ public class WsConnection {
     public static final int UNSUPPORTED_DATA = 1003; //* unsupported opcode
     public static final int ABNORMAL_CLOSURE = 1006; // closing connection without op
     public static final int INVALID_DATA = 1007; // non utf-8 text, for example
-    public static final int MESSAGE_TOO_BIG = 1009; //*
-    public static final int UNSUPPORTED_EXTENSION = 1010; //* 
-    public static final int INTERNAL_ERROR = 1011; //*
+    public static final int POLICY_VIOLATION = 1008; //
+    public static final int MESSAGE_TOO_BIG = 1009; // *
+    public static final int UNSUPPORTED_EXTENSION = 1010; // client only 
+    public static final int INTERNAL_ERROR = 1011; //* server only
 // 
     static final int DEFAULT_MAX_MESSAGE_LENGTH = 2048;
 // request line header name
@@ -209,9 +210,6 @@ public class WsConnection {
                     throw new WSException(GOING_AWAY, new EOFException());
                 }
 
-                if ((b1 & OP_EXTENSONS) > 0) {
-                    throw new WSException(UNSUPPORTED_EXTENSION, new ProtocolException());
-                }
 // check op
                 switch (b1) {
                     case OP_TEXT_FINAL: {
@@ -233,7 +231,7 @@ public class WsConnection {
                         break;
                     }
                     default: {
-                        throw new WSException(UNSUPPORTED_DATA, new ProtocolException()); // IO ProtocolException
+                        throw new WSException(POLICY_VIOLATION, new ProtocolException()); // IO ProtocolException
                     }
                 }
 

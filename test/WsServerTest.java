@@ -74,7 +74,7 @@ public class WsServerTest {
         wsServer.bind(8080);
         wsServer.setKeystore(path+"/localhost.jks", "password");
         wsServer.setConnectionSoTimeout(10000);
-//        wsServer.setLogDirectory(path);
+//        wsServer.setLogFile(path, "wsserver.log");
         int stopTimeout = 30000;        
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {

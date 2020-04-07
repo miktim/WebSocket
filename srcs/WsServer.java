@@ -65,9 +65,9 @@ public class WsServer {
         this.maxMessageLength = len;
     }
 
-    public void setLogDirectory(String dir) throws IOException {
+    public void setLogFile(String file) throws IOException {
         logStream
-                = new PrintStream(new FileOutputStream(new File(dir, LOG_FILE_NAME)));
+                = new PrintStream(new FileOutputStream(new File(file)));
     }
 
     public void log(String event) {
