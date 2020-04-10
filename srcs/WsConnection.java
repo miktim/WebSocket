@@ -111,7 +111,6 @@ public class WsConnection {
         handshakeClient();
         this.handler.onOpen(this);
         waitInputStream();
-
     }
 
     private class WSException extends Exception {
@@ -137,20 +136,19 @@ public class WsConnection {
     private void handshakeClient() throws IOException {
         String upgrade = requestHeaders.getFirst("Upgrade");
         String key = requestHeaders.getFirst("Sec-WebSocket-Key");
-        int version = Integer.parseInt(requestHeaders.getFirst("Sec-WebSocket-Version"));
-        String protocol = requestHeaders.getFirst("Sec-WebSocket-Protocol"); // chat, superchat
+//        int version = Integer.parseInt(requestHeaders.getFirst("Sec-WebSocket-Version"));
+//        String protocol = requestHeaders.getFirst("Sec-WebSocket-Protocol"); // chat, superchat
 
-        if (upgrade == null || key == null //|| protocol == null
-                || !upgrade.equals("websocket") || version != 13) {
+        if (upgrade == null || key == null || !upgrade.equals("websocket")) {
             sendResponseHeaders(null, "400 Bad Request");
             socket.close();
-            throw new ProtocolException("bad request");
+            throw new ProtocolException("bad_request");
         } else {
             Headers responseHeaders = new Headers();
             responseHeaders.set("Upgrade", "websocket");
             responseHeaders.set("Connection", "upgrade,keep-alive");
             responseHeaders.set("Sec-WebSocket-Accept", sha1Hash(key));
-//            responseHeaders.set("Sec-WebSocket-Version", "" + version);
+            responseHeaders.set("Sec-WebSocket-Version", "13");
             sendResponseHeaders(responseHeaders, "101 Upgrade");
         }
     }
@@ -209,9 +207,7 @@ public class WsConnection {
                 if (b1 == -1) {
                     throw new WSException(GOING_AWAY, new EOFException());
                 }
-
-// check op
-                switch (b1) {
+                switch (b1) { // check op
                     case OP_TEXT_FINAL: {
                     }
                     case OP_TEXT: {
@@ -338,7 +334,7 @@ public class WsConnection {
                 handler.onError(this, e);
                 this.socket.close();
                 break;
-            } 
+            }
         }
         handler.onClose(this);
     }

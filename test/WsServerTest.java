@@ -24,9 +24,9 @@ public class WsServerTest {
         WsHandler handler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
-                System.out.println("WebSocket connection open");
+                System.out.println("Handle OPEN: " + con.getPath());
                 try {
-                    con.send("Hello Web Socket Client!");
+                    con.send("Hello Client!" + con.getPath());
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -34,23 +34,25 @@ public class WsServerTest {
 
             @Override
             public void onClose(WsConnection con) {
-                System.out.println("WebSocket connection closed");
+                System.out.println("Handle CLOSE: " + con.getPath()
+                        + " Closure code:" + con.getClosureCode());
             }
 
             @Override
             public void onError(WsConnection con, Exception e) {
-                System.out.println("WebSocket Exception. Closure code:"
-                        + con.getClosureCode());
-                e.printStackTrace();
+                System.out.println("Handle ERROR: " + con.getPath()
+                        + " Exception: " + e.getMessage()
+                        + " Closure code:" + con.getClosureCode());
             }
 
             @Override
             public void onMessage(WsConnection con, String s) {
                 try {
-                    con.send(s);
-                    con.send(new byte[4]);
+                    con.send(s + " " + con.getPath());
+                    con.send(s.getBytes());
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    System.out.println("Handle TEXT: " + con.getPath()
+                            + " send exception: " + e.getMessage());
                 }
             }
 
@@ -59,7 +61,8 @@ public class WsServerTest {
                 try {
                     con.send(b);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    System.out.println("Handle BINARY: " + con.getPath()
+                            + " send exception: " + e.getMessage());
                 }
             }
             /*
@@ -74,11 +77,11 @@ public class WsServerTest {
         };
 
         WsServer wsServer = new WsServer();
-        wsServer.createContext("/", handler);
+        wsServer.createContext("/test", handler);
         wsServer.bind(8080);
         wsServer.setKeystore(path + "/localhost.jks", "password");
         wsServer.setConnectionSoTimeout(10000);
-//        wsServer.setLogFile(path, "wsserver.log");
+//        wsServer.setLogFile(path+"wsserver.log");
         int stopTimeout = 30000;
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
@@ -93,7 +96,8 @@ public class WsServerTest {
                 + (stopTimeout / 1000) + " seconds");
         wsServer.start();
         java.awt.Desktop.getDesktop()
-                .browse(new URI("file://" + path + "/WsServerTest.html"));
+                //                .browse(new URI("file://" + path + "/WsServerTest.html"));
+                .open(new File(path, "WsServerTest.html"));
 
     }
 

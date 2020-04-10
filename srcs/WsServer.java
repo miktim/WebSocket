@@ -46,6 +46,7 @@ public class WsServer {
     public static final int DEFAULT_MAX_MESSAGE_LENGTH
             = WsConnection.DEFAULT_MAX_MESSAGE_LENGTH;
 
+    private static PrintStream logStream = System.out;
     private ServerSocket serverSocket;
     private boolean isRunning;
     private int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
@@ -53,12 +54,24 @@ public class WsServer {
     private InetSocketAddress ssoAddress = null;
     boolean isSSL = false;
     private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH;
-    private PrintStream logStream;
 
     public WsServer() {
-        this.logStream = System.out;
         this.isSSL = false;
         ssoAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
+    }
+
+    public void bind(int port) {
+        ssoAddress = new InetSocketAddress(port);
+    }
+
+    public void bind(InetSocketAddress sa, int bl) {
+        ssoAddress = sa;
+        ssoBacklog = bl;
+    }
+
+// socket timeout for websocket handshaking & ping    
+    public void setConnectionSoTimeout(int millis) {
+        connectionSoTimeout = millis;
     }
 
     public void setMaxMessageLength(int len) {
@@ -82,20 +95,6 @@ public class WsServer {
         log(stage + " " + e.getMessage());
     }
 
-    public void bind(int port) {
-        ssoAddress = new InetSocketAddress(port);
-    }
-
-    public void bind(InetSocketAddress sa, int bl) {
-        ssoAddress = sa;
-        ssoBacklog = bl;
-    }
-
-// socket timeout for websocket handshaking & ping    
-    public void setConnectionSoTimeout(int millis) {
-        connectionSoTimeout = millis;
-    }
-
     public void start() throws Exception {
         serverSocket = getServerSocketFactory().createServerSocket();
         serverSocket.bind(ssoAddress, ssoBacklog);
@@ -110,7 +109,6 @@ public class WsServer {
         } catch (IOException e) {
 //            e.printStackTrace();
         }
-        this.log("Stopped");
     }
 
     private final SortedMap<String, WsHandler> context
@@ -123,14 +121,14 @@ public class WsServer {
     }
 
     WsHandler getContext(String path)
-            throws URISyntaxException, NoSuchElementException {
+            throws URISyntaxException {//, NoSuchElementException {
         String cpath = (new URI(path)).getPath();
         for (String keyPath : context.keySet()) {
             if (cpath.startsWith(keyPath)) {
                 return context.get(keyPath);
             }
         }
-        throw new NoSuchElementException();
+        return null;
     }
 
     private class WsServerThread extends Thread {
@@ -154,34 +152,27 @@ public class WsServer {
                             .setNeedClientAuth(false);
                 }
                 while (wss.isRunning) {
-                    try {
-                        if (wss.isSSL) {
-                            socket = ((SSLServerSocket) wss.serverSocket).accept();
-                            ((SSLSocket) socket).startHandshake();
-                        } else {
-                            socket = wss.serverSocket.accept();
-                        }
-
-                        socket.setSoTimeout(wss.connectionSoTimeout); // ms for handshake & ping
-                        Thread th = new Thread(threadGroup,
-                                new WsConnectionThread(wss, socket));
-//                    th.setDaemon(true);
-                        th.start();
-                    } catch (SocketException e) {
-                        if (wss.isRunning) {
-                            wss.logException("serverSocket", e);
-//                    e.printStackTrace();
-                        }
-                    } catch (Exception e) {
-                        wss.logException("socketHandshake", e);
-//                        e.printStackTrace(); 
+                    if (wss.isSSL) {
+                        socket = ((SSLServerSocket) wss.serverSocket).accept();
+                        ((SSLSocket) socket).startHandshake();
+                    } else {
+                        socket = wss.serverSocket.accept();
                     }
+
+                    socket.setSoTimeout(wss.connectionSoTimeout); // ms for handshake & ping
+                    Thread th = new Thread(threadGroup,
+                            new WsConnectionThread(wss, socket));
+//                    th.setDaemon(true);
+                    th.start();
                 }
-            } catch (Exception e) {
+            } catch (SocketException e) {
                 if (wss.isRunning) {
                     wss.logException("serverSocket", e);
 //                    e.printStackTrace();
                 }
+            } catch (Exception e) {
+                wss.logException("socketHandshake", e);
+//                        e.printStackTrace(); 
             }
 // close connections            
             if (threadGroup != null) {
@@ -191,6 +182,7 @@ public class WsServer {
                     threads[i].run();
                 }
             }
+            wss.log("Stopped");
         }
     }
 
@@ -208,44 +200,44 @@ public class WsServer {
 
         @Override
         public void run() {
+            String requestPath = "";
             try {
                 if (connection == null) {
                     Headers requestHeaders = getRequestHeaders();
                     String[] parts = requestHeaders
                             .getFirst(WsConnection.REQUEST_LINE_HEADER).split(" ");
+                    requestPath = parts[1];
                     String upgrade = requestHeaders.getFirst("Upgrade");
-                    if (parts[0].equals("GET") && parts[2].equals("HTTP/1.1")
-                            && upgrade != null && upgrade.equals("websocket")) {
-                        handler = server.getContext((new URI(parts[1])).getPath());
-                        connection = new WsConnection(socket, requestHeaders, handler);
-                        connection.setMaxMessageLength(server.maxMessageLength);
-                        connection.start();
-                    } else {
+                    handler = server.getContext((new URI(parts[1])).getPath());
+                    connection = new WsConnection(socket, requestHeaders, handler);
+                    connection.setMaxMessageLength(server.maxMessageLength);
+                    if (!(parts[0].equals("GET") && parts[2].equals("HTTP/1.1")
+                            && upgrade != null && upgrade.equals("websocket"))) {
                         connection.sendResponseHeaders(null, "400 Bad request");
                         throw new ProtocolException("bad_request");
-                    }
+
+                    } else if (handler == null) {
+                        connection.sendResponseHeaders(null, "404 Not Found");
+                        throw new ProtocolException("not_found");
+                    }  
+                    server.log(requestPath + " open");
+                    connection.start();
+                    server.log(requestPath
+                            + " close: " + connection.getClosureCode());
                 } else {
-                    closeConnection(); // server stopped
+                    if (connection != null && connection.isOpen() && handler != null) {
+                        connection.close(GOING_AWAY); // server stopped
+                    }
                 }
             } catch (Exception e) {
-                server.logException("wsHandShake", e);
-                e.printStackTrace(); // WebSocket handshake exception
+                server.logException(requestPath, e);
+//                e.printStackTrace(); // WebSocket handshake exception
             }
             if (!this.socket.isClosed()) {
                 try {
                     this.socket.close();
                 } catch (IOException ie) {
 //                    ie.printStackTrace();
-                }
-            }
-        }
-
-        void closeConnection() {
-            if (connection != null && connection.isOpen() && handler != null) {
-                try {
-                    connection.close(GOING_AWAY); // server stopped
-                } catch (Exception e) {
-                    e.printStackTrace();
                 }
             }
         }

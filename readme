@@ -10,24 +10,24 @@ Release notice:
 
 Overview:
   Constructors:
-    WsServer()
-    WssServer()
+    WsServer();
+    WssServer();
 
     Constants:
-      String WSSERVER_VERSION
-      int DEFAULT_SERVER_PORT
-      int DEFAULT_CONNECTION_SO_TIMEOUT
-      int DEFAULT_MAX_MESSAGE_LENGTH
+      String WSSERVER_VERSION;
+      int DEFAULT_SERVER_PORT;
+      int DEFAULT_CONNECTION_SO_TIMEOUT;
+      int DEFAULT_MAX_MESSAGE_LENGTH;
     Methods:
-      void createContext(String path, WsHandler handler)
-      void bind(int port)
-      void bind(InetSocketAddress sa, int backlog)
-      void setConnectionSoTimeout(int millis)
-      void setLogFile(String logFile)
-      void setMaxMessageLength(int len)
-      void setKeystore(String jksFile, String passphrase)
-      void start()
-      void stop()
+      void createContext(String path, WsHandler handler) throws URISyntaxException;
+      void bind(int port);
+      void bind(InetSocketAddress sa, int backlog);
+      void setConnectionSoTimeout(int millis);
+      void setLogFile(String logFile) throws IOException;
+      void setMaxMessageLength(int len);
+      void setKeystore(String jksFile, String passphrase);
+      void start() throws Exception;
+      void stop();
   
   Interface:
     WsHandler  see: https://github.com/miktim/WsServer/tree/master/srcs/WsHandler.java
@@ -36,8 +36,8 @@ Overview:
     Constants:
       WebSocket closure codes see: https://tools.ietf.org/html/rfc6455#section-7.4
     Methods:
-      String getPath()
-      void send(String message)
-      void send(byte[] message)
-      int getClosureCode()
-      void close()
+      String getPath();
+      void send(String message) throws IOException;
+      void send(byte[] message) throws IOException;
+      int getClosureCode();
+      void close();

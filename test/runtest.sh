@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ ! -f ../srcs/WsServer.jar ]; then
-  echo First build a WsServer.jar file.
+if [ -f ../srcs/WsServer.jar ]; then
+  java -cp ../srcs/WsServer.jar WsServerTest.java
 else
-java -cp ../srcs/WsServer.jar WsServerTest.java
+  echo First build the ../srcs/WsServer.jar file.
 fi

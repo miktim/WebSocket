@@ -8,39 +8,55 @@
         <title>WsServer test</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+        <div>wait WebSocket...</div>
+        <script src="http://localhost:8080/http_request.js"></script>
         <script>
-            var uri = 'ws://localhost:8080/echo';
-            var msg = "Hello Web Socket Server!";
-            var webSocket = new WebSocket(uri);
+
+            var erruri = 'ws://localhost:8080/echo';
+            var uri = 'ws://localhost:8080/test';
+            var msg = 'Hello Web Socket Server!';
+
+            webSocket = connectWs(erruri);
+            var connCount = 5;
+            setTimeout(function (uri) {
+                for (var i = 1; i <= connCount; i++)
+                    webSocket = connectWs(uri + "/" + i); // silent (pinged) connections
+            }, 500, uri);
+            webSocket = connectWs(uri);
             function show(msg) {
                 document.getElementsByTagName("div")[0]
                         .insertAdjacentHTML('beforeend', '<br>' + msg);
             }
+            function connectWs(uri) {
+                show('Connect: ' + uri);
+                return new WebSocket(uri);
+            }
+
             webSocket.onopen = event => {
                 show('onopen');
                 webSocket.send(msg);
             };
-            
-            var count = 1;
+
+            var msgCount = 0;
             webSocket.onmessage = event => {
-                show('onmessage: ' + count + event.data);
-                if (count++ < 4) {
+                show('onmessage: ' + msgCount + event.data);
+                if (++msgCount < 4) {
                     webSocket.send(msg);
                 } else {
                     webSocket.close();
+                    msgCount = 0;
                 }
             };
-
             webSocket.onclose = event => {
                 show('onclose');
             };
             webSocket.onerror = event => {
                 show("onerror: " + event.message);
             };
+
         </script>
-    </head>
-    <body>
-        <div>wait WebSocket...</div>
     </body>
 
 </html>
