@@ -11,8 +11,8 @@ Release notice:
 Overview:
   Constructors:
     WsServer();
-    WssServer();
-
+    WssServer() extends WsServer;
+      - servers have a common log
     Constants:
       String WSSERVER_VERSION;
       int DEFAULT_SERVER_PORT;
@@ -23,7 +23,7 @@ Overview:
       void bind(int port);
       void bind(InetSocketAddress sa, int backlog);
       void setConnectionSoTimeout(int millis);
-      void setLogFile(String logFile) throws IOException;
+      void setLogFile(File logFile, boolean append) throws IOException;
       void setMaxMessageLength(int len);
       void setKeystore(String jksFile, String passphrase);
       void start() throws Exception;

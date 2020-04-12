@@ -10,51 +10,76 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
     <body>
-        <div>wait WebSocket...</div>
+        <div></div>
         <script src="http://localhost:8080/http_request.js"></script>
         <script>
-
+// see MDN: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
             var erruri = 'ws://localhost:8080/echo';
-            var uri = 'ws://localhost:8080/test';
-            var msg = 'Hello Web Socket Server!';
+            var testuri = 'ws://localhost:8080/test/';
+            var msg = 'Hello Server!';
+            var testNo = 0;
+            var tests = [
+                "Check handler (request path) not found",
+                "Check browser closure",
+                "Check server handler closure",
+                "Check message too long",
+                "Check server stopped"
+            ];
+            var webSocket = [];
 
-            webSocket = connectWs(erruri);
-            var connCount = 5;
-            setTimeout(function (uri) {
-                for (var i = 1; i <= connCount; i++)
-                    webSocket = connectWs(uri + "/" + i); // silent (pinged) connections
-            }, 500, uri);
-            webSocket = connectWs(uri);
+//            connectWs(erruri);
+            testNo=1;
+            connectWs(testuri + testNo);
             function show(msg) {
                 document.getElementsByTagName("div")[0]
-                        .insertAdjacentHTML('beforeend', '<br>' + msg);
+                        .insertAdjacentHTML('beforeend', msg + '<br>');
             }
             function connectWs(uri) {
-                show('Connect: ' + uri);
-                return new WebSocket(uri);
+                if (testNo < tests.length)
+                    show('Test ' + testNo + ": " + tests[testNo] + " Uri: " + uri);
+                webSocket[testNo] = new WebSocket(uri);
+
+                webSocket[testNo].onopen = event => {
+// WebSocket: .url .readyState .bufferedAmount .binaryType             
+                    show('onopen: ' + event.target.url);
+                    event.target.send(msg);
+                };
+
+                webSocket[testNo].onmessage = event => {
+// event: .data .origin .lastEventId .source .ports
+//                    show('onmessage: ' + event.data + ":" + event.origin + ":" + event.source);
+                    var url = event.target.url;
+                    if (url.endsWith("1")) {
+                        if (event.data.length < 128)
+                            event.target.send(event.data + event.data);
+                        else
+                            event.target.close();
+                    } else if (url.endsWith("3")) {
+                        event.target.send(event.data + event.data);
+                    } else {
+                        event.target.send(event.data);
+                    }
+                };
+                webSocket[testNo].onerror = event => {
+// event:                 
+                    show("onerror: " + event.name + ":" + event.message);
+                };
+                webSocket[testNo].onclose = event => {
+// event: .code .reason .wasClean
+// see MDN: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+                    show('onclose: ' + event.code
+                            + ":" + event.reason + ":" + event.wasClean + '<br>');
+/*
+                    if (testNo < 4)
+                        connectWs(testuri + ++testNo);
+                    else if (testNo === 4) {
+                        connectWs(testuri + ++testNo);
+                        connectWs(testuri + ++testNo);
+                        connectWs(testuri + ++testNo);
+                    }
+*/
+        };
             }
-
-            webSocket.onopen = event => {
-                show('onopen');
-                webSocket.send(msg);
-            };
-
-            var msgCount = 0;
-            webSocket.onmessage = event => {
-                show('onmessage: ' + msgCount + event.data);
-                if (++msgCount < 4) {
-                    webSocket.send(msg);
-                } else {
-                    webSocket.close();
-                    msgCount = 0;
-                }
-            };
-            webSocket.onclose = event => {
-                show('onclose');
-            };
-            webSocket.onerror = event => {
-                show("onerror: " + event.message);
-            };
 
         </script>
     </body>

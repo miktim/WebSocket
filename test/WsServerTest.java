@@ -5,10 +5,11 @@
  * Created: 2020-03-09
  */
 
-import java.net.URI;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.io.File;
+import java.io.IOException;
+import java.net.URI;
 import org.samples.java.wsserver.WsConnection;
 import org.samples.java.wsserver.WsHandler;
 import org.samples.java.wsserver.WsServer;
@@ -27,8 +28,10 @@ public class WsServerTest {
                 System.out.println("Handle OPEN: " + con.getPath());
                 try {
                     con.send("Hello Client!" + con.getPath());
-                } catch (Exception e) {
-                    e.printStackTrace();
+                } catch (IOException e) {
+                    System.out.println("Handle OPEN: " + con.getPath()
+                            + " send exception: " + e.getMessage());
+//                    e.printStackTrace();
                 }
             }
 
@@ -43,14 +46,23 @@ public class WsServerTest {
                 System.out.println("Handle ERROR: " + con.getPath()
                         + " Exception: " + e.getMessage()
                         + " Closure code:" + con.getClosureCode());
+//                e.printStackTrace();
             }
 
             @Override
             public void onMessage(WsConnection con, String s) {
                 try {
-                    con.send(s + " " + con.getPath());
-                    con.send(s.getBytes());
-                } catch (Exception e) {
+                    String testPath = con.getPath();
+                    if (testPath.endsWith("2")) { // check handler closure
+                        if(s.length() > 128) con.close();
+                        else con.send(s + s);
+                        
+                    } else if (testPath.endsWith("3")) { // check message too big
+                        con.send(s + s);
+                    } else {
+                        con.send(s);
+                    }
+                } catch (IOException e) {
                     System.out.println("Handle TEXT: " + con.getPath()
                             + " send exception: " + e.getMessage());
                 }
@@ -69,7 +81,6 @@ public class WsServerTest {
             @Override
             public void onTextStream(WsConnection con, InputStream is) {
             }
-
             @Override
             public void onBinaryStream(WsConnection con, InputStream is) {
             }
@@ -79,13 +90,12 @@ public class WsServerTest {
         WsServer wsServer = new WsServer();
         wsServer.createContext("/test", handler);
         wsServer.bind(8080);
-        wsServer.setKeystore(path + "/localhost.jks", "password");
         wsServer.setConnectionSoTimeout(10000);
-//        wsServer.setLogFile(path+"wsserver.log");
+        wsServer.setKeystore(path + "/localhost.jks", "password");
+//        wsServer.setLogFile(new File(path,"wsserver.log"), false);
         int stopTimeout = 30000;
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
-
             @Override
             public void run() {
                 wsServer.stop();
@@ -96,8 +106,8 @@ public class WsServerTest {
                 + (stopTimeout / 1000) + " seconds");
         wsServer.start();
         java.awt.Desktop.getDesktop()
-                //                .browse(new URI("file://" + path + "/WsServerTest.html"));
-                .open(new File(path, "WsServerTest.html"));
+                .browse(new URI("file://" + path + "/WsServerTest.html"));
+//                .open(new File(path, "WsServerTest.html"));
 
     }
 

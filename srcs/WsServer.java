@@ -27,7 +27,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyStore;
 import java.util.Collections;
-import java.util.NoSuchElementException;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import javax.net.ServerSocketFactory;
@@ -74,25 +73,26 @@ public class WsServer {
         connectionSoTimeout = millis;
     }
 
-    public void setMaxMessageLength(int len) {
+    public void setMaxMessageLength(int len) throws IllegalArgumentException {
+        if(len <= 0) throw new IllegalArgumentException("buffer_size");
         this.maxMessageLength = len;
     }
 
-    public void setLogFile(String file) throws IOException {
-        logStream
-                = new PrintStream(new FileOutputStream(new File(file)));
+    public void setLogFile(File file, boolean append) throws IOException {
+        logStream = new PrintStream(
+                new FileOutputStream(file, append), true);
     }
 
     public void log(String event) {
-        String logMsg
-                = String.format("%1$tY%1$tm%1$td %1$tH%1$tM%1$tS ", System.currentTimeMillis())
-                + getClass().getSimpleName() + " " + event;
+        String logMsg = String.format("%1$tY%1$tm%1$td %1$tH%1$tM%1$tS %2$s %3$s",
+                System.currentTimeMillis(),
+                getClass().getSimpleName(),
+                event);
         logStream.println(logMsg);
-        logStream.flush();
     }
 
     void logException(String stage, Exception e) {
-        log(stage + " " + e.getMessage());
+        log(stage + " Error: " + e.getMessage());
     }
 
     public void start() throws Exception {
@@ -144,35 +144,33 @@ public class WsServer {
         @Override
         public void run() {
             wss.isRunning = true;
-            try {
-                threadGroup = new ThreadGroup(THREAD_GROUP_NAME);
-                Socket socket;
-                if (wss.isSSL) {
-                    ((SSLServerSocket) wss.serverSocket)
-                            .setNeedClientAuth(false);
-                }
-                while (wss.isRunning) {
+            if (wss.isSSL) {
+                ((SSLServerSocket) wss.serverSocket)
+                        .setNeedClientAuth(false);
+            }
+            threadGroup = new ThreadGroup(THREAD_GROUP_NAME);
+            Socket socket;
+            while (wss.isRunning) {
+                try {
                     if (wss.isSSL) {
                         socket = ((SSLServerSocket) wss.serverSocket).accept();
                         ((SSLSocket) socket).startHandshake();
                     } else {
                         socket = wss.serverSocket.accept();
                     }
-
                     socket.setSoTimeout(wss.connectionSoTimeout); // ms for handshake & ping
-                    Thread th = new Thread(threadGroup,
+                    Thread cth = new Thread(threadGroup,
                             new WsConnectionThread(wss, socket));
-//                    th.setDaemon(true);
-                    th.start();
-                }
-            } catch (SocketException e) {
-                if (wss.isRunning) {
-                    wss.logException("serverSocket", e);
-//                    e.printStackTrace();
-                }
-            } catch (Exception e) {
-                wss.logException("socketHandshake", e);
+//                    cth.setDaemon(true);
+                    cth.start();
+                } catch (SocketException e) {
+                    if (wss.isRunning) {
+                        wss.logException("serverSocket", e);
+                    }
+                } catch (IOException e) {
+                    wss.logException("socketHandshake", e);
 //                        e.printStackTrace(); 
+                }
             }
 // close connections            
             if (threadGroup != null) {
@@ -219,11 +217,11 @@ public class WsServer {
                     } else if (handler == null) {
                         connection.sendResponseHeaders(null, "404 Not Found");
                         throw new ProtocolException("not_found");
-                    }  
-                    server.log(requestPath + " open");
+                    }
+                    server.log(requestPath + " Open");
                     connection.start();
                     server.log(requestPath
-                            + " close: " + connection.getClosureCode());
+                            + " Close:" + connection.getClosureCode());
                 } else {
                     if (connection != null && connection.isOpen() && handler != null) {
                         connection.close(GOING_AWAY); // server stopped

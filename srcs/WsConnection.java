@@ -61,10 +61,16 @@ public class WsConnection {
     }
 
     public void send(byte[] message) throws IOException {
+        if (this.closureCode != 0) {
+            return; //???exception
+        }
         sendPayload(OP_BINARY | OP_FINAL, message, false);
     }
 
     public void send(String message) throws IOException {
+        if (this.closureCode != 0) {
+            return; //???exception
+        }
         sendPayload(OP_TEXT | OP_FINAL, message.getBytes(), false);
     }
 
@@ -164,6 +170,7 @@ public class WsConnection {
         }
         sb.append("\r\n");
         socket.getOutputStream().write(sb.toString().getBytes());
+        socket.getOutputStream().flush();
     }
 
     private String sha1Hash(String key) {
@@ -274,10 +281,12 @@ public class WsConnection {
                     case OP_CONTINUATION:
                         break;
                     case OP_FINAL: {
-                        if (opData == OP_BINARY) {
-                            handler.onMessage(this, payload);
-                        } else {
-                            handler.onMessage(this, new String(payload));
+                        if (this.closureCode == 0) {
+                            if (opData == OP_BINARY) {
+                                handler.onMessage(this, payload);
+                            } else {
+                                handler.onMessage(this, new String(payload));
+                            }
                         }
                         opData = 0;
                         payload = null;
@@ -289,7 +298,8 @@ public class WsConnection {
                             pingSended = false;
                             break;
                         }
-                        throw new WSException(PROTOCOL_ERROR, new ProtocolException());
+                        throw new WSException(PROTOCOL_ERROR,
+                                new ProtocolException("unexpected_pong"));
                     }
                     case OP_PING: {
                         sendPayload(OP_PONG | OP_FINAL, framePayload, false);
@@ -303,16 +313,19 @@ public class WsConnection {
                             } else {
                                 closureCode = -NORMAL_CLOSURE;
                             }
-                            sendPayload(OP_CLOSE | OP_FINAL, framePayload, false);
+                            sendPayload(OP_CLOSE, framePayload, false);
                             if (closureCode != -NORMAL_CLOSURE) {
-                                handler.onError(this, new ProtocolException()); // ????
+                                handler.onError(this,
+                                        new ProtocolException("abnormal_closure")); // ????
                             }
                         }
+                        this.socket.setSoLinger(true, 5); // seconds
                         this.socket.close();
                         break;
                     }
                     default: {
-                        throw new WSException(UNSUPPORTED_DATA, new ProtocolException());
+                        throw new WSException(UNSUPPORTED_DATA,
+                                new ProtocolException("unsupported_data"));
                     }
                 }
             } catch (SocketTimeoutException e) {
@@ -354,14 +367,14 @@ public class WsConnection {
 
     void close(int code) throws IOException {
         if (this.closureCode == 0) {
-            this.closureCode = code;
             if (isOpen()) {
                 byte[] payload = new byte[2];
                 payload[0] = (byte) (code >>> 8);
                 payload[1] = (byte) (code & 0xFF);
 //                try {
-//                    this.socket.shutdownInput();
+//                this.socket.getInputStream().skip(Long.MAX_VALUE);
                 sendPayload(OP_CLOSE | OP_FINAL, payload, false);
+                this.closureCode = code;
 //                } catch (IOException e) {
 //                    e.printStackTrace();
 //                }
