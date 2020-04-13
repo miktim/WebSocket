@@ -272,8 +272,8 @@ public class WsServer {
     private String ksFile = null;
     private String ksPassphrase = null;
 
-    public void setKeystore(String ksFile, String passphrase) {
-        this.ksFile = ksFile;
+    public void setKeystore(String jksFile, String passphrase) {
+        this.ksFile = jksFile;
         this.ksPassphrase = passphrase;
 //        System.setProperty("javax.net.ssl.keyStore", ksFile);
 //        System.setProperty("javax.net.ssl.keyStorePassword", passphrase);

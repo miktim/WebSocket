@@ -58,7 +58,7 @@ public class WsServerTest {
                         else con.send(s + s);
                         
                     } else if (testPath.endsWith("3")) { // check message too big
-//                        System.out.println("length:" + s.length());
+                        System.out.println("MsgLen:" + s.length());
                         con.send(s + s);
                     } else {
                         con.send(s);
@@ -95,7 +95,7 @@ public class WsServerTest {
         wsServer.setMaxMessageLength(100000);
         wsServer.setKeystore(path + "/localhost.jks", "password");
 //        wsServer.setLogFile(new File(path,"wsserver.log"), false);
-        int stopTimeout = 60000;
+        int stopTimeout = 30000;
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
