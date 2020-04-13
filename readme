@@ -1,5 +1,5 @@
 # WsServer package  MIT (c) 2020 miktim@mail.ru
-Lightweight WebSocket Server
+Lightweight WebSocket Server. The main purpose of the package is to interact with browsers.
 preRelease
 
 Release notice:

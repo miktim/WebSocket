@@ -35,6 +35,7 @@ public class WsConnection {
     public static final int GOING_AWAY = 1001; //* shutdown or socket timeout
     public static final int PROTOCOL_ERROR = 1002; //* 
     public static final int UNSUPPORTED_DATA = 1003; //* unsupported opcode
+//    public static final int MOZILLA_DEFAULT = 1005; // mozilla internal default
     public static final int ABNORMAL_CLOSURE = 1006; // closing connection without op
     public static final int INVALID_DATA = 1007; // non utf-8 text, for example
     public static final int POLICY_VIOLATION = 1008; //
@@ -50,6 +51,7 @@ public class WsConnection {
     private final Headers requestHeaders;
     private final WsHandler handler;
     private int closureCode = 0;
+    private String closureMessage = "";
     private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH;
 
     public void streamText(InputStream is) throws IOException {
@@ -61,17 +63,15 @@ public class WsConnection {
     }
 
     public void send(byte[] message) throws IOException {
-        if (this.closureCode != 0) {
-            return; //???exception
-        }
-        sendPayload(OP_BINARY | OP_FINAL, message, false);
+        if (this.closureCode == 0) {
+            sendPayload(OP_BINARY | OP_FINAL, message, false);
+        } // else trhow new IOException("close_hanshake");
     }
 
     public void send(String message) throws IOException {
-        if (this.closureCode != 0) {
-            return; //???exception
-        }
-        sendPayload(OP_TEXT | OP_FINAL, message.getBytes(), false);
+        if (this.closureCode == 0) {
+            sendPayload(OP_TEXT | OP_FINAL, message.getBytes(), false);
+        } // else trhow new IOException("close_hanshake");
     }
 
     void setMaxMessageLength(int len) {
@@ -88,6 +88,10 @@ public class WsConnection {
 
     public int getClosureCode() {
         return this.closureCode;
+    }
+
+    public String getClosureMessage() {
+        return this.closureMessage;
     }
 
     public void close() {
@@ -202,19 +206,21 @@ public class WsConnection {
     static final int OP_PONG = 0x8A;
     static final int MASKED_DATA = 0x80;
     static final String PING_PAYLOAD = "Pong";
+    static final byte[] EMPTY_PAYLOAD = new byte[0];
 
     private void waitInputStream() throws IOException {
         InputStream is = socket.getInputStream();
         boolean pingSended = false;
         int opData = 0;
-        byte[] payload = null;
+        byte[] payload = EMPTY_PAYLOAD;
         while (this.isOpen()) {
             try {
                 int b1 = is.read();
                 if (b1 == -1) {
                     throw new WSException(GOING_AWAY, new EOFException());
                 }
-                switch (b1) { // check op
+// check op     
+                switch (b1) {
                     case OP_TEXT_FINAL: {
                     }
                     case OP_TEXT: {
@@ -225,6 +231,8 @@ public class WsConnection {
                         opData = b1 & 0xF;
                         b1 &= OP_FINAL;
                         break;
+                    }
+                    case OP_FINAL: {
                     }
                     case OP_PING: {
                     }
@@ -243,6 +251,7 @@ public class WsConnection {
                     throw new WSException(GOING_AWAY, new EOFException());
                 }
                 byte[] mask = (b2 & MASKED_DATA) != 0 ? new byte[4] : null;
+// get & check payload length
                 long payloadLen = b2 & 0x7F;
                 if (payloadLen == 126L) {
                     payloadLen = (is.read() << 8) + is.read();
@@ -251,31 +260,28 @@ public class WsConnection {
                     for (int i = 0; i < 8; i++) {
                         payloadLen <<= 8 + is.read();
                     }
-                    if (payloadLen > maxMessageLength) {
-                        throw new WSException(MESSAGE_TOO_BIG, new BufferUnderflowException());
-                    }
                 }
+                if (payloadLen + payload.length > maxMessageLength) {
+                    throw new WSException(MESSAGE_TOO_BIG,
+                            new BufferUnderflowException());
+//                            new IOException("message_too_big"));
+                }
+// get mask 
                 if (mask != null && is.read(mask) != mask.length) {
                     throw new WSException(GOING_AWAY, new EOFException());
                 }
+// get frame payload                
                 byte[] framePayload
                         = new byte[(int) payloadLen & 0xFFFFFFFF];
                 if (is.read(framePayload) != framePayload.length) {
                     throw new WSException(GOING_AWAY, new EOFException());
                 }
+// unmask frame payload                
                 if (mask != null) {
                     unmaskPayload(mask, framePayload);
                 }
                 if ((b1 & 0xF) == OP_CONTINUATION) {
-                    if (payload == null) {
-                        payload = framePayload;
-                    } else {
-                        if ((payload.length + framePayload.length) <= maxMessageLength) {
-                            payload = combine(payload, framePayload);
-                        } else {
-                            throw new WSException(MESSAGE_TOO_BIG, new BufferUnderflowException());
-                        }
-                    }
+                    payload = combine(payload, framePayload);
                 }
                 switch (b1) {
                     case OP_CONTINUATION:
@@ -289,7 +295,7 @@ public class WsConnection {
                             }
                         }
                         opData = 0;
-                        payload = null;
+                        payload = EMPTY_PAYLOAD;
                         break;
                     }
                     case OP_PONG: {
@@ -319,7 +325,7 @@ public class WsConnection {
                                         new ProtocolException("abnormal_closure")); // ????
                             }
                         }
-                        this.socket.setSoLinger(true, 5); // seconds
+                        this.socket.setSoLinger(true, 10); // seconds?
                         this.socket.close();
                         break;
                     }
@@ -368,13 +374,13 @@ public class WsConnection {
     void close(int code) throws IOException {
         if (this.closureCode == 0) {
             if (isOpen()) {
+                this.closureCode = code;
                 byte[] payload = new byte[2];
                 payload[0] = (byte) (code >>> 8);
                 payload[1] = (byte) (code & 0xFF);
 //                try {
 //                this.socket.getInputStream().skip(Long.MAX_VALUE);
                 sendPayload(OP_CLOSE | OP_FINAL, payload, false);
-                this.closureCode = code;
 //                } catch (IOException e) {
 //                    e.printStackTrace();
 //                }
@@ -392,15 +398,15 @@ public class WsConnection {
             int payloadLen = payload.length;
             if (payloadLen < 126) {
                 os.write((byte) (b2 | payloadLen));
-            } else if (payloadLen <= 0xFFFF) {
+            } else if (payloadLen < 0x10000) {
                 mask[0] = (byte) (b2 | 126);
                 mask[1] = (byte) (payloadLen >>> 8);
-                mask[3] = (byte) (byte) payloadLen;
+                mask[2] = (byte) payloadLen;
                 os.write(mask, 0, 3);
             } else {
                 os.write((byte) (b2 | 127));
                 os.write(mask); // 4 zero bytes of 64bit length
-                for (int i = 4; i > 0; i--) {
+                for (int i = 3; i > 0; i--) {
                     mask[i] = (byte) (payloadLen & 0xFF);
                     payloadLen >>>= 8;
                 }

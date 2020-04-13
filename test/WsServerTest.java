@@ -16,7 +16,7 @@ import org.samples.java.wsserver.WsServer;
 import org.samples.java.wsserver.WssServer;
 
 public class WsServerTest {
-
+    
     public static void main(String[] args) throws Exception {
         String path = (new File(".")).getAbsolutePath();
         if (args.length > 0) {
@@ -27,10 +27,10 @@ public class WsServerTest {
             public void onOpen(WsConnection con) {
                 System.out.println("Handle OPEN: " + con.getPath());
                 try {
-                    con.send("Hello Client!" + con.getPath());
+                    con.send("Hello Client!");
                 } catch (IOException e) {
                     System.out.println("Handle OPEN: " + con.getPath()
-                            + " send exception: " + e.getMessage());
+                            + " send exception: " + e.toString());
 //                    e.printStackTrace();
                 }
             }
@@ -44,8 +44,8 @@ public class WsServerTest {
             @Override
             public void onError(WsConnection con, Exception e) {
                 System.out.println("Handle ERROR: " + con.getPath()
-                        + " Exception: " + e.getMessage()
-                        + " Closure code:" + con.getClosureCode());
+                        + " " + e.toString() +"("+ e.getMessage()
+                        + ") Closure code:" + con.getClosureCode());
 //                e.printStackTrace();
             }
 
@@ -58,13 +58,14 @@ public class WsServerTest {
                         else con.send(s + s);
                         
                     } else if (testPath.endsWith("3")) { // check message too big
+//                        System.out.println("length:" + s.length());
                         con.send(s + s);
                     } else {
                         con.send(s);
                     }
                 } catch (IOException e) {
                     System.out.println("Handle TEXT: " + con.getPath()
-                            + " send exception: " + e.getMessage());
+                            + " send exception: " + e.toString());
                 }
             }
 
@@ -74,7 +75,7 @@ public class WsServerTest {
                     con.send(b);
                 } catch (Exception e) {
                     System.out.println("Handle BINARY: " + con.getPath()
-                            + " send exception: " + e.getMessage());
+                            + " send exception: " + e.toString());
                 }
             }
             /*
@@ -91,9 +92,10 @@ public class WsServerTest {
         wsServer.createContext("/test", handler);
         wsServer.bind(8080);
         wsServer.setConnectionSoTimeout(10000);
+        wsServer.setMaxMessageLength(100000);
         wsServer.setKeystore(path + "/localhost.jks", "password");
 //        wsServer.setLogFile(new File(path,"wsserver.log"), false);
-        int stopTimeout = 30000;
+        int stopTimeout = 60000;
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override

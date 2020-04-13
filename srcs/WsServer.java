@@ -74,7 +74,9 @@ public class WsServer {
     }
 
     public void setMaxMessageLength(int len) throws IllegalArgumentException {
-        if(len <= 0) throw new IllegalArgumentException("buffer_size");
+        if (len <= 0) {
+            throw new IllegalArgumentException("buffer_size");
+        }
         this.maxMessageLength = len;
     }
 
@@ -92,7 +94,10 @@ public class WsServer {
     }
 
     void logException(String stage, Exception e) {
-        log(stage + " Error: " + e.getMessage());
+        log(String.format("%1$s Error: %2$s(%3$s)",
+                stage,
+                e.toString(),
+                e.getMessage()));
     }
 
     public void start() throws Exception {
