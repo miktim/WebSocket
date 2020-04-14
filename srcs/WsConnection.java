@@ -52,23 +52,27 @@ public class WsConnection {
     private int closureCode = 0;
     private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH;
 
-    public void send(byte[] message) throws IOException {
+    synchronized public void send(byte[] message) throws IOException {
         if (this.closureCode == 0) {
             sendPayload(OP_BINARY | OP_FINAL, message, false);
-        } // else trhow new IOException("close_hanshake");
+        } else {
+            throw new IOException("socket_closed");
+        }
     }
 
-    public void send(String message) throws IOException {
+    synchronized public void send(String message) throws IOException {
         if (this.closureCode == 0) {
             sendPayload(OP_TEXT | OP_FINAL, message.getBytes(), false);
-        } // else trhow new IOException("close_hanshake");
+        } else {
+            throw new IOException("socket_closed");
+        }
     }
 
-    public void streamText(InputStream is) throws IOException {
+    synchronized public void streamText(InputStream is) throws IOException {
         stream(OP_TEXT, is, true);
     }
 
-    public void streamBinary(InputStream is) throws IOException {
+    synchronized public void streamBinary(InputStream is) throws IOException {
         stream(OP_BINARY, is, true);
     }
 
@@ -88,15 +92,11 @@ public class WsConnection {
         return this.closureCode;
     }
 
-    public void close() {
-        try {
-            close(NORMAL_CLOSURE);
-        } catch (IOException e) {
-//            e.printStackTrace();
-        }
+    public synchronized void close() {
+        close(NORMAL_CLOSURE);
     }
 
-    public synchronized void close(int code) throws IOException {
+    public synchronized void close(int code) {
         if (this.closureCode == 0) {
             if (isOpen()) {
                 this.closureCode = code;
@@ -107,6 +107,7 @@ public class WsConnection {
                 try {
                     sendPayload(OP_CLOSE | OP_FINAL, payload, false);
                 } catch (IOException e) {
+                    handler.onError(this, new IOException("closure_error", e));
                 }
             }
         }
@@ -127,13 +128,13 @@ public class WsConnection {
         this.handler = hd;
     }
 
-    void start() throws IOException {
+    void start() throws IOException, NoSuchAlgorithmException {
         handshakeClient();
         this.handler.onOpen(this);
         waitInputStream();
     }
 
-    private void handshakeClient() throws IOException {
+    private void handshakeClient() throws IOException, NoSuchAlgorithmException {
         String upgrade = requestHeaders.getFirst("Upgrade");
         String key = requestHeaders.getFirst("Sec-WebSocket-Key");
 //        int version = Integer.parseInt(requestHeaders.getFirst("Sec-WebSocket-Version"));
@@ -167,23 +168,16 @@ public class WsConnection {
         socket.getOutputStream().flush();
     }
 
-    private String sha1Hash(String key) {
-        MessageDigest md;
-        try {
-            md = MessageDigest.getInstance("SHA-1");
-            return base64Encode(
-                    md.digest((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
-                            .getBytes()));
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace(); //??? throws
-        }
-        return null;
+    private String sha1Hash(String key) throws NoSuchAlgorithmException {
+        MessageDigest md = MessageDigest.getInstance("SHA-1");
+        return base64Encode(
+                md.digest((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
+                        .getBytes()));
     }
 
     public static String base64Encode(byte[] b) {
         return Base64.getEncoder().encodeToString(b);
     }
-
     static final int OP_FINAL = 0x80;
     static final int OP_EXTENSONS = 0x70;
     static final int OP_CONTINUATION = 0x0;
@@ -316,8 +310,8 @@ public class WsConnection {
                             sendPayload(OP_CLOSE, framePayload, false);
                         }
 //??? server 1001 -> 1006 browser                      
-                        this.socket.setSoTimeout(0);
-                        this.socket.shutdownOutput();
+//                        this.socket.setSoTimeout(0);
+//                        this.socket.shutdownOutput();
                         this.socket.setSoLinger(true, 5); // seconds?
                         this.socket.close();
                         break;

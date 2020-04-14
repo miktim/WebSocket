@@ -26,6 +26,7 @@ import java.net.SocketException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyStore;
+import java.security.MessageDigest;
 import java.util.Collections;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -100,6 +101,7 @@ public class WsServer {
     public void start() throws Exception {
         serverSocket = getServerSocketFactory().createServerSocket();
         serverSocket.bind(ssoAddress, ssoBacklog);
+        MessageDigest.getInstance("SHA-1"); // check algorithm present
         (new WsServerThread(this)).start();
         this.log("Started");
     }
