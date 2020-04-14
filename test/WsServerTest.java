@@ -1,5 +1,5 @@
 /*
- * my WebSocket Server Test
+ * WsServer Test
  * MIT (c) 2020 miktim@mail.ru
  *
  * Created: 2020-03-09
@@ -30,7 +30,7 @@ public class WsServerTest {
                     con.send("Hello Client!");
                 } catch (IOException e) {
                     System.out.println("Handle OPEN: " + con.getPath()
-                            + " send exception: " + e.toString());
+                            + " send error: " + e.toString());
 //                    e.printStackTrace();
                 }
             }
@@ -44,8 +44,8 @@ public class WsServerTest {
             @Override
             public void onError(WsConnection con, Exception e) {
                 System.out.println("Handle ERROR: " + con.getPath()
-                        + " " + e.toString() +"("+ e.getMessage()
-                        + ") Closure code:" + con.getClosureCode());
+                        + " " + e.toString() 
+                        + " Closure code:" + con.getClosureCode());
 //                e.printStackTrace();
             }
 
@@ -58,14 +58,14 @@ public class WsServerTest {
                         else con.send(s + s);
                         
                     } else if (testPath.endsWith("3")) { // check message too big
-                        System.out.println("MsgLen:" + s.length());
+//                        System.out.println("MsgLen:" + s.length());
                         con.send(s + s);
                     } else {
                         con.send(s);
                     }
                 } catch (IOException e) {
                     System.out.println("Handle TEXT: " + con.getPath()
-                            + " send exception: " + e.toString());
+                            + " send error: " + e.toString());
                 }
             }
 
@@ -73,9 +73,9 @@ public class WsServerTest {
             public void onMessage(WsConnection con, byte[] b) {
                 try {
                     con.send(b);
-                } catch (Exception e) {
+                } catch (IOException e) {
                     System.out.println("Handle BINARY: " + con.getPath()
-                            + " send exception: " + e.toString());
+                            + " send error: " + e.toString());
                 }
             }
             /*

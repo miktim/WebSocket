@@ -23,7 +23,7 @@
                 'closing websocket by browser (1005 expected)',
                 'closing websocket by the server handler (1000 expected)',
                 'message too big (1009 expected)',
-                'server stops (1001 expected)'
+                'waiting for server shutdown (1001 expected)'
             ];
 
             try {
@@ -48,11 +48,11 @@
                 };
                 webSocket.onmessage = event => {
 // event: .data .origin .lastEventId .source .ports
-//                    show('onmessage: ' + event.data + ':' + event.origin 
-//                    + ':' + event.source);
+
                     var url = event.target.url;
                     if (url.endsWith('1')) { // browser closure
-                        if (event.data.length < 128)
+                        show('onmessage: ' + event.data);
+                        if (event.data.length < 80)
                             event.target.send(event.data + event.data);
                         else
                             event.target.close();

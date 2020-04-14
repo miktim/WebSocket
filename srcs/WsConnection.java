@@ -5,15 +5,13 @@
  *
  * Release notice:
  * - WebSocket extensions not supported;
- * - supported protocol versions: 13 
- * - connection methods not thread-safe
+ * - protocol version: 13 
  *
  * Created: 2020-03-09
  */
 package org.samples.java.wsserver;
 
 import com.sun.net.httpserver.Headers;
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -22,7 +20,6 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
-import java.nio.BufferUnderflowException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -37,7 +34,7 @@ public class WsConnection {
     public static final int PROTOCOL_ERROR = 1002; //* 
     public static final int UNSUPPORTED_DATA = 1003; //* unsupported opcode
 //    public static final int MOZILLA_DEFAULT = 1005; // mozilla internal default
-    public static final int ABNORMAL_CLOSURE = 1006; // closing connection without op
+//    public static final int ABNORMAL_CLOSURE = 1006; // closing connection without op
     public static final int INVALID_DATA = 1007; // non utf-8 text, for example
     public static final int POLICY_VIOLATION = 1008; //
     public static final int MESSAGE_TOO_BIG = 1009; // *
@@ -212,23 +209,18 @@ public class WsConnection {
                 int b1 = service[0] & 0xFF;
 // check op    
                 switch (b1) {
-                    case OP_TEXT_FINAL: {
-                    }
-                    case OP_TEXT: {
-                    }
-                    case OP_BINARY_FINAL: {
-                    }
+                    case OP_TEXT_FINAL:
+                    case OP_TEXT:
+                    case OP_BINARY_FINAL:
                     case OP_BINARY: {
                         opData = b1 & 0xF;
                         b1 &= OP_FINAL;
                         break;
                     }
-                    case OP_FINAL: {
-                    }
-                    case OP_PING: {
-                    }
-                    case OP_PONG: {
-                    }
+                    case OP_CONTINUATION:
+                    case OP_FINAL:
+                    case OP_PING:
+                    case OP_PONG:
                     case OP_CLOSE: {
                         break;
                     }
@@ -273,7 +265,7 @@ public class WsConnection {
                 byte[] framePayload
                         = new byte[(int) payloadLen & 0xFFFFFFFF]; //?
                 if (is.read(framePayload) != framePayload.length) {
-                      close(-GOING_AWAY);
+                    close(-GOING_AWAY);
                 }
 // unmask frame payload                
                 if ((b2 & MASKED_DATA) != 0) {
@@ -290,7 +282,7 @@ public class WsConnection {
                             if (opData == OP_BINARY) {
                                 handler.onMessage(this, payload);
                             } else {
-                                handler.onMessage(this, new String(payload,"utf-8"));
+                                handler.onMessage(this, new String(payload, "utf-8"));
                             }
                         }
                         opData = 0;
@@ -318,11 +310,10 @@ public class WsConnection {
                                 closureCode = -NORMAL_CLOSURE;
                             }
                             sendPayload(OP_CLOSE, framePayload, false);
-                            if (closureCode != -NORMAL_CLOSURE) {
-                                handler.onError(this,
-                                        new ProtocolException("abnormal_closure")); // ????
-                            }
                         }
+//??? 1001 -> 1006                        
+                        this.socket.setSoTimeout(0);
+                        this.socket.shutdownOutput(); 
                         this.socket.setSoLinger(true, 5); // seconds?
                         this.socket.close();
                         break;
@@ -349,9 +340,10 @@ public class WsConnection {
                 break;
             }
         }
-        if (Math.abs(closureCode) != NORMAL_CLOSURE)
+        if (Math.abs(closureCode) != NORMAL_CLOSURE) {
             handler.onError(this,
-                    new ProtocolException(String.valueOf(closureCode)));
+                    new ProtocolException("abnormal_closure"));
+        }
         handler.onClose(this);
     }
 
@@ -368,12 +360,12 @@ public class WsConnection {
         return result;
     }
 
-    private synchronized void sendPayload(int opData, byte[] payload, boolean maskData)
+    private synchronized void sendPayload(int opData, byte[] payload, boolean masked)
             throws IOException {
         OutputStream os = this.socket.getOutputStream();
         os.write((byte) opData);
         byte[] mask = {0, 0, 0, 0};
-        int b2 = maskData ? MASKED_DATA : 0;
+        int b2 = masked ? MASKED_DATA : 0;
         int payloadLen = payload.length;
         if (payloadLen < 126) {
             os.write((byte) (b2 | payloadLen));
@@ -391,7 +383,7 @@ public class WsConnection {
             }
             os.write(mask);
         }
-        if (maskData) {
+        if (masked) {
             (new SecureRandom()).nextBytes(mask);
             os.write(mask);
             unmaskPayload(mask, payload);

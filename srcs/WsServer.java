@@ -94,10 +94,7 @@ public class WsServer {
     }
 
     void logException(String stage, Exception e) {
-        log(String.format("%1$s Error: %2$s(%3$s)",
-                stage,
-                e.toString(),
-                e.getMessage()));
+        log(String.format("%1$s Error: %2$s", stage, e.toString()));
     }
 
     public void start() throws Exception {
