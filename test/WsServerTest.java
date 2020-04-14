@@ -95,7 +95,7 @@ public class WsServerTest {
         wsServer.setMaxMessageLength(100000);
         wsServer.setKeystore(path + "/localhost.jks", "password");
 //        wsServer.setLogFile(new File(path,"wsserver.log"), false);
-        int stopTimeout = 30000;
+        int stopTimeout = 20000;
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override

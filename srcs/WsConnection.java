@@ -20,6 +20,7 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -95,7 +96,7 @@ public class WsConnection {
         }
     }
 
-    void close(int code) throws IOException {
+    public synchronized void close(int code) throws IOException {
         if (this.closureCode == 0) {
             if (isOpen()) {
                 this.closureCode = code;
@@ -103,7 +104,10 @@ public class WsConnection {
                 byte[] payload = new byte[2];
                 payload[0] = (byte) (absCode >>> 8);
                 payload[1] = (byte) (absCode & 0xFF);
-                sendPayload(OP_CLOSE | OP_FINAL, payload, false);
+                try {
+                    sendPayload(OP_CLOSE | OP_FINAL, payload, false);
+                } catch (IOException e) {
+                }
             }
         }
     }
@@ -112,8 +116,8 @@ public class WsConnection {
         try {
             return (new URI(requestHeaders.getFirst(REQUEST_LINE_HEADER)
                     .split(" ")[1])).getPath();
-        } catch (Exception e) {
-            return "unknown";
+        } catch (URISyntaxException e) {
+            return null;
         }
     }
 
@@ -311,9 +315,9 @@ public class WsConnection {
                             }
                             sendPayload(OP_CLOSE, framePayload, false);
                         }
-//??? 1001 -> 1006                        
+//??? server 1001 -> 1006 browser                      
                         this.socket.setSoTimeout(0);
-                        this.socket.shutdownOutput(); 
+                        this.socket.shutdownOutput();
                         this.socket.setSoLinger(true, 5); // seconds?
                         this.socket.close();
                         break;

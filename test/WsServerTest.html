@@ -22,7 +22,7 @@
                 'server handler (request path) not found (1006 expected)',
                 'closing websocket by browser (1005 expected)',
                 'closing websocket by the server handler (1000 expected)',
-                'message too big (1009 expected)',
+                'waiting message too big (1009 expected)',
                 'waiting for server shutdown (1001 expected)'
             ];
 
@@ -39,7 +39,7 @@
             }
             function connectWs(uri) {
                 if (testNo < tests.length)
-                    show(testNo + '. ' + tests[testNo]);
+                    show('Test' + testNo + ': ' + tests[testNo]);
                 var webSocket = new WebSocket(uri);
                 webSocket.onopen = event => {
 // WebSocket: .url .readyState .bufferedAmount .binaryType             
