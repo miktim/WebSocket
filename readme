@@ -30,7 +30,7 @@ Overview:
       void stop();
   
   Interface:
-    WsHandler  see: https://github.com/miktim/WsServer/tree/master/srcs/WsHandler.java
+    WsHandler  see: https://./srcs/WsHandler.java
 
   WsConnection:
     Constants:
@@ -41,3 +41,4 @@ Overview:
       void send(byte[] message) throws IOException;
       int getClosureCode();
       void close();
+      void close(int closureCode);
