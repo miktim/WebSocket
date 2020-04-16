@@ -30,7 +30,7 @@ Overview:
       void stop();
   
   Interface:
-    WsHandler  see: https://./srcs/WsHandler.java
+    WsHandler  see: https://github.com/miktim/WsServer/blob/master/srcs/WsHandler.java
 
   WsConnection:
     Constants:
