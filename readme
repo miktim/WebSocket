@@ -3,7 +3,7 @@ Lightweight WebSocket Server. The main purpose of the package is to interact wit
 preRelease
 
 Release notice:
-  - java SE 1.8+;
+  - java SE 1.7+;
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - WebSocket extensions not supported;
   - localhost self signed certificates do not work.

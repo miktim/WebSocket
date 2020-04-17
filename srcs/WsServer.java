@@ -1,5 +1,5 @@
 /*
- * my WebSocket Server java SE 1.8+
+ * my WebSocket Server java SE 1.7+
  * MIT (c) 2020 miktim@mail.ru
  * RFC-6455: https://tools.ietf.org/html/rfc6455
  *

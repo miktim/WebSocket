@@ -1,5 +1,5 @@
 /*
- * WsConnection java SE 1.8+
+ * WsConnection java SE 1.7+
  * MIT (c) 2020 miktim@mail.ru
  * RFC-6455: https://tools.ietf.org/html/rfc6455
  *
@@ -25,7 +25,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Arrays;
-import java.util.Base64; // from java 1.8
+//import java.util.Base64; // from java 1.8
 
 public class WsConnection {
 
@@ -176,7 +176,27 @@ public class WsConnection {
     }
 
     public static String base64Encode(byte[] b) {
-        return Base64.getEncoder().encodeToString(b);
+        final byte[] chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".getBytes();
+        int i = 0;
+        int l = 0;
+        byte[] b64 = new byte[((b.length + 2) / 3 * 4)];
+        Arrays.fill(b64, (byte) '=');
+        while (i < b.length) {
+            int k = Math.min(3, b.length - i);
+            int bits = 0;
+            int shift = 16;
+            for (int j = 0; j < k; j++) {
+                bits += ((b[i++] & 0xFF) << shift);
+                shift -= 8;
+            }
+            shift = 18;
+            for (int j = 0; j <= k; j++) {
+                b64[l++] = chars[(bits >> shift) & 0x3F];
+                shift -= 6;
+            }
+        }
+        return new String(b64);
+//        return Base64.getEncoder().encodeToString(b);
     }
     static final int OP_FINAL = 0x80;
     static final int OP_EXTENSONS = 0x70;
