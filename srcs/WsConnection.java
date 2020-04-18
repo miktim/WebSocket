@@ -21,6 +21,7 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.BufferOverflowException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -30,12 +31,13 @@ import java.util.Arrays;
 public class WsConnection {
 
 // closure codes see RFC: https://tools.ietf.org/html/rfc6455#section-7.4 
+// https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
     public static final int NORMAL_CLOSURE = 1000; //*
     public static final int GOING_AWAY = 1001; //* shutdown or socket timeout
     public static final int PROTOCOL_ERROR = 1002; //* 
     public static final int UNSUPPORTED_DATA = 1003; //* unsupported opcode
-//    public static final int MOZILLA_DEFAULT = 1005; // mozilla internal default
-//    public static final int ABNORMAL_CLOSURE = 1006; // closing connection without op
+    public static final int NO_STATUS = 1005; // closing without code
+    public static final int ABNORMAL_CLOSURE = 1006; // closing without close farame
     public static final int INVALID_DATA = 1007; // non utf-8 text, for example
     public static final int POLICY_VIOLATION = 1008; //
     public static final int MESSAGE_TOO_BIG = 1009; // *
@@ -222,7 +224,7 @@ public class WsConnection {
             try {
                 int serviceLen = 2;
                 if (is.read(service, 0, serviceLen) != serviceLen) {
-                    close(-GOING_AWAY);
+                    closeOnError(-GOING_AWAY, new ProtocolException());
                 }
                 int b1 = service[0] & 0xFF;
 // check op    
@@ -243,7 +245,7 @@ public class WsConnection {
                         break;
                     }
                     default: {
-                        close(PROTOCOL_ERROR);
+                        closeOnError(PROTOCOL_ERROR, new ProtocolException());
                     }
                 }
 
@@ -258,7 +260,7 @@ public class WsConnection {
                 }
                 if (serviceLen > 0) {
                     if (is.read(service, 0, serviceLen) != serviceLen) {
-                        close(-GOING_AWAY);
+                        closeOnError(-GOING_AWAY, new ProtocolException());
                     }
                     payloadLen = 0;
                     for (int i = 0; i < serviceLen; i++) {
@@ -270,20 +272,20 @@ public class WsConnection {
                 if ((b2 & MASKED_DATA) != 0) {
                     serviceLen = 4;
                     if (is.read(service, 0, serviceLen) != serviceLen) {
-                        close(-GOING_AWAY);
+                        closeOnError(-GOING_AWAY, new ProtocolException());
                     }
                 }
 // check payloadLen                
                 if (payloadLen + payload.length > maxMessageLength) {
                     is.skip(payloadLen);
-                    close(MESSAGE_TOO_BIG);
+                    closeOnError(MESSAGE_TOO_BIG, new BufferOverflowException());
                     continue;
                 }
 // get frame payload                
                 byte[] framePayload
                         = new byte[(int) payloadLen & 0xFFFFFFFF]; //?
                 if (is.read(framePayload) != framePayload.length) {
-                    close(-GOING_AWAY);
+                    closeOnError(-GOING_AWAY, new ProtocolException());
                 }
 // unmask frame payload                
                 if ((b2 & MASKED_DATA) != 0) {
@@ -313,7 +315,8 @@ public class WsConnection {
                             pingSended = false;
                             break;
                         }
-                        close(PROTOCOL_ERROR);
+                        handler.onError(this,
+                                new ProtocolException("unexpected_pong"));
                     }
                     case OP_PING: {
                         sendPayload(OP_PONG | OP_FINAL, framePayload, false);
@@ -325,19 +328,20 @@ public class WsConnection {
                                 this.closureCode
                                         = -((framePayload[0] << 8) + framePayload[1]);
                             } else {
-                                closureCode = -NORMAL_CLOSURE;
+                                closureCode = -NO_STATUS;
                             }
                             sendPayload(OP_CLOSE, framePayload, false);
                         }
 //??? server 1001 -> 1006 browser                      
 //                        this.socket.setSoTimeout(0);
-//                        this.socket.shutdownOutput();
+//                        this.socket.shutdownInput();
                         this.socket.setSoLinger(true, 5); // seconds?
                         this.socket.close();
                         break;
                     }
                     default: {
-                        close(PROTOCOL_ERROR);
+                        closeOnError(PROTOCOL_ERROR,
+                                new ProtocolException("unknown_frame"));
                     }
                 }
             } catch (SocketTimeoutException e) {
@@ -345,24 +349,32 @@ public class WsConnection {
                     pingSended = true;
                     sendPayload(OP_PING | OP_FINAL, PING_PAYLOAD.getBytes(), false);
                 } else {
-                    close(-GOING_AWAY);
+                    closeOnError(-GOING_AWAY, e);
                     break;
                 }
             } catch (SocketException e) {
                 if (closureCode == 0) {
-                    close(INTERNAL_ERROR);
+                    closeOnError(INTERNAL_ERROR, e);
                 }
                 break;
             } catch (IOException e) { // Exception?
-                close(INTERNAL_ERROR);
+                closeOnError(INTERNAL_ERROR, e);
                 break;
             }
         }
-        if (Math.abs(closureCode) != NORMAL_CLOSURE) {
-            handler.onError(this,
-                    new ProtocolException("abnormal_closure"));
+        if (closureException != null) {
+            handler.onError(this, closureException);
         }
         handler.onClose(this);
+    }
+
+    private Exception closureException = null;
+
+    private void closeOnError(int closureCode, Exception e) {
+        close(closureCode);
+        if (closureException == null) {
+            closureException = e;
+        }
     }
 
     private void unmaskPayload(byte[] mask, byte[] payload) {

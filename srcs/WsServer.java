@@ -40,7 +40,7 @@ import static org.samples.java.wsserver.WsConnection.GOING_AWAY;
 
 public class WsServer {
 
-    public static final String WSSERVER_VERSION = "0.0.1";
+    public static final String WSSERVER_VERSION = "0.1.0";
     public static final int DEFAULT_SERVER_PORT = 80;
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
     public static final int DEFAULT_MAX_MESSAGE_LENGTH
