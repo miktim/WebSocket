@@ -11,12 +11,10 @@
 package org.samples.java.wsserver;
 
 import com.sun.net.httpserver.Headers;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.net.ProtocolException;
@@ -52,12 +50,16 @@ public class WsServer {
     private int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
     private int ssoBacklog = 20;
     private InetSocketAddress ssoAddress = null;
-    boolean isSSL = false;
+    boolean isSecure;
     private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH;
 
     public WsServer() {
-        this.isSSL = false;
+        this.isSecure = false;
         ssoAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
+    }
+
+    public boolean isSecure() {
+        return isSecure;
     }
 
     public void bind(int port) {
@@ -148,7 +150,7 @@ public class WsServer {
         @Override
         public void run() {
             wss.isRunning = true;
-            if (wss.isSSL) {
+            if (wss.isSecure) {
                 ((SSLServerSocket) wss.serverSocket)
                         .setNeedClientAuth(false);
             }
@@ -156,7 +158,7 @@ public class WsServer {
             Socket socket;
             while (wss.isRunning) {
                 try {
-                    if (wss.isSSL) {
+                    if (wss.isSecure) {
                         socket = ((SSLServerSocket) wss.serverSocket).accept();
                         ((SSLSocket) socket).startHandshake();
                     } else {
@@ -173,7 +175,7 @@ public class WsServer {
                     }
                 } catch (IOException e) {
                     wss.logException("socketHandshake", e);
-//                        e.printStackTrace(); 
+//                    e.printStackTrace();
                 }
             }
 // close connections            
@@ -205,7 +207,7 @@ public class WsServer {
             String requestPath = "";
             try {
                 if (connection == null) {
-                    Headers requestHeaders = getRequestHeaders();
+                    Headers requestHeaders = connection.receiveHeaders(this.socket);
                     String[] parts = requestHeaders
                             .getFirst(WsConnection.REQUEST_LINE_HEADER).split(" ");
                     requestPath = parts[1];
@@ -215,11 +217,11 @@ public class WsServer {
                     connection.setMaxMessageLength(server.maxMessageLength);
                     if (!(parts[0].equals("GET") && parts[2].equals("HTTP/1.1")
                             && upgrade != null && upgrade.equals("websocket"))) {
-                        connection.sendResponseHeaders(null, "400 Bad request");
+                        connection.sendHeaders(this.socket, null, "HTTP/1.1 400 Bad request");
                         throw new ProtocolException("bad_request");
 
                     } else if (handler == null) {
-                        connection.sendResponseHeaders(null, "404 Not Found");
+                        connection.sendHeaders(this.socket, null, "HTTP/1.1 404 Not Found");
                         throw new ProtocolException("not_found");
                     }
                     server.log(requestPath + " Open");
@@ -237,35 +239,13 @@ public class WsServer {
             }
             if (!this.socket.isClosed()) {
                 try {
+                    this.socket.setSoLinger(true, 5);
                     this.socket.close();
                 } catch (IOException ie) {
 //                    ie.printStackTrace();
                 }
             }
         }
-
-        private Headers getRequestHeaders() throws IOException {
-            Headers headers = new Headers();
-            BufferedReader br
-                    = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
-            headers.add(WsConnection.REQUEST_LINE_HEADER,
-                    br.readLine().replaceAll("  ", " ").trim());
-            String[] pair = new String[0];
-            while (true) {
-                String line = br.readLine();
-                if (line == null || line.isEmpty()) {
-                    break;
-                }
-                if (line.startsWith(" ") || line.startsWith("\t")) { // continued
-                    headers.add(pair[0], headers.getFirst(pair[0]) + line);
-                    continue;
-                }
-                pair = line.split(":");
-                headers.add(pair[0].trim(), pair[1].trim());
-            }
-            return headers;
-        }
-
     }
 
     private String ksFile = null;
@@ -274,13 +254,13 @@ public class WsServer {
     public void setKeystore(String jksFile, String passphrase) {
         this.ksFile = jksFile;
         this.ksPassphrase = passphrase;
-//        System.setProperty("javax.net.ssl.keyStore", ksFile);
-//        System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
+        System.setProperty("javax.net.ssl.trustStore", jksFile);
+        System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
     }
 
 // https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/sockets/server/ClassFileServer.java
     private ServerSocketFactory getServerSocketFactory() throws Exception {
-        if (isSSL) {
+        if (isSecure) {
             SSLServerSocketFactory ssf;
             SSLContext ctx;
             KeyManagerFactory kmf;

@@ -1,11 +1,12 @@
-# WsServer package  MIT (c) 2020 miktim@mail.ru
-Lightweight WebSocket Server. The main purpose of the package is to interact with browsers.
+# WebSocket package  MIT (c) 2020 miktim@mail.ru
+Lightweight WebSocket. The main purpose of the package is to interact with browsers.
 
 Release notice:
   - java SE 1.7+;
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
+  - WebSocket version: 13;
   - WebSocket extensions not supported;
-  - localhost self signed certificates do not work.
+  - modern browsers do not support self-signed localhost certificates.
 
 Overview:
   Constructors:
@@ -21,6 +22,7 @@ Overview:
       void createContext(String path, WsHandler handler) throws URISyntaxException;
       void bind(int port);
       void bind(InetSocketAddress sa, int backlog);
+      boolean isSecure();
       void setConnectionSoTimeout(int millis);
       void setLogFile(File logFile, boolean append) throws IOException;
       void setMaxMessageLength(int len);
@@ -36,8 +38,15 @@ Overview:
       WebSocket closure codes see: https://tools.ietf.org/html/rfc6455#section-7.4
     Methods:
       String getPath();
+      boolean isSecure();
       void send(String message) throws IOException;
       void send(byte[] message) throws IOException;
       int getClosureCode();
       void close();
       void close(int closureCode);
+      
+  Client connection constructor:
+    WsConnection(String uri, WsHahdler handler);
+    
+    Methods:
+      void open() throws Exception;

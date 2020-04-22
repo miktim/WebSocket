@@ -1,6 +1,5 @@
 /*
- * WsServer Test
- * MIT (c) 2020 miktim@mail.ru
+ * WebSocket server Test MIT (c) 2020 miktim@mail.ru
  *
  * Created: 2020-03-09
  */
@@ -104,7 +103,7 @@ public class WsServerTest {
                 timer.cancel();
             }
         }, stopTimeout);
-        System.out.println("Server will be stopped after "
+        System.out.println("WebSocket server test\r\nServer will be stopped after "
                 + (stopTimeout / 1000) + " seconds");
         wsServer.start();
         java.awt.Desktop.getDesktop()

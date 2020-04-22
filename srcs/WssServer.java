@@ -12,6 +12,6 @@ public class WssServer extends WsServer {
 
     public WssServer() {
         super();
-        this.isSSL = true;
+        this.isSecure = true;
     }
 }
