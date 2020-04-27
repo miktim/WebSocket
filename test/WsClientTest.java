@@ -1,4 +1,3 @@
-
 /*
  * WebSocket client test. MIT (c) 2020 miktim@mail.ru
  */
@@ -140,9 +139,8 @@ public class WsClientTest {
         WsServer wsServer = new WssServer();
         wsServer.createContext("/test", serverHandler);
         int port = 8000 + wsServer.DEFAULT_SERVER_PORT;
-//        wsServer.bind(8000 + wsServer.DEFAULT_SERVER_PORT);
         wsServer.bind(port);
-        wsServer.setConnectionSoTimeout(10000);
+        wsServer.setConnectionSoTimeout(1000); // handshake & ping
         wsServer.setMaxMessageLength(100000);
 //        wsServer.setKeystore(path + "/localhost.jks", "password");
 //        wsServer.setKeystore(path + "/samplecacerts", "changeit");
@@ -157,11 +155,11 @@ public class WsClientTest {
                 timer.cancel();
             }
         }, stopTimeout);
-        System.out.println("Test WebSocket client\r\nServer will be stopped after "
+        System.out.println("\r\nTest WebSocket client\r\nServer will be stopped after "
                 + (stopTimeout / 1000) + " seconds");
         wsServer.start();
         WsConnection wsClient = new WsConnection(
-                "wss://localhost:" + port + "/test/",
+                "wss://localhost:" + port + "/test",
                 clientHandler);
         wsClient.open();
     }

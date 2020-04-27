@@ -1,5 +1,5 @@
 /*
- * WebSocket server Test MIT (c) 2020 miktim@mail.ru
+ * WebSocket server test MIT (c) 2020 miktim@mail.ru
  *
  * Created: 2020-03-09
  */
@@ -90,9 +90,9 @@ public class WsServerTest {
         WsServer wsServer = new WsServer();
         wsServer.createContext("/test", handler);
         wsServer.bind(8080);
-        wsServer.setConnectionSoTimeout(10000);
+        wsServer.setConnectionSoTimeout(5000); // handshake & ping
         wsServer.setMaxMessageLength(100000);
-        wsServer.setKeystore(path + "/localhost.jks", "password");
+//        wsServer.setKeystore(path + "/localhost.jks", "password");
 //        wsServer.setLogFile(new File(path,"wsserver.log"), false);
         int stopTimeout = 20000;
         Timer timer = new Timer();
@@ -103,7 +103,7 @@ public class WsServerTest {
                 timer.cancel();
             }
         }, stopTimeout);
-        System.out.println("WebSocket server test\r\nServer will be stopped after "
+        System.out.println("\r\nTest WebSocket server\r\nServer will be stopped after "
                 + (stopTimeout / 1000) + " seconds");
         wsServer.start();
         java.awt.Desktop.getDesktop()
