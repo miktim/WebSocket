@@ -9,7 +9,7 @@
  *
  * Created: 2020-03-09
  */
-package org.samples.java.wsserver;
+package org.samples.java.websocket;
 
 import com.sun.net.httpserver.Headers;
 import java.io.BufferedReader;
@@ -86,9 +86,11 @@ public class WsConnection {
     public synchronized void streamBinary(InputStream is) throws IOException {
         stream(OP_BINARY, is);
     }
+
     public boolean isSecure() {
         return isSecure;
     }
+
     void setMaxMessageLength(int len) {
         maxMessageLength = len;
     }
@@ -219,7 +221,7 @@ public class WsConnection {
             SSLSocketFactory factory
                     = (SSLSocketFactory) SSLSocketFactory.getDefault();
             this.socket
-//                    = (SSLSocket) factory.createSocket(host, port);
+                    //                    = (SSLSocket) factory.createSocket(host, port);
                     = (SSLSocket) factory.createSocket();
             this.isSecure = true;
         } else {
@@ -247,11 +249,11 @@ public class WsConnection {
                 socket.connect(
                         new InetSocketAddress(requestURI.getHost(), port));
             }
-/*
+            /*
             if (isSecure) {
                 ((SSLSocket) socket).startHandshake();
             }
-*/
+             */
             handshakeServer();
             this.handler.onOpen(this);
             this.socket.setSoTimeout(0);
@@ -467,17 +469,15 @@ public class WsConnection {
                     case OP_PONG: {
                         if (pingSended
                                 && (new String(framePayload)).equals(PING_PAYLOAD)) {
-                            pingSended = false;
-                            break;
+                        } else {
+                            handler.onError(this,
+                                    new ProtocolException("unexpected_pong"));
                         }
-                        handler.onError(this,
-                                new ProtocolException("unexpected_pong"));
+                        pingSended = false;
                         break;
                     }
                     case OP_PING: {
-//                       if (closureCode == 0) {
                         sendPayload(OP_PONG | OP_FINAL, framePayload);
-//                        }
                         break;
                     }
                     case OP_CLOSE: { // close handshake

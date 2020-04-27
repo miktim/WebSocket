@@ -1,8 +1,8 @@
 #!/bin/bash
 
 echo $(javac --version)
-jname=WsServer
-cpath=./org/samples/java/wsserver
+jname=WebSocket
+cpath=./org/samples/java/websocket
 if [ ! -d ${cpath} ]
   then mkdir -p ${cpath}
   else rm -f ${cpath}/*.*

@@ -4,7 +4,7 @@ Lightweight WebSocket. The main purpose of the package is to interact with brows
 Release notice:
   - java SE 1.7+;
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
-  - WebSocket version: 13;
+  - WebSocket protocol version: 13;
   - WebSocket extensions not supported;
   - modern browsers do not support self-signed localhost certificates.
 

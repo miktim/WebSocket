@@ -4,7 +4,7 @@
  *
  * Created: 2020-03-31
  */
-package org.samples.java.wsserver;
+package org.samples.java.websocket;
 
 public class WssServer extends WsServer {
 

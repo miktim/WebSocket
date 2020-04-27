@@ -4,7 +4,7 @@
  *
  * Created: 2020-03-09
  */
-package org.samples.java.wsserver;
+package org.samples.java.websocket;
 
 import java.io.InputStream;
 

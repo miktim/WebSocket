@@ -8,7 +8,7 @@
  *
  * Created: 2020-03-09
  */
-package org.samples.java.wsserver;
+package org.samples.java.websocket;
 
 import com.sun.net.httpserver.Headers;
 import java.io.File;
@@ -34,7 +34,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
-import static org.samples.java.wsserver.WsConnection.GOING_AWAY;
+import static org.samples.java.websocket.WsConnection.GOING_AWAY;
 
 public class WsServer {
 
@@ -118,7 +118,7 @@ public class WsServer {
     }
 
     private final SortedMap<String, WsHandler> context
-            = Collections.synchronizedSortedMap(new TreeMap<>());
+            = new TreeMap<String, WsHandler>(Collections.reverseOrder());
 
     public void createContext(String path, WsHandler handler)
             throws URISyntaxException {
