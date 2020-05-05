@@ -1,17 +1,17 @@
 /*
- * WsConnection java SE 1.7+
- * MIT (c) 2020 miktim@mail.ru
- * RFC-6455: https://tools.ietf.org/html/rfc6455
+ * WsConnection. WebSocket connection, MIT (c) 2020 miktim@mail.ru
  *
- * Release notice:
- * - WebSocket extensions not supported;
- * - protocol version: 13 
+ * Release notes:
+ * - java SE 1.7+;
+ * - RFC-6455: https://tools.ietf.org/html/rfc6455;
+ * - WebSocket protocol version: 13;
+ * - WebSocket extensions not supported
  *
  * Created: 2020-03-09
  */
 package org.samples.java.websocket;
 
-import com.sun.net.httpserver.Headers;
+//import com.sun.net.httpserver.Headers;
 import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.IOException;
@@ -172,10 +172,10 @@ public class WsConnection {
             throw new ProtocolException("bad_request");
         } else {
             Headers responseHeaders = new Headers();
-            responseHeaders.set("Upgrade", "websocket");
-            responseHeaders.set("Connection", "upgrade,keep-alive");
-            responseHeaders.set("Sec-WebSocket-Accept", sha1Hash(key));
-            responseHeaders.set("Sec-WebSocket-Version", "13");
+            responseHeaders.add("Upgrade", "websocket");
+            responseHeaders.add("Connection", "Upgrade,keep-alive");
+            responseHeaders.add("Sec-WebSocket-Accept", sha1Hash(key));
+            responseHeaders.add("Sec-WebSocket-Version", "13");
             sendHeaders(this.socket, responseHeaders, "HTTP/1.1 101 Upgrade");
         }
     }
@@ -291,11 +291,11 @@ public class WsConnection {
         byte[] byteKey = new byte[16];
         (new SecureRandom()).nextBytes(byteKey);
         String key = base64Encode(byteKey);
-        requestHeaders.set("Host", requestURI.getHost());
-        requestHeaders.set("Upgrade", "websocket");
-        requestHeaders.set("Connection", "Upgrade");
-        requestHeaders.set("Sec-WebSocket-Key", key);
-        requestHeaders.set("Sec-WebSocket-Version", "13");
+        requestHeaders.add("Host", requestURI.getHost());
+        requestHeaders.add("Upgrade", "websocket");
+        requestHeaders.add("Connection", "Upgrade");
+        requestHeaders.add("Sec-WebSocket-Key", key);
+        requestHeaders.add("Sec-WebSocket-Version", "13");
 
         sendHeaders(this.socket, requestHeaders, requestLine);
         Headers headers = receiveHeaders(this.socket);

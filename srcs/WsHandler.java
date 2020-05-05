@@ -1,6 +1,5 @@
 /*
- * WsHandler 
- * MIT (c) 2020 miktim@mail.ru
+ * WsHandler. WebSocket client/server handler, MIT (c) 2020 miktim@mail.ru
  *
  * Created: 2020-03-09
  */

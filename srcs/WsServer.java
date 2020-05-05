@@ -1,16 +1,17 @@
 /*
- * my WebSocket Server java SE 1.7+
- * MIT (c) 2020 miktim@mail.ru
- * RFC-6455: https://tools.ietf.org/html/rfc6455
+ * my WebSocket Server, MIT (c) 2020 miktim@mail.ru
  *
- * Release notice:
+ * Release notes:
+ * - java SE 1.7+;
+ * - RFC-6455: https://tools.ietf.org/html/rfc6455;
+ * - WebSocket protocol version: 13;
  * - WebSocket extensions not supported
  *
  * Created: 2020-03-09
  */
 package org.samples.java.websocket;
 
-import com.sun.net.httpserver.Headers;
+//import com.sun.net.httpserver.Headers;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;

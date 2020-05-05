@@ -8,7 +8,7 @@ if [ ! -d ${cpath} ]
   else rm -f ${cpath}/*.*
 fi
 javac -Xstdout ./compile.log -Xlint:unchecked -cp ${cpath} -d ./ \
-  WsHandler.java WsConnection.java WsServer.java WssServer.java
+  WsHandler.java Headers.java WsConnection.java WsServer.java WssServer.java
 if [ $? -eq 0 ] ; then
   jar cvf ./${jname}.jar ${cpath}/*.class
 #  javadoc -d ./${jname}Doc -nodeprecated -use package-info.java \

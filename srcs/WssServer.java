@@ -1,6 +1,5 @@
 /*
- * Secure WebSocket Server java SE 1.7+
- * MIT (c) 2020 miktim@mail.ru
+ * WssServer. Secure WebSocket Server, MIT (c) 2020 miktim@mail.ru
  *
  * Created: 2020-03-31
  */

@@ -1,12 +1,12 @@
-# WebSocket package  MIT (c) 2020 miktim@mail.ru
-Lightweight WebSocket. The main purpose of the package is to interact with browsers.
+# Java SE lightweight WebSocket package,  MIT (c) 2020 miktim@mail.ru
 
-Release notice:
+Release notes:
   - java SE 1.7+;
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - WebSocket protocol version: 13;
   - WebSocket extensions not supported;
-  - modern browsers do not support self-signed localhost certificates.
+  - Android compatible;
+  - modern browsers do not accept self-signed localhost certificates.
 
 Overview:
   Constructors:
@@ -25,7 +25,7 @@ Overview:
       boolean isSecure();
       void setConnectionSoTimeout(int millis);
       void setLogFile(File logFile, boolean append) throws IOException;
-      void setMaxMessageLength(int len);
+      void setMaxMessageLength(int len) throws IllegalArgumentException;
       void setKeystore(String jksFile, String passphrase);
       void start() throws Exception;
       void stop();
