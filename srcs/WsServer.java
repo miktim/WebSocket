@@ -35,6 +35,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
+//import javax.net.ssl.TrustManagerFactory;
 import static org.samples.java.websocket.WsConnection.GOING_AWAY;
 
 public class WsServer {
@@ -89,7 +90,7 @@ public class WsServer {
                 new FileOutputStream(file, append), true);
     }
 
-    public void log(String event) {
+    void log(String event) {
         String logMsg = String.format("%1$tY%1$tm%1$td %1$tH%1$tM%1$tS %2$s %3$s",
                 System.currentTimeMillis(),
                 getClass().getSimpleName(),
@@ -161,7 +162,7 @@ public class WsServer {
                 try {
                     if (wss.isSecure) {
                         socket = ((SSLServerSocket) wss.serverSocket).accept();
-                        ((SSLSocket) socket).startHandshake();
+//                        ((SSLSocket) socket).startHandshake();
                     } else {
                         socket = wss.serverSocket.accept();
                     }
@@ -208,7 +209,7 @@ public class WsServer {
             String requestPath = "";
             try {
                 if (connection == null) {
-                    Headers requestHeaders = connection.receiveHeaders(this.socket);
+                    Headers requestHeaders = WsConnection.receiveHeaders(this.socket);
                     String[] parts = requestHeaders
                             .getFirst(WsConnection.REQUEST_LINE_HEADER).split(" ");
                     requestPath = parts[1];
@@ -228,7 +229,7 @@ public class WsServer {
                     server.log(requestPath + " Open");
                     connection.start();
                     server.log(requestPath
-                            + " Close:" + connection.getClosureCode());
+                            + " Close:" + connection.getClosureStatus());
                 } else {
                     if (connection != null && connection.isOpen() && handler != null) {
                         connection.close(GOING_AWAY); // server stopped
@@ -249,14 +250,16 @@ public class WsServer {
         }
     }
 
-    private String ksFile = null;
+    private File ksFile = null;
     private String ksPassphrase = null;
 
-    public void setKeystore(String jksFile, String passphrase) {
+    public void setKeystore(File jksFile, String passphrase) {
         this.ksFile = jksFile;
         this.ksPassphrase = passphrase;
-        System.setProperty("javax.net.ssl.trustStore", jksFile);
+        System.setProperty("javax.net.ssl.trustStore", jksFile.getAbsolutePath());
         System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
+//        System.setProperty("javax.net.ssl.keyStore", jksFile);
+//        System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
 
 // https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/sockets/server/ClassFileServer.java
@@ -273,6 +276,9 @@ public class WsServer {
             ks = KeyStore.getInstance("JKS"); //
             ks.load(new FileInputStream(this.ksFile), passphrase);
             kmf.init(ks, passphrase);
+//        TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+//        tmf.init(ks);
+//        ctx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
             ctx.init(kmf.getKeyManagers(), null, null);
 
             ssf = ctx.getServerSocketFactory();

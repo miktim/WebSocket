@@ -33,14 +33,14 @@ public class WsClientTest {
             @Override
             public void onClose(WsConnection con) {
                 System.out.println("Server handle CLOSE: " + con.getPath()
-                        + " Closure code:" + con.getClosureCode());
+                        + " Closure status:" + con.getClosureStatus());
             }
 
             @Override
             public void onError(WsConnection con, Exception e) {
                 System.out.println("Server handle ERROR: " + con.getPath()
                         + " " + e.toString()
-                        + " Closure code:" + con.getClosureCode());
+                        + " Closure status:" + con.getClosureStatus());
 //                e.printStackTrace();
             }
 
@@ -92,14 +92,14 @@ public class WsClientTest {
             @Override
             public void onClose(WsConnection con) {
                 System.out.println("Client handle CLOSE: " + con.getPath()
-                        + " Closure code:" + con.getClosureCode());
+                        + " Closure status:" + con.getClosureStatus());
             }
 
             @Override
             public void onError(WsConnection con, Exception e) {
                 System.out.println("Client handle ERROR: " + con.getPath()
                         + " " + e.toString()
-                        + " Closure code:" + con.getClosureCode());
+                        + " Closure status:" + con.getClosureStatus());
 //                e.printStackTrace();
             }
 
@@ -136,18 +136,23 @@ public class WsClientTest {
              */
         };
 
-        WsServer wsServer = new WssServer();
+        final WsServer wsServer = new WssServer();
         wsServer.createContext("/test", serverHandler);
         int port = 8000 + wsServer.DEFAULT_SERVER_PORT;
         wsServer.bind(port);
         wsServer.setConnectionSoTimeout(1000); // handshake & ping
         wsServer.setMaxMessageLength(100000);
-//        wsServer.setKeystore(path + "/localhost.jks", "password");
-//        wsServer.setKeystore(path + "/samplecacerts", "changeit");
-        wsServer.setKeystore(path + "/testkeys", "passphrase");
+/* Android       
+        wsServer.setKeystore(new File(getCacheDir(),"localhost.jks"), "password");
+*/
+// /* Desktop       
+        wsServer.setKeystore(new File(path, "localhost.jks"), "password");
+//        wsServer.setKeystore(new File(path,"/samplecacerts"), "changeit"); // need client auth
+//        wsServer.setKeystore(new File(path,"/testkeys"), "passphrase");
 //        wsServer.setLogFile(new File(path,"wsserver.log"), false);
+// */
         int stopTimeout = 5000;
-        Timer timer = new Timer();
+        final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
@@ -155,7 +160,8 @@ public class WsClientTest {
                 timer.cancel();
             }
         }, stopTimeout);
-        System.out.println("\r\nTest WebSocket client\r\nServer will be stopped after "
+        System.out.println("\r\nTest WebSocket secure client\r\n"
+                + "Server will be stopped after "
                 + (stopTimeout / 1000) + " seconds");
         wsServer.start();
         WsConnection wsClient = new WsConnection(

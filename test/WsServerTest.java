@@ -37,14 +37,14 @@ public class WsServerTest {
             @Override
             public void onClose(WsConnection con) {
                 System.out.println("Handle CLOSE: " + con.getPath()
-                        + " Closure code:" + con.getClosureCode());
+                        + " Closure status:" + con.getClosureStatus());
             }
 
             @Override
             public void onError(WsConnection con, Exception e) {
                 System.out.println("Handle ERROR: " + con.getPath()
                         + " " + e.toString() 
-                        + " Closure code:" + con.getClosureCode());
+                        + " Closure status:" + con.getClosureStatus());
 //                e.printStackTrace();
             }
 
@@ -87,15 +87,15 @@ public class WsServerTest {
              */
         };
 
-        WsServer wsServer = new WsServer();
+        final WsServer wsServer = new WsServer();
         wsServer.createContext("/test", handler);
         wsServer.bind(8080);
         wsServer.setConnectionSoTimeout(5000); // handshake & ping
         wsServer.setMaxMessageLength(100000);
-//        wsServer.setKeystore(path + "/localhost.jks", "password");
+//        wsServer.setKeystore(new File(path, "localhost.jks"), "password");
 //        wsServer.setLogFile(new File(path,"wsserver.log"), false);
         int stopTimeout = 20000;
-        Timer timer = new Timer();
+        final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
@@ -106,9 +106,16 @@ public class WsServerTest {
         System.out.println("\r\nTest WebSocket server\r\nServer will be stopped after "
                 + (stopTimeout / 1000) + " seconds");
         wsServer.start();
+/* Android
+        Intent browserIntent = new Intent(Intent.ACTION_VIEW,
+                Uri.parse("file:///android_asset/WsServerTest.html"));
+        startActivity(browserIntent);
+*/
+// /* Desktop 
         java.awt.Desktop.getDesktop()
                 .browse(new URI("file://" + path + "/WsServerTest.html"));
 //                .open(new File(path, "WsServerTest.html"));
+// */
 
     }
 

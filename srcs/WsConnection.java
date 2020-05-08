@@ -36,13 +36,13 @@ import javax.net.ssl.SSLSocketFactory;
 
 public class WsConnection {
 
-// closure codes see RFC: https://tools.ietf.org/html/rfc6455#section-7.4 
+// closure status codes see RFC: https://tools.ietf.org/html/rfc6455#section-7.4 
 // https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
     public static final int NORMAL_CLOSURE = 1000; //*
     public static final int GOING_AWAY = 1001; //* shutdown or socket timeout
     public static final int PROTOCOL_ERROR = 1002; //* 
     public static final int UNSUPPORTED_DATA = 1003; //* unsupported opcode
-    public static final int NO_STATUS = 1005; // closing without code
+    public static final int NO_STATUS = 1005; //* closing without code
     public static final int ABNORMAL_CLOSURE = 1006; // closing without close farame
     public static final int INVALID_DATA = 1007; // non utf-8 text, for example
     public static final int POLICY_VIOLATION = 1008; //
@@ -60,11 +60,11 @@ public class WsConnection {
     private final URI requestURI;
     private final boolean isClientConn;
     private final boolean isSecure;
-    private int closureCode = 0;
+    private int closureStatus = 0;
     private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH;
 
     public synchronized void send(byte[] message) throws IOException {
-        if (this.closureCode == 0) {
+        if (this.closureStatus == 0) {
             sendPayload(OP_BINARY | OP_FINAL, message);
         } else {
             throw new IOException("socket_closed");
@@ -72,7 +72,7 @@ public class WsConnection {
     }
 
     public synchronized void send(String message) throws IOException {
-        if (this.closureCode == 0) {
+        if (this.closureStatus == 0) {
             sendPayload(OP_TEXT | OP_FINAL, message.getBytes());
         } else {
             throw new IOException("socket_closed");
@@ -103,8 +103,8 @@ public class WsConnection {
         return !(this.socket.isClosed() || this.socket.isInputShutdown());
     }
 
-    public int getClosureCode() {
-        return this.closureCode;
+    public int getClosureStatus() {
+        return this.closureStatus;
     }
 
     public synchronized void close() {
@@ -112,8 +112,8 @@ public class WsConnection {
     }
 
     public synchronized void close(int code) {
-        if (this.closureCode == 0) {
-            this.closureCode = code;
+        if (this.closureStatus == 0) {
+            this.closureStatus = code;
             if (isOpen()) {
                 int absCode = Math.abs(code);
                 byte[] payload = new byte[2];
@@ -213,20 +213,14 @@ public class WsConnection {
         if (!(scheme.equals("ws") || scheme.equals("wss"))) {
             throw new URISyntaxException(uri, "unsupported scheme");
         }
-        int port = requestURI.getPort();
-        if (port < 0) {
-            port = scheme.equals("wss") ? 443 : 80;
-        }
         if (scheme.equals("wss")) {
             SSLSocketFactory factory
                     = (SSLSocketFactory) SSLSocketFactory.getDefault();
             this.socket
-                    //                    = (SSLSocket) factory.createSocket(host, port);
                     = (SSLSocket) factory.createSocket();
             this.isSecure = true;
         } else {
             this.isSecure = false;
-//            socket = new Socket(host, port);
             socket = new Socket();
         }
     }
@@ -249,11 +243,6 @@ public class WsConnection {
                 socket.connect(
                         new InetSocketAddress(requestURI.getHost(), port));
             }
-            /*
-            if (isSecure) {
-                ((SSLSocket) socket).startHandshake();
-            }
-             */
             handshakeServer();
             this.handler.onOpen(this);
             this.socket.setSoTimeout(0);
@@ -455,7 +444,7 @@ public class WsConnection {
                         break;
                     case OP_FINAL: {
                         payload = combine(payload, framePayload);
-                        if (this.closureCode == 0) {
+                        if (this.closureStatus == 0) {
                             if (opData == OP_BINARY) {
                                 handler.onMessage(this, payload);
                             } else {
@@ -481,12 +470,12 @@ public class WsConnection {
                         break;
                     }
                     case OP_CLOSE: { // close handshake
-                        if (closureCode == 0) {
+                        if (closureStatus == 0) {
                             if (framePayload.length > 1) {
-                                closureCode = -(((framePayload[0] & 0xFF) << 8)
+                                closureStatus = -(((framePayload[0] & 0xFF) << 8)
                                         + (framePayload[1] & 0xFF));
                             } else {
-                                closureCode = -NO_STATUS;
+                                closureStatus = -NO_STATUS;
                             }
                             sendPayload(OP_CLOSE, framePayload);
                         }
@@ -514,7 +503,7 @@ public class WsConnection {
                     break;
                 }
             } catch (SocketException e) {
-                if (closureCode == 0) {
+                if (closureStatus == 0) {
                     closeDueTo(INTERNAL_ERROR, e);
                 }
                 break;
@@ -531,8 +520,8 @@ public class WsConnection {
 
     private Exception closureException = null;
 
-    private void closeDueTo(int closureCode, Exception e) {
-        close(closureCode);
+    private void closeDueTo(int closureStatus, Exception e) {
+        close(closureStatus);
         if (closureException == null) {
             closureException = e;
         }

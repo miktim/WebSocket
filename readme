@@ -1,18 +1,18 @@
-# Java SE lightweight WebSocket package,  MIT (c) 2020 miktim@mail.ru
+# Java SE lightweight WebSocket client/server package,  MIT (c) 2020 miktim@mail.ru
 
 Release notes:
-  - java SE 1.7+;
+  - java SE 1.7+, Android compatible;
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - WebSocket protocol version: 13;
   - WebSocket extensions not supported;
-  - Android compatible;
+  - secure connections implemented without client authentication;
   - modern browsers do not accept self-signed localhost certificates.
 
 Overview:
   Constructors:
     WsServer();
     WssServer() extends WsServer;
-      - servers have a common log
+      - servers share a common log
     Constants:
       String WSSERVER_VERSION = "0.1.0";
       int DEFAULT_SERVER_PORT;
@@ -26,7 +26,7 @@ Overview:
       void setConnectionSoTimeout(int millis);
       void setLogFile(File logFile, boolean append) throws IOException;
       void setMaxMessageLength(int len) throws IllegalArgumentException;
-      void setKeystore(String jksFile, String passphrase);
+      void setKeystore(File jksFile, String passphrase);
       void start() throws Exception;
       void stop();
   
@@ -41,12 +41,12 @@ Overview:
       boolean isSecure();
       void send(String message) throws IOException;
       void send(byte[] message) throws IOException;
-      int getClosureCode();
+      int getClosureStatus();
       void close();
-      void close(int closureCode);
+      void close(int statusCode);
       
   Client connection constructor:
-    WsConnection(String uri, WsHahdler handler);
+    WsConnection(String uri, WsHahdler handler) throws Exception;
     
     Methods:
       void open() throws Exception;

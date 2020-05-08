@@ -1,8 +1,7 @@
 /*
  * Headers, MIT (c) 2020 miktim@mail.ru
  *
- * Replaces the core class com.sun.net.httpserver.Headers
- * Added for Android compatibility
+ * Replaces the core class com.sun.net.httpserver.Headers for Android compatibility
  */
 package org.samples.java.websocket;
 
