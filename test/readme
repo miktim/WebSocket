@@ -1,0 +1,4 @@
+1. Create application with Package Name org.samples.java.websocket and with No Activity
+2. Copypast .java files from ./srcs and ./test directories
+3. Comment/uncomment Desktop/Android code sections
+4. Create Assets folder, copypast .jks and .html files from ./test directory

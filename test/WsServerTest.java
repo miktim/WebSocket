@@ -12,7 +12,6 @@ import java.net.URI;
 import org.samples.java.websocket.WsConnection;
 import org.samples.java.websocket.WsHandler;
 import org.samples.java.websocket.WsServer;
-import org.samples.java.websocket.WssServer;
 
 public class WsServerTest {
     
@@ -21,9 +20,13 @@ public class WsServerTest {
         if (args.length > 0) {
             path = args[0];
         }
-        WsHandler handler = new WsHandler() {
+        WsHandler serverHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
+                if(!con.getPath().startsWith("/test")) {
+                    con.close(WsConnection.POLICY_VIOLATION);
+                    return;
+                }
                 System.out.println("Handle OPEN: " + con.getPath());
                 try {
                     con.send("Hello Client!");
@@ -87,14 +90,10 @@ public class WsServerTest {
              */
         };
 
-        final WsServer wsServer = new WsServer();
-        wsServer.createContext("/test", handler);
-        wsServer.bind(8080);
+        final WsServer wsServer = new WsServer(8080, serverHandler);
         wsServer.setConnectionSoTimeout(5000); // handshake & ping
         wsServer.setMaxMessageLength(100000);
-//        wsServer.setKeystore(new File(path, "localhost.jks"), "password");
-//        wsServer.setLogFile(new File(path,"wsserver.log"), false);
-        int stopTimeout = 20000;
+        int stopTimeout = 40000;
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
@@ -113,8 +112,8 @@ public class WsServerTest {
 */
 // /* Desktop 
         java.awt.Desktop.getDesktop()
-                .browse(new URI("file://" + path + "/WsServerTest.html"));
-//                .open(new File(path, "WsServerTest.html"));
+//                .browse(new URI("file://" + path + "/WsServerTest.html"));
+                .open(new File(path, "WsServerTest.html"));
 // */
 
     }

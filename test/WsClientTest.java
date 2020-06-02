@@ -1,5 +1,5 @@
 /*
- * WebSocket client test. MIT (c) 2020 miktim@mail.ru
+ * WebSocket client/server test. MIT (c) 2020 miktim@mail.ru
  */
 import java.io.File;
 import java.io.IOException;
@@ -136,10 +136,8 @@ public class WsClientTest {
              */
         };
 
-        final WsServer wsServer = new WssServer();
-        wsServer.createContext("/test", serverHandler);
-        int port = 8000 + wsServer.DEFAULT_SERVER_PORT;
-        wsServer.bind(port);
+        int port = 8000 + WssServer.DEFAULT_SERVER_PORT;
+        final WsServer wsServer = new WssServer(port, serverHandler);
         wsServer.setConnectionSoTimeout(1000); // handshake & ping
         wsServer.setMaxMessageLength(100000);
 /* Android       
@@ -149,7 +147,6 @@ public class WsClientTest {
         wsServer.setKeystore(new File(path, "localhost.jks"), "password");
 //        wsServer.setKeystore(new File(path,"/samplecacerts"), "changeit"); // need client auth
 //        wsServer.setKeystore(new File(path,"/testkeys"), "passphrase");
-//        wsServer.setLogFile(new File(path,"wsserver.log"), false);
 // */
         int stopTimeout = 5000;
         final Timer timer = new Timer();

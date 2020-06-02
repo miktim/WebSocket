@@ -5,35 +5,37 @@ Release notes:
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - WebSocket protocol version: 13;
   - WebSocket extensions not supported;
+  - WsServer tested with desktop browsers:
+      Firefox 68.8, Chrome 83.0, Chromium 81.0, Opera 68.0, Yandex  20.4 (MS Edge not supported);
   - secure connections implemented without client authentication;
-  - modern browsers do not accept self-signed localhost certificates.
+  - browsers do not accept self-signed localhost certificates,
+      so WssServer tested with own client only.
 
 Overview:
-  Constructors:
-    WsServer();
-    WssServer() extends WsServer;
-      - servers share a common log
+  Server constructors:
+    WsServer(int port, WsHandler handler) throws NullPointerException;
+    WsServer(InetSocketAddress isa, WsHandler handler) throws NullPointerException;
+    WssServer(int port, WsHandler handler) throws NullPointerException;
+    WssServer(InetSocketAddress isa, WsHandler handler) throws NullPointerException;
+
     Constants:
-      String WSSERVER_VERSION = "0.1.0";
+      String SERVER_VERSION = "0.1.1";
+      int SERVER_CONNECTIONS = 10;
       int DEFAULT_SERVER_PORT;
-      int DEFAULT_CONNECTION_SO_TIMEOUT;
-      int DEFAULT_MAX_MESSAGE_LENGTH;
+      int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
+      int DEFAULT_MAX_MESSAGE_LENGTH = 2048;
     Methods:
-      void createContext(String path, WsHandler handler) throws URISyntaxException;
-      void bind(int port);
-      void bind(InetSocketAddress sa, int backlog);
       boolean isSecure();
       void setConnectionSoTimeout(int millis);
-      void setLogFile(File logFile, boolean append) throws IOException;
       void setMaxMessageLength(int len) throws IllegalArgumentException;
       void setKeystore(File jksFile, String passphrase);
       void start() throws Exception;
       void stop();
-  
+
   Interface:
     WsHandler  see: https://github.com/miktim/WsServer/blob/master/srcs/WsHandler.java
 
-  WsConnection:
+  WsConnection (server/client):
     Constants:
       WebSocket closure codes see: https://tools.ietf.org/html/rfc6455#section-7.4
     Methods:
@@ -44,9 +46,9 @@ Overview:
       int getClosureStatus();
       void close();
       void close(int statusCode);
-      
+
   Client connection constructor:
     WsConnection(String uri, WsHahdler handler) throws Exception;
-    
+
     Methods:
       void open() throws Exception;

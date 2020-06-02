@@ -1,11 +1,11 @@
 /*
- * my WebSocket Server, MIT (c) 2020 miktim@mail.ru
+ * WsServer. WebSocket Server, MIT (c) 2020 miktim@mail.ru
  *
  * Release notes:
- * - java SE 1.7+;
+ * - Java SE 1.7+, Android compatible;
  * - RFC-6455: https://tools.ietf.org/html/rfc6455;
  * - WebSocket protocol version: 13;
- * - WebSocket extensions not supported
+ * - WebSocket extensions not supported.
  *
  * Created: 2020-03-09
  */
@@ -14,63 +14,57 @@ package org.samples.java.websocket;
 //import com.sun.net.httpserver.Headers;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.net.InetSocketAddress;
-import java.net.ProtocolException;
+//import java.net.ProtocolException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.security.KeyStore;
 import java.security.MessageDigest;
-import java.util.Collections;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
-import javax.net.ssl.SSLSocket;
+//import javax.net.ssl.SSLSocket;
 //import javax.net.ssl.TrustManagerFactory;
 import static org.samples.java.websocket.WsConnection.GOING_AWAY;
 
 public class WsServer {
 
-    public static final String WSSERVER_VERSION = "0.1.0";
+    public static final String SERVER_VERSION = "0.1.1";
+    public static final int MAX_CONNECTIONS = 10;
     public static final int DEFAULT_SERVER_PORT = 80;
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
     public static final int DEFAULT_MAX_MESSAGE_LENGTH
             = WsConnection.DEFAULT_MAX_MESSAGE_LENGTH;
 
-    private static PrintStream logStream = System.out;
     private ServerSocket serverSocket;
     private boolean isRunning;
     private int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
-    private int ssoBacklog = 20;
-    private InetSocketAddress ssoAddress = null;
+    private InetSocketAddress ssoAddress;
+    WsHandler handler;
     boolean isSecure;
     private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH;
 
-    public WsServer() {
+    public WsServer(InetSocketAddress isa, WsHandler handler)
+            throws NullPointerException {
+        if (isa == null || handler == null) {
+            throw new NullPointerException();
+        }
         this.isSecure = false;
-        ssoAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
+        this.ssoAddress = isa;
+        this.handler = handler;
+    }
+
+    public WsServer(int port, WsHandler handler)
+            throws NullPointerException {
+        this((new InetSocketAddress(port)), handler);
     }
 
     public boolean isSecure() {
         return isSecure;
-    }
-
-    public void bind(int port) {
-        ssoAddress = new InetSocketAddress(port);
-    }
-
-    public void bind(InetSocketAddress sa, int bl) {
-        ssoAddress = sa;
-        ssoBacklog = bl;
     }
 
 // socket timeout for websocket handshaking & ping    
@@ -85,29 +79,11 @@ public class WsServer {
         this.maxMessageLength = len;
     }
 
-    public void setLogFile(File file, boolean append) throws IOException {
-        logStream = new PrintStream(
-                new FileOutputStream(file, append), true);
-    }
-
-    void log(String event) {
-        String logMsg = String.format("%1$tY%1$tm%1$td %1$tH%1$tM%1$tS %2$s %3$s",
-                System.currentTimeMillis(),
-                getClass().getSimpleName(),
-                event);
-        logStream.println(logMsg);
-    }
-
-    void logException(String stage, Exception e) {
-        log(String.format("%1$s Error: %2$s", stage, e.toString()));
-    }
-
     public void start() throws Exception {
         serverSocket = getServerSocketFactory().createServerSocket();
-        serverSocket.bind(ssoAddress, ssoBacklog);
+        serverSocket.bind(ssoAddress, MAX_CONNECTIONS);
         MessageDigest.getInstance("SHA-1"); // check algorithm present
         (new WsServerThread(this)).start();
-        this.log("Started");
     }
 
     public void stop() {
@@ -119,64 +95,44 @@ public class WsServer {
         }
     }
 
-    private final SortedMap<String, WsHandler> context
-            = new TreeMap<String, WsHandler>(Collections.reverseOrder());
-
-    public void createContext(String path, WsHandler handler)
-            throws URISyntaxException {
-        String cpath = (new URI(path)).getPath(); // check path syntax
-        context.put(cpath, handler);
-    }
-
-    WsHandler getContext(String path)
-            throws URISyntaxException {//, NoSuchElementException {
-        String cpath = (new URI(path)).getPath();
-        for (String keyPath : context.keySet()) {
-            if (cpath.startsWith(keyPath)) {
-                return context.get(keyPath);
-            }
-        }
-        return null;
-    }
-
     private class WsServerThread extends Thread {
 
         private static final String THREAD_GROUP_NAME = "WSConnections";
-        private final WsServer wss;
+        private final WsServer wsServer;
         private ThreadGroup threadGroup = null;
 
         WsServerThread(WsServer ws) {
-            wss = ws;
+            wsServer = ws;
         }
 
         @Override
         public void run() {
-            wss.isRunning = true;
-            if (wss.isSecure) {
-                ((SSLServerSocket) wss.serverSocket)
+            wsServer.isRunning = true;
+            if (wsServer.isSecure) {
+                ((SSLServerSocket) wsServer.serverSocket)
                         .setNeedClientAuth(false);
             }
             threadGroup = new ThreadGroup(THREAD_GROUP_NAME);
             Socket socket;
-            while (wss.isRunning) {
+            while (wsServer.isRunning) {
                 try {
-                    if (wss.isSecure) {
-                        socket = ((SSLServerSocket) wss.serverSocket).accept();
+                    if (wsServer.isSecure) {
+                        socket = ((SSLServerSocket) wsServer.serverSocket).accept();
 //                        ((SSLSocket) socket).startHandshake();
                     } else {
-                        socket = wss.serverSocket.accept();
+                        socket = wsServer.serverSocket.accept();
                     }
-                    socket.setSoTimeout(wss.connectionSoTimeout); // ms for handshake & ping
+                    socket.setSoTimeout(wsServer.connectionSoTimeout); // ms for handshake & ping
                     Thread cth = new Thread(threadGroup,
-                            new WsConnectionThread(wss, socket));
+                            new WsConnectionThread(wsServer, socket));
 //                    cth.setDaemon(true);
                     cth.start();
                 } catch (SocketException e) {
-                    if (wss.isRunning) {
-                        wss.logException("serverSocket", e);
+                    if (wsServer.isRunning) {
+                        wsServer.handler.onError(null, e);
                     }
                 } catch (IOException e) {
-                    wss.logException("socketHandshake", e);
+                    wsServer.handler.onError(null, e);
 //                    e.printStackTrace();
                 }
             }
@@ -188,7 +144,6 @@ public class WsServer {
                     threads[i].run();
                 }
             }
-            wss.log("Stopped");
         }
     }
 
@@ -197,7 +152,6 @@ public class WsServer {
         private final WsServer server;
         private final Socket socket;
         WsConnection connection = null;
-        WsHandler handler = null;
 
         WsConnectionThread(WsServer wss, Socket s) {
             this.server = wss;
@@ -206,37 +160,19 @@ public class WsServer {
 
         @Override
         public void run() {
-            String requestPath = "";
             try {
                 if (connection == null) {
-                    Headers requestHeaders = WsConnection.receiveHeaders(this.socket);
-                    String[] parts = requestHeaders
-                            .getFirst(WsConnection.REQUEST_LINE_HEADER).split(" ");
-                    requestPath = parts[1];
-                    String upgrade = requestHeaders.getFirst("Upgrade");
-                    handler = server.getContext((new URI(parts[1])).getPath());
-                    connection = new WsConnection(socket, requestHeaders, handler);
+                    connection = new WsConnection(
+                            socket, server.handler, server.isSecure);
                     connection.setMaxMessageLength(server.maxMessageLength);
-                    if (!(parts[0].equals("GET") && parts[2].equals("HTTP/1.1")
-                            && upgrade != null && upgrade.equals("websocket"))) {
-                        connection.sendHeaders(this.socket, null, "HTTP/1.1 400 Bad request");
-                        throw new ProtocolException("bad_request");
-
-                    } else if (handler == null) {
-                        connection.sendHeaders(this.socket, null, "HTTP/1.1 404 Not Found");
-                        throw new ProtocolException("not_found");
-                    }
-                    server.log(requestPath + " Open");
                     connection.start();
-                    server.log(requestPath
-                            + " Close:" + connection.getClosureStatus());
                 } else {
-                    if (connection != null && connection.isOpen() && handler != null) {
+                    if (connection.isOpen()) {
                         connection.close(GOING_AWAY); // server stopped
                     }
                 }
             } catch (Exception e) {
-                server.logException(requestPath, e);
+                server.handler.onError(connection, e);
 //                e.printStackTrace(); // WebSocket handshake exception
             }
             if (!this.socket.isClosed()) {

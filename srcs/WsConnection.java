@@ -1,5 +1,5 @@
 /*
- * WsConnection. WebSocket connection, MIT (c) 2020 miktim@mail.ru
+ * WsConnection. WebSocket client/server connection, MIT (c) 2020 miktim@mail.ru
  *
  * Release notes:
  * - java SE 1.7+;
@@ -55,9 +55,9 @@ public class WsConnection {
     static final String REQUEST_LINE_HEADER = "_RequestLine";
 
     private final Socket socket;
-    private final Headers requestHeaders;
+    private Headers requestHeaders;
     private final WsHandler handler;
-    private final URI requestURI;
+    private URI requestURI;
     private final boolean isClientConn;
     private final boolean isSecure;
     private int closureStatus = 0;
@@ -134,59 +134,51 @@ public class WsConnection {
     }
 
     /* WebSocket Server connection */
-    WsConnection(Socket s, Headers hs, WsHandler hd) throws URISyntaxException {
+    WsConnection(Socket s, WsHandler h, boolean secure) throws URISyntaxException {
         this.socket = s;
-        this.requestHeaders = hs;
-        this.handler = hd;
-        this.requestURI = new URI(
-                requestHeaders.getFirst(REQUEST_LINE_HEADER).split(" ")[1]);
-        this.isSecure = checkSecure();
+        this.handler = h;
+        this.isSecure = secure;
         this.isClientConn = false;
     }
 
-    void start() throws IOException, NoSuchAlgorithmException {
+    void start() throws IOException, URISyntaxException, NoSuchAlgorithmException {
         handshakeClient();
         this.handler.onOpen(this);
         waitInputStream();
     }
 
-    private boolean checkSecure() {
-        try {
-            if (((SSLSocket) socket).getHandshakeSession() != null) {
-                return true;
-            }
-        } catch (Exception e) {
-        }
-        return false;
-    }
-
-    private void handshakeClient() throws IOException, NoSuchAlgorithmException {
+    private void handshakeClient() throws IOException, URISyntaxException, NoSuchAlgorithmException {
+        this.requestHeaders = receiveHeaders(this.socket);
+        String[] parts =requestHeaders.getFirst(REQUEST_LINE_HEADER).split(" ");
+        this.requestURI = new URI(parts[1]);
         String upgrade = requestHeaders.getFirst("Upgrade");
         String key = requestHeaders.getFirst("Sec-WebSocket-Key");
 //        int version = Integer.parseInt(requestHeaders.getFirst("Sec-WebSocket-Version"));
 //        String protocol = requestHeaders.getFirst("Sec-WebSocket-Protocol"); // chat, superchat
 
-        if (upgrade == null || key == null || !upgrade.equals("websocket")) {
-            sendHeaders(this.socket, null, "HTTP/1.1 400 Bad Request");
-            socket.close();
-            throw new ProtocolException("bad_request");
-        } else {
+        if (parts[0].equals("GET") 
+                && upgrade != null && upgrade.equals("websocket")
+                &&  key != null) {
             Headers responseHeaders = new Headers();
             responseHeaders.add("Upgrade", "websocket");
             responseHeaders.add("Connection", "Upgrade,keep-alive");
             responseHeaders.add("Sec-WebSocket-Accept", sha1Hash(key));
             responseHeaders.add("Sec-WebSocket-Version", "13");
             sendHeaders(this.socket, responseHeaders, "HTTP/1.1 101 Upgrade");
+        } else {
+            sendHeaders(this.socket, null, "HTTP/1.1 400 Bad Request");
+            socket.close();
+            throw new ProtocolException("bad_request");
         }
     }
 
-    void sendHeaders(Socket socket, Headers h, String line)
+    void sendHeaders(Socket socket, Headers hs, String line)
             throws IOException {
         StringBuilder sb = new StringBuilder(line);
         sb.append("\r\n");
-        if (h != null) {
-            for (String hn : h.keySet()) {
-                sb.append(hn).append(": ").append(h.getFirst(hn)).append("\r\n");
+        if (hs != null) {
+            for (String hn : hs.keySet()) {
+                sb.append(hn).append(": ").append(hs.getFirst(hn)).append("\r\n");
             }
         }
         sb.append("\r\n");
@@ -269,7 +261,7 @@ public class WsConnection {
             try {
                 this.connection.waitInputStream();
             } catch (IOException e) {
-
+                this.connection.handler.onError(connection, e);
             }
         }
     }
@@ -480,7 +472,7 @@ public class WsConnection {
                             sendPayload(OP_CLOSE, framePayload);
                         }
 //??? server 1001 -> 1006 browser | 1011 client                     
-//                        this.socket.shutdownOutput();
+                        this.socket.shutdownInput();
                         this.socket.setSoLinger(true, 3); // seconds
                         if (isSecure) {
                             ((SSLSocket) this.socket).close();

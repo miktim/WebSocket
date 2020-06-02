@@ -5,14 +5,16 @@
  */
 package org.samples.java.websocket;
 
-import java.io.InputStream;
+//import java.io.InputStream;
 
 public interface WsHandler {
-    public void onOpen(WsConnection con);
-    public void onClose(WsConnection con);
-    public void onMessage(WsConnection con, String s );
-    public void onMessage(WsConnection con, byte[] b);
-    public void onError(WsConnection con, Exception e);
+    public void onOpen(WsConnection conn);
+    public void onClose(WsConnection conn);
+    public void onMessage(WsConnection conn, String s );
+    public void onMessage(WsConnection conn, byte[] b);
+// onError: conn may be null in the server handler
+    public void onError(WsConnection conn, Exception e);
+// for the future if the maximum message length is exceeded
 //    public void onTextStream(WsConnection con, InputStream is );
 //    public void onBinaryStream(WsConnection con, InputStream is);
 }
