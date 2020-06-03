@@ -4,6 +4,7 @@
  * Created: 2020-03-09
  */
 
+import java.io.ByteArrayInputStream;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.io.File;
@@ -12,9 +13,10 @@ import java.net.URI;
 import org.samples.java.websocket.WsConnection;
 import org.samples.java.websocket.WsHandler;
 import org.samples.java.websocket.WsServer;
+import org.samples.java.websocket.WssServer;
 
 public class WsServerTest {
-    
+
     public static void main(String[] args) throws Exception {
         String path = (new File(".")).getAbsolutePath();
         if (args.length > 0) {
@@ -23,11 +25,12 @@ public class WsServerTest {
         WsHandler serverHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
-                if(!con.getPath().startsWith("/test")) {
+                System.out.println("Handle OPEN: " + con.getPath()
+                        + " Peer: " + con.getPeerHost());
+                if (!con.getPath().startsWith("/test")) {
                     con.close(WsConnection.POLICY_VIOLATION);
                     return;
                 }
-                System.out.println("Handle OPEN: " + con.getPath());
                 try {
                     con.send("Hello Client!");
                 } catch (IOException e) {
@@ -46,7 +49,7 @@ public class WsServerTest {
             @Override
             public void onError(WsConnection con, Exception e) {
                 System.out.println("Handle ERROR: " + con.getPath()
-                        + " " + e.toString() 
+                        + " " + e.toString()
                         + " Closure status:" + con.getClosureStatus());
 //                e.printStackTrace();
             }
@@ -56,12 +59,16 @@ public class WsServerTest {
                 try {
                     String testPath = con.getPath();
                     if (testPath.endsWith("2")) { // check handler closure
-                        if(s.length() > 128) con.close();
-                        else con.send(s + s);
-                        
+                        if (s.length() > 128) {
+                            con.close();
+                        } else {
+                            con.send(s + s);
+                        }
+
                     } else if (testPath.endsWith("3")) { // check message too big
 //                        System.out.println("MsgLen:" + s.length());
-                        con.send(s + s);
+                        con.streamText(
+                                new ByteArrayInputStream((s + s).getBytes("utf-8")));
                     } else {
                         con.send(s);
                     }
@@ -91,8 +98,11 @@ public class WsServerTest {
         };
 
         final WsServer wsServer = new WsServer(8080, serverHandler);
+        wsServer.setMaxConnections(2);
         wsServer.setConnectionSoTimeout(5000); // handshake & ping
         wsServer.setMaxMessageLength(100000);
+//        wsServer.setKeystore(new File(path, "localhost.jks"), "password");
+//        wsServer.setKeystore(new File(path, "testkeys"), "passphrase");
         int stopTimeout = 40000;
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
@@ -105,14 +115,14 @@ public class WsServerTest {
         System.out.println("\r\nTest WebSocket server\r\nServer will be stopped after "
                 + (stopTimeout / 1000) + " seconds");
         wsServer.start();
-/* Android
+        /* Android
         Intent browserIntent = new Intent(Intent.ACTION_VIEW,
                 Uri.parse("file:///android_asset/WsServerTest.html"));
         startActivity(browserIntent);
-*/
+         */
 // /* Desktop 
         java.awt.Desktop.getDesktop()
-//                .browse(new URI("file://" + path + "/WsServerTest.html"));
+                //                .browse(new URI("file://" + path + "/WsServerTest.html"));
                 .open(new File(path, "WsServerTest.html"));
 // */
 

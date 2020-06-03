@@ -20,7 +20,8 @@ public class WsClientTest {
         WsHandler serverHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
-                System.out.println("Server handle OPEN: " + con.getPath());
+                System.out.println("Server handle OPEN: " + con.getPath()
+                        + " Peer: " + con.getPeerHost());
                 try {
                     con.send("Hello Client!");
                 } catch (IOException e) {
@@ -79,7 +80,8 @@ public class WsClientTest {
         WsHandler clientHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
-                System.out.println("Client handle OPEN: " + con.getPath());
+                System.out.println("Client handle OPEN: " + con.getPath()
+                        + " Peer: " + con.getPeerHost());
                 try {
                     con.send("Hello Server!");
                 } catch (IOException e) {
@@ -140,9 +142,9 @@ public class WsClientTest {
         final WsServer wsServer = new WssServer(port, serverHandler);
         wsServer.setConnectionSoTimeout(1000); // handshake & ping
         wsServer.setMaxMessageLength(100000);
-/* Android       
+        /* Android       
         wsServer.setKeystore(new File(getCacheDir(),"localhost.jks"), "password");
-*/
+         */
 // /* Desktop       
         wsServer.setKeystore(new File(path, "localhost.jks"), "password");
 //        wsServer.setKeystore(new File(path,"/samplecacerts"), "changeit"); // need client auth

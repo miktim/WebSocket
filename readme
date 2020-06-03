@@ -5,11 +5,7 @@ Release notes:
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - WebSocket protocol version: 13;
   - WebSocket extensions not supported;
-  - WsServer tested with desktop browsers:
-      Firefox 68.8, Chrome 83.0, Chromium 81.0, Opera 68.0, Yandex  20.4 (MS Edge not supported);
-  - secure connections implemented without client authentication;
-  - browsers do not accept self-signed localhost certificates,
-      so WssServer tested with own client only.
+  - secure connections implemented without client authentication.
 
 Overview:
   Server constructors:
@@ -19,14 +15,16 @@ Overview:
     WssServer(InetSocketAddress isa, WsHandler handler) throws NullPointerException;
 
     Constants:
-      String SERVER_VERSION = "0.1.1";
-      int SERVER_CONNECTIONS = 10;
+      String SERVER_VERSION = "0.1.2";
       int DEFAULT_SERVER_PORT;
+      int DEFAULT_MAX_CONNECTIONS = 10;
       int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
       int DEFAULT_MAX_MESSAGE_LENGTH = 2048;
     Methods:
+      boolean isRunning();
       boolean isSecure();
       void setConnectionSoTimeout(int millis);
+      void setMaxConnections(int max) throws IllegalArgumentException;
       void setMaxMessageLength(int len) throws IllegalArgumentException;
       void setKeystore(File jksFile, String passphrase);
       void start() throws Exception;
@@ -37,18 +35,33 @@ Overview:
 
   WsConnection (server/client):
     Constants:
-      WebSocket closure codes see: https://tools.ietf.org/html/rfc6455#section-7.4
+      WebSocket closure status codes see: https://tools.ietf.org/html/rfc6455#section-7.4
     Methods:
-      String getPath();
+      boolean isOpen();
       boolean isSecure();
+      String getPath();
+      String getPeerHost();
+      int getMaxMessageLength();
       void send(String message) throws IOException;
       void send(byte[] message) throws IOException;
-      int getClosureStatus();
+      void streamText(InputStream is) throws IOException;
+      void streamBinary(InputStream is) throws IOException;
       void close();
       void close(int statusCode);
+      int getClosureStatus();
 
   Client connection constructor:
     WsConnection(String uri, WsHahdler handler) throws Exception;
 
     Methods:
       void open() throws Exception;
+
+Usage example see in:
+  https://github.com/miktim/WebSocket/blob/master/test/WsClientTest.java
+  https://github.com/miktim/WebSocket/blob/master/test/WsServerTest.java
+
+Testing:
+  - WsServer tested with desktop browsers:
+      Firefox 68.8, Chrome 83.0, Chromium 81.0, Opera 68.0, Yandex 20.4 (MS Edge not supported);
+  - WssServer was tested by Chromium with “chrome://flags/#allow-insecure-localhost” enabled
+      and by own secure client.

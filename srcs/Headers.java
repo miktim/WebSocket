@@ -1,5 +1,5 @@
 /*
- * Headers, MIT (c) 2020 miktim@mail.ru
+ * Headers. MIT (c) 2020 miktim@mail.ru
  *
  * Replaces the core class com.sun.net.httpserver.Headers for Android compatibility
  */

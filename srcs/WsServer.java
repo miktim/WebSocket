@@ -16,10 +16,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-//import java.net.ProtocolException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
 import java.security.KeyStore;
 import java.security.MessageDigest;
 import javax.net.ServerSocketFactory;
@@ -29,24 +27,23 @@ import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 //import javax.net.ssl.SSLSocket;
 //import javax.net.ssl.TrustManagerFactory;
-import static org.samples.java.websocket.WsConnection.GOING_AWAY;
 
 public class WsServer {
 
-    public static final String SERVER_VERSION = "0.1.1";
-    public static final int MAX_CONNECTIONS = 10;
+    public static final String SERVER_VERSION = "0.1.2";
     public static final int DEFAULT_SERVER_PORT = 80;
+    public static final int DEFAULT_MAX_CONNECTIONS = 10;
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
-    public static final int DEFAULT_MAX_MESSAGE_LENGTH
-            = WsConnection.DEFAULT_MAX_MESSAGE_LENGTH;
+    public static final int DEFAULT_MAX_MESSAGE_LENGTH = 2048;
 
-    private ServerSocket serverSocket;
     private boolean isRunning;
-    private int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
-    private InetSocketAddress ssoAddress;
-    WsHandler handler;
     boolean isSecure;
+    private int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
+    private int maxConnections = DEFAULT_MAX_CONNECTIONS;
     private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH;
+    private InetSocketAddress socketAddress;
+    private ServerSocket serverSocket;
+    WsHandler handler;
 
     public WsServer(InetSocketAddress isa, WsHandler handler)
             throws NullPointerException {
@@ -54,7 +51,7 @@ public class WsServer {
             throw new NullPointerException();
         }
         this.isSecure = false;
-        this.ssoAddress = isa;
+        this.socketAddress = isa;
         this.handler = handler;
     }
 
@@ -74,16 +71,27 @@ public class WsServer {
 
     public void setMaxMessageLength(int len) throws IllegalArgumentException {
         if (len <= 0) {
-            throw new IllegalArgumentException("buffer_size");
+            throw new IllegalArgumentException();
         }
         this.maxMessageLength = len;
     }
 
+    public void setMaxConnections(int cnt) throws IllegalArgumentException {
+        if (cnt <= 0) {
+            throw new IllegalArgumentException();
+        }
+        this.maxConnections = cnt;
+    }
+
     public void start() throws Exception {
         serverSocket = getServerSocketFactory().createServerSocket();
-        serverSocket.bind(ssoAddress, MAX_CONNECTIONS);
+        serverSocket.bind(socketAddress, DEFAULT_MAX_CONNECTIONS);
         MessageDigest.getInstance("SHA-1"); // check algorithm present
         (new WsServerThread(this)).start();
+    }
+
+    public boolean isRunning() {
+        return isRunning;
     }
 
     public void stop() {
@@ -97,52 +105,39 @@ public class WsServer {
 
     private class WsServerThread extends Thread {
 
-        private static final String THREAD_GROUP_NAME = "WSConnections";
-        private final WsServer wsServer;
-        private ThreadGroup threadGroup = null;
+        private final WsServer server;
+        private final ThreadGroup threadGroup = new ThreadGroup("WsConnections");
 
         WsServerThread(WsServer ws) {
-            wsServer = ws;
+            server = ws;
         }
 
         @Override
         public void run() {
-            wsServer.isRunning = true;
-            if (wsServer.isSecure) {
-                ((SSLServerSocket) wsServer.serverSocket)
+            server.isRunning = true;
+            if (server.isSecure) {
+                ((SSLServerSocket) server.serverSocket)
                         .setNeedClientAuth(false);
             }
-            threadGroup = new ThreadGroup(THREAD_GROUP_NAME);
-            Socket socket;
-            while (wsServer.isRunning) {
+            while (server.isRunning) {
                 try {
-                    if (wsServer.isSecure) {
-                        socket = ((SSLServerSocket) wsServer.serverSocket).accept();
-//                        ((SSLSocket) socket).startHandshake();
-                    } else {
-                        socket = wsServer.serverSocket.accept();
+                    Socket socket = server.serverSocket.accept();
+                    socket.setSoTimeout(server.connectionSoTimeout); // for handshake & ping
+                    (new Thread(threadGroup,
+                            new WsConnectionThread(server, socket))).start();
+                } catch (Exception e) {
+                    if (server.isRunning) {
+                        server.handler.onError(null, e);
+                        server.stop();
+                        break;
                     }
-                    socket.setSoTimeout(wsServer.connectionSoTimeout); // ms for handshake & ping
-                    Thread cth = new Thread(threadGroup,
-                            new WsConnectionThread(wsServer, socket));
-//                    cth.setDaemon(true);
-                    cth.start();
-                } catch (SocketException e) {
-                    if (wsServer.isRunning) {
-                        wsServer.handler.onError(null, e);
-                    }
-                } catch (IOException e) {
-                    wsServer.handler.onError(null, e);
-//                    e.printStackTrace();
                 }
             }
 // close connections            
-            if (threadGroup != null) {
-                Thread[] threads = new Thread[threadGroup.activeCount()];
-                threadGroup.enumerate(threads);
-                for (int i = 0; i < threads.length; i++) {
-                    threads[i].run();
-                }
+            Thread[] threads = new Thread[threadGroup.activeCount()];
+            threadGroup.enumerate(threads);
+            for (int i = 0; i < threads.length; i++) {
+                threads[i].run();
             }
         }
     }
@@ -162,13 +157,17 @@ public class WsServer {
         public void run() {
             try {
                 if (connection == null) {
-                    connection = new WsConnection(
-                            socket, server.handler, server.isSecure);
+                    connection = new WsConnection(socket, server.handler);
                     connection.setMaxMessageLength(server.maxMessageLength);
-                    connection.start();
+                    if (Thread.currentThread().getThreadGroup().activeCount()
+                            > server.maxConnections) {
+                        connection.start(WsConnection.POLICY_VIOLATION);
+                    } else {
+                        connection.start(0);
+                    }
                 } else {
                     if (connection.isOpen()) {
-                        connection.close(GOING_AWAY); // server stopped
+                        connection.close(WsConnection.GOING_AWAY); // server stopped
                     }
                 }
             } catch (Exception e) {
@@ -177,7 +176,7 @@ public class WsServer {
             }
             if (!this.socket.isClosed()) {
                 try {
-                    this.socket.setSoLinger(true, 5);
+                    this.socket.setSoLinger(true, 2);
                     this.socket.close();
                 } catch (IOException ie) {
 //                    ie.printStackTrace();
