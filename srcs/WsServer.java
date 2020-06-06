@@ -30,15 +30,18 @@ import javax.net.ssl.SSLServerSocketFactory;
 
 public class WsServer {
 
-    public static final String SERVER_VERSION = "0.1.2";
+    public static final String SERVER_VERSION = "0.1.3";
     public static final int DEFAULT_SERVER_PORT = 80;
-    public static final int DEFAULT_MAX_CONNECTIONS = 10;
+    public static final int DEFAULT_MAX_CONNECTIONS = 8;
+    public static final int DEFAULT_HANDSHAKE_SO_TIMEOUT = 0;
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
     public static final int DEFAULT_MAX_MESSAGE_LENGTH = 2048;
 
     private boolean isRunning;
     boolean isSecure;
-    private int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
+    int handshakeSoTimeout = DEFAULT_HANDSHAKE_SO_TIMEOUT;
+    int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
+    boolean pingPong = true;
     private int maxConnections = DEFAULT_MAX_CONNECTIONS;
     private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH;
     private InetSocketAddress socketAddress;
@@ -63,10 +66,17 @@ public class WsServer {
     public boolean isSecure() {
         return isSecure;
     }
+// websocket handshake    
 
-// socket timeout for websocket handshaking & ping    
-    public void setConnectionSoTimeout(int millis) {
+    public void setHanshakeSoTimeout(int millis, boolean ping) {
+        handshakeSoTimeout = millis;
+    }
+// websocket connection & ping    
+
+    public void setConnectionSoTimeout(int millis, boolean ping) {
         connectionSoTimeout = millis;
+        pingPong = ping;
+
     }
 
     public void setMaxMessageLength(int len) throws IllegalArgumentException {
@@ -98,7 +108,7 @@ public class WsServer {
         this.isRunning = false;
         try {
             serverSocket.close();
-        } catch (IOException e) {
+        } catch (Exception e) {
 //            e.printStackTrace();
         }
     }
@@ -148,9 +158,9 @@ public class WsServer {
         private final Socket socket;
         WsConnection connection = null;
 
-        WsConnectionThread(WsServer wss, Socket s) {
-            this.server = wss;
-            this.socket = s;
+        WsConnectionThread(WsServer srv, Socket soc) {
+            this.server = srv;
+            this.socket = soc;
         }
 
         @Override
@@ -158,13 +168,17 @@ public class WsServer {
             try {
                 if (connection == null) {
                     connection = new WsConnection(socket, server.handler);
-                    connection.setMaxMessageLength(server.maxMessageLength);
+                    connection.maxMessageLength = server.maxMessageLength;
+                    socket.setSoTimeout(server.handshakeSoTimeout);
+                    connection.handshakeClient();
                     if (Thread.currentThread().getThreadGroup().activeCount()
                             > server.maxConnections) {
-                        connection.start(WsConnection.POLICY_VIOLATION);
+                        connection.close(WsConnection.TRY_AGAIN_LATER);
                     } else {
-                        connection.start(0);
+                        socket.setSoTimeout(server.connectionSoTimeout);
+                        connection.handler.onOpen(connection);
                     }
+                    connection.listenInputStream(server.pingPong);
                 } else {
                     if (connection.isOpen()) {
                         connection.close(WsConnection.GOING_AWAY); // server stopped
@@ -174,7 +188,7 @@ public class WsServer {
                 server.handler.onError(connection, e);
 //                e.printStackTrace(); // WebSocket handshake exception
             }
-            if (!this.socket.isClosed()) {
+            if (connection.isOpen()) { //!this.socket.isClosed()) {
                 try {
                     this.socket.setSoLinger(true, 2);
                     this.socket.close();
@@ -193,7 +207,7 @@ public class WsServer {
         this.ksPassphrase = passphrase;
         System.setProperty("javax.net.ssl.trustStore", jksFile.getAbsolutePath());
         System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
-//        System.setProperty("javax.net.ssl.keyStore", jksFile);
+//        System.setProperty("javax.net.ssl.keyStore", jksFile.getAbsolutePath());
 //        System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
 
@@ -204,11 +218,13 @@ public class WsServer {
             SSLContext ctx;
             KeyManagerFactory kmf;
             KeyStore ks;
+            this.ksPassphrase = System.getProperty("javax.net.ssl.trustStorePassword");
             char[] passphrase = this.ksPassphrase.toCharArray();
 
             ctx = SSLContext.getInstance("TLS");
             kmf = KeyManagerFactory.getInstance("SunX509");
             ks = KeyStore.getInstance("JKS"); //
+            this.ksFile = new File(System.getProperty("javax.net.ssl.trustStore"));
             ks.load(new FileInputStream(this.ksFile), passphrase);
             kmf.init(ks, passphrase);
 //        TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");

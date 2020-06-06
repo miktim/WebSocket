@@ -98,11 +98,10 @@ public class WsServerTest {
         };
 
         final WsServer wsServer = new WsServer(8080, serverHandler);
-        wsServer.setMaxConnections(2);
-        wsServer.setConnectionSoTimeout(5000); // handshake & ping
+        wsServer.setConnectionSoTimeout(5000, true); // ping
         wsServer.setMaxMessageLength(100000);
-//        wsServer.setKeystore(new File(path, "localhost.jks"), "password");
-//        wsServer.setKeystore(new File(path, "testkeys"), "passphrase");
+//        wsServer.setKeystore(new File(path, "localhost.jks"), "password");// java 1.8
+//        wsServer.setKeystore(new File(path, "testkeys"), "passphrase");// java 1.7
         int stopTimeout = 40000;
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
@@ -121,9 +120,7 @@ public class WsServerTest {
         startActivity(browserIntent);
          */
 // /* Desktop 
-        java.awt.Desktop.getDesktop()
-                //                .browse(new URI("file://" + path + "/WsServerTest.html"));
-                .open(new File(path, "WsServerTest.html"));
+        java.awt.Desktop.getDesktop().open(new File(path, "WsServerTest.html"));
 // */
 
     }

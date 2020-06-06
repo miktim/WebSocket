@@ -3,6 +3,7 @@
  */
 import java.io.File;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.samples.java.websocket.WsConnection;
@@ -41,7 +42,8 @@ public class WsClientTest {
             public void onError(WsConnection con, Exception e) {
                 System.out.println("Server handle ERROR: " + con.getPath()
                         + " " + e.toString()
-                        + " Closure status:" + con.getClosureStatus());
+                        + " Closure status:"
+                        + (con != null ? con.getClosureStatus() : null));
 //                e.printStackTrace();
             }
 
@@ -139,16 +141,17 @@ public class WsClientTest {
         };
 
         int port = 8000 + WssServer.DEFAULT_SERVER_PORT;
-        final WsServer wsServer = new WssServer(port, serverHandler);
-        wsServer.setConnectionSoTimeout(1000); // handshake & ping
+        final WsServer wsServer = new WssServer(
+                new InetSocketAddress("localhost", port), serverHandler);
+        wsServer.setConnectionSoTimeout(1000, true); // ping
         wsServer.setMaxMessageLength(100000);
         /* Android       
-        wsServer.setKeystore(new File(getCacheDir(),"localhost.jks"), "password");
+        wsServer.setKeystore(new File(getCacheDir(),"testkeys"), "passphrase");
          */
 // /* Desktop       
-        wsServer.setKeystore(new File(path, "localhost.jks"), "password");
-//        wsServer.setKeystore(new File(path,"/samplecacerts"), "changeit"); // need client auth
-//        wsServer.setKeystore(new File(path,"/testkeys"), "passphrase");
+//        wsServer.setKeystore(new File(path, "localhost.jks"), "password"); // from java 1.8
+//        wsServer.setKeystore(new File(path,"samplecacerts"), "changeit"); // need client auth
+        wsServer.setKeystore(new File(path, "testkeys"), "passphrase");
 // */
         int stopTimeout = 5000;
         final Timer timer = new Timer();
@@ -163,9 +166,11 @@ public class WsClientTest {
                 + "Server will be stopped after "
                 + (stopTimeout / 1000) + " seconds");
         wsServer.start();
+        wsServer.setMaxConnections(1);
         WsConnection wsClient = new WsConnection(
-                "wss://localhost:" + port + "/test",
-                clientHandler);
+                "wss://localhost:" + port + "/test", clientHandler);
         wsClient.open();
+        (new WsConnection(
+                "wss://localhost:" + port + "/excess_connection", clientHandler)).open();
     }
 }
