@@ -12,10 +12,10 @@ public interface WsHandler {
     public void onClose(WsConnection conn);
     public void onMessage(WsConnection conn, String s );
     public void onMessage(WsConnection conn, byte[] b);
-// onError: conn may be null in the server handler (fatal ServerSocket exception)
-//          check connection closure status
+// onError: check connection closure status
+//   conn may be null in the server handler (fatal ServerSocket exception)
     public void onError(WsConnection conn, Exception e);
 // for the future if the maximum message length is exceeded
-//    public void onTextStream(WsConnection con, InputStream is );
-//    public void onBinaryStream(WsConnection con, InputStream is);
+//   public void onTextStream(WsConnection con, InputStream is );
+//   public void onBinaryStream(WsConnection con, InputStream is);
 }
