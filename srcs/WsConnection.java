@@ -38,6 +38,11 @@ import javax.net.ssl.SSLSocketFactory;
 
 public class WsConnection {
 
+    public static final String WS_VERSION = "0.1.4";
+    public static final int DEFAULT_HANDSHAKE_SO_TIMEOUT = 0;
+    public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
+    public static final int DEFAULT_MAX_MESSAGE_LENGTH = 2048;
+
 // closure status codes see RFC: https://tools.ietf.org/html/rfc6455#section-7.4 
 // https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
     public static final int NORMAL_CLOSURE = 1000; //*
@@ -64,6 +69,9 @@ public class WsConnection {
     private final boolean isSecure;
     private int closureStatus = GOING_AWAY;
     int maxMessageLength = Integer.MAX_VALUE;
+    int handshakeSoTimeout = DEFAULT_HANDSHAKE_SO_TIMEOUT;
+    int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
+    boolean pingPong = false;
 
     public boolean isOpen() {
         return !(this.socket == null || this.socket.isClosed() || this.socket.isInputShutdown());
@@ -71,6 +79,25 @@ public class WsConnection {
 
     public boolean isSecure() {
         return isSecure;
+    }
+
+// websocket handshake    
+    public void setHanshakeSoTimeout(int millis, boolean ping) {
+        handshakeSoTimeout = millis;
+    }
+
+// websocket connection/ping    
+    public void setConnectionSoTimeout(int millis, boolean ping) {
+        connectionSoTimeout = millis;
+        pingPong = ping;
+
+    }
+
+    public void setMaxMessageLength(int len) throws IllegalArgumentException {
+        if (len <= 0) {
+            throw new IllegalArgumentException();
+        }
+        this.maxMessageLength = len;
     }
 
     public boolean isClientSide() {
@@ -171,6 +198,7 @@ public class WsConnection {
         return false;
     }
 
+// unused    
     void start() throws IOException, URISyntaxException, NoSuchAlgorithmException {
         handshakeClient();
         this.handler.onOpen(this);
@@ -266,8 +294,9 @@ public class WsConnection {
                 socket.connect(
                         new InetSocketAddress(requestURI.getHost(), port));
             }
+            this.socket.setSoTimeout(handshakeSoTimeout);
             handshakeServer();
-            this.socket.setSoTimeout(0);
+            this.socket.setSoTimeout(connectionSoTimeout);
             (new Thread(new WsClientThread(this))).start();
         } catch (IOException | NoSuchAlgorithmException e) {
             try {
@@ -291,7 +320,7 @@ public class WsConnection {
             connection.closureStatus = 0;
             connection.handler.onOpen(connection);
             try {
-                this.connection.listenInputStream(false);
+                this.connection.listenInputStream(pingPong);
             } catch (IOException e) {
                 this.connection.handler.onError(connection, e);
             }
@@ -391,7 +420,7 @@ public class WsConnection {
     static final String PING_PAYLOAD = "Pong";
     static final byte[] EMPTY_PAYLOAD = new byte[0];
 
-/*    // java 1.7_79
+    /*    // java 1.7_79
     private int read(byte[] buf, int off, int cnt) throws IOException {
         InputStream is = this.socket.getInputStream();
         int start = off;
@@ -405,7 +434,7 @@ public class WsConnection {
         }
         return start - off;
     }
-*/
+     */
     void listenInputStream(boolean pingPong) throws IOException {
         BufferedInputStream is = new BufferedInputStream(socket.getInputStream());
         boolean pingSended = false;
@@ -502,7 +531,7 @@ public class WsConnection {
                         if (pingSended
                                 && (new String(framePayload)).equals(PING_PAYLOAD)) {
                         } else {
-                            handler.onError(this,
+                            closeDueTo(PROTOCOL_ERROR,
                                     new ProtocolException("unexpected_pong"));
                         }
                         pingSended = false;
@@ -589,8 +618,8 @@ public class WsConnection {
             return;
         }
         boolean masked = isClientConn;
-        BufferedOutputStream os = 
-                new BufferedOutputStream(this.socket.getOutputStream());
+        BufferedOutputStream os
+                = new BufferedOutputStream(this.socket.getOutputStream());
         byte[] header = new byte[2];
         header[0] = (byte) opData;
         byte[] mask = {0, 0, 0, 0};

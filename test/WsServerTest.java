@@ -60,7 +60,7 @@ public class WsServerTest {
                     String testPath = con.getPath();
                     if (testPath.endsWith("2")) { // check handler closure
                         if (s.length() > 128) {
-                            con.close();
+                            con.close(WsConnection.NORMAL_CLOSURE);
                         } else {
                             con.send(s + s);
                         }

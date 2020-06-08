@@ -30,20 +30,16 @@ import javax.net.ssl.SSLServerSocketFactory;
 
 public class WsServer {
 
-    public static final String SERVER_VERSION = "0.1.3";
     public static final int DEFAULT_SERVER_PORT = 80;
     public static final int DEFAULT_MAX_CONNECTIONS = 8;
-    public static final int DEFAULT_HANDSHAKE_SO_TIMEOUT = 0;
-    public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
-    public static final int DEFAULT_MAX_MESSAGE_LENGTH = 2048;
 
     private boolean isRunning;
     boolean isSecure;
-    int handshakeSoTimeout = DEFAULT_HANDSHAKE_SO_TIMEOUT;
-    int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
-    boolean pingPong = true;
     private int maxConnections = DEFAULT_MAX_CONNECTIONS;
-    private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH;
+    int handshakeSoTimeout = WsConnection.DEFAULT_HANDSHAKE_SO_TIMEOUT;
+    int connectionSoTimeout = WsConnection.DEFAULT_CONNECTION_SO_TIMEOUT;
+    boolean pingPong = true;
+    private int maxMessageLength = WsConnection.DEFAULT_MAX_MESSAGE_LENGTH;
     private InetSocketAddress socketAddress;
     private ServerSocket serverSocket;
     WsHandler handler;
@@ -66,13 +62,13 @@ public class WsServer {
     public boolean isSecure() {
         return isSecure;
     }
-// websocket handshake    
 
+// websocket handshake    
     public void setHanshakeSoTimeout(int millis, boolean ping) {
         handshakeSoTimeout = millis;
     }
-// websocket connection & ping    
 
+// websocket connection/ping    
     public void setConnectionSoTimeout(int millis, boolean ping) {
         connectionSoTimeout = millis;
         pingPong = ping;
@@ -95,7 +91,7 @@ public class WsServer {
 
     public void start() throws Exception {
         serverSocket = getServerSocketFactory().createServerSocket();
-        serverSocket.bind(socketAddress, DEFAULT_MAX_CONNECTIONS);
+        serverSocket.bind(socketAddress, DEFAULT_MAX_CONNECTIONS); // query
         MessageDigest.getInstance("SHA-1"); // check algorithm present
         (new WsServerThread(this)).start();
     }
@@ -116,15 +112,17 @@ public class WsServer {
     private class WsServerThread extends Thread {
 
         private final WsServer server;
-        private final ThreadGroup threadGroup = new ThreadGroup("WsConnections");
+        private ThreadGroup threadGroup;
 
-        WsServerThread(WsServer ws) {
-            server = ws;
+        WsServerThread(WsServer wss) {
+            server = wss;
         }
 
         @Override
         public void run() {
             server.isRunning = true;
+            threadGroup = new ThreadGroup("WsConnections-"
+                    + Thread.currentThread().getId());
             if (server.isSecure) {
                 ((SSLServerSocket) server.serverSocket)
                         .setNeedClientAuth(false);
@@ -132,7 +130,7 @@ public class WsServer {
             while (server.isRunning) {
                 try {
                     Socket socket = server.serverSocket.accept();
-                    socket.setSoTimeout(server.connectionSoTimeout); // for handshake & ping
+                    socket.setSoTimeout(server.handshakeSoTimeout); // for handshake & ping
                     (new Thread(threadGroup,
                             new WsConnectionThread(server, socket))).start();
                 } catch (Exception e) {
@@ -169,13 +167,12 @@ public class WsServer {
                 if (connection == null) {
                     connection = new WsConnection(socket, server.handler);
                     connection.maxMessageLength = server.maxMessageLength;
-                    socket.setSoTimeout(server.handshakeSoTimeout);
                     connection.handshakeClient();
+                    socket.setSoTimeout(server.connectionSoTimeout);
                     if (Thread.currentThread().getThreadGroup().activeCount()
                             > server.maxConnections) {
                         connection.close(WsConnection.TRY_AGAIN_LATER);
                     } else {
-                        socket.setSoTimeout(server.connectionSoTimeout);
                         connection.handler.onOpen(connection);
                     }
                     connection.listenInputStream(server.pingPong);
@@ -199,12 +196,12 @@ public class WsServer {
         }
     }
 
-    private File ksFile = null;
-    private String ksPassphrase = null;
+//    private File ksFile = null;
+//    private String ksPassphrase = null;
 
     public void setKeystore(File jksFile, String passphrase) {
-        this.ksFile = jksFile;
-        this.ksPassphrase = passphrase;
+//        this.ksFile = jksFile;
+//        this.ksPassphrase = passphrase;
         System.setProperty("javax.net.ssl.trustStore", jksFile.getAbsolutePath());
         System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
 //        System.setProperty("javax.net.ssl.keyStore", jksFile.getAbsolutePath());
@@ -218,14 +215,14 @@ public class WsServer {
             SSLContext ctx;
             KeyManagerFactory kmf;
             KeyStore ks;
-            this.ksPassphrase = System.getProperty("javax.net.ssl.trustStorePassword");
-            char[] passphrase = this.ksPassphrase.toCharArray();
+            String ksPassphrase = System.getProperty("javax.net.ssl.trustStorePassword");
+            char[] passphrase = ksPassphrase.toCharArray();
 
             ctx = SSLContext.getInstance("TLS");
             kmf = KeyManagerFactory.getInstance("SunX509");
             ks = KeyStore.getInstance("JKS"); //
-            this.ksFile = new File(System.getProperty("javax.net.ssl.trustStore"));
-            ks.load(new FileInputStream(this.ksFile), passphrase);
+            File ksFile = new File(System.getProperty("javax.net.ssl.trustStore"));
+            ks.load(new FileInputStream(ksFile), passphrase);
             kmf.init(ks, passphrase);
 //        TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
 //        tmf.init(ks);

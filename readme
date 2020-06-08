@@ -1,5 +1,4 @@
-# Java SE WebSocket listener/connector,  MIT (c) 2020 miktim@mail.ru
-Down with the client-server paradigm!
+# Java SE lightweight WebSocket client/server package,  MIT (c) 2020 miktim@mail.ru
 
 Release notes:
   - java SE 1.7+, Android compatible;
@@ -9,38 +8,41 @@ Release notes:
   - secure connections implemented without client authentication.
 
 Overview:
-  Constructors:
-    WsManager();
-    WsManager(String netInterface);
+  Server constructors:
+    WsServer(int bindPort, WsHandler handler) throws NullPointerException;
+    WsServer(InetSocketAddress bindAddr, WsHandler handler) throws NullPointerException;
+    WssServer(int bindPort, WsHandler handler) throws NullPointerException;
+    WssServer(InetSocketAddress bindAddr, WsHandler handler) throws NullPointerException;
 
     Constants (may vary):
-      String MANAGER_VERSION = "0.2.0";
-      int DEFAULT_LISTENER_MAX_CONNECTIONS = 8;
-      int DEFAULT_HANDSHAKE_TIMEOUT = 0;
-      int DEFAULT_PING_TIMEOUT = 0;
-      int DEFAULT_MAX_MESSAGE_LENGTH = 4096; // incoming messages
+      int DEFAULT_SERVER_PORT;
+      int DEFAULT_MAX_CONNECTIONS = 8;
     Methods:
-      void setListenerMaxConnections(int max) throws IllegalArgumentExceptions;
-      void setHandshakeTimeout(int millis);
-      void setPingTimeout(int millis, boolean ping);
-      void setMaxMessageLength(int len) throws IllegalArgumentException;
+      boolean isRunning();
+      boolean isSecure();
+      void setMaxConnections(int max) throws IllegalArgumentException;
+      void setHandshakeSoTimeout(int millis);
+      void setConnectionSoTimeout(int millis, boolean ping);
+      void setMaxMessageLength(int len) throws IllegalArgumentException; // incoming messages
       void setKeystore(File jksFile, String passphrase);
-      long listen(int port, WsHandler handler); // listener Id returns
-      long listenSafely(int port, WsHandler handler); // listener Id returns
-      WsConnection connect(String uri, WsHahdler handler) throws Exception;
-      void closeListener(long listenerId);
-      void closeAll();
+      void start() throws Exception;
+      void stop();
 
   Interface:
     WsHandler  see: https://github.com/miktim/WsServer/blob/master/srcs/WsHandler.java
 
-  WsConnection:
-    Constants:
-      WebSocket closure status codes see: https://tools.ietf.org/html/rfc6455#section-7.4
+  WsConnection (server/client):
+    Constants (may vary):
+      String WS_VERSION = "0.1.4";
+      int DEFAULT_HANDSHAKE_SO_TIMEOUT = 0;
+      int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
+      int DEFAULT_MAX_MESSAGE_LENGTH = 4096; // incoming messages
+      WebSocket closure status codes see:
+         https://tools.ietf.org/html/rfc6455#section-7.4
     Methods:
       boolean isOpen();
       boolean isSecure();
-      boolean isListenerSide();
+      boolean isClientSide();
       String getPath();
       String getPeerHost();
       int getMaxMessageLength();
@@ -48,10 +50,20 @@ Overview:
       void send(byte[] message) throws IOException;
       void streamText(InputStream is) throws IOException;
       void streamBinary(InputStream is) throws IOException;
-      void close();
+      void close(); // close without status code
       void close(int statusCode);
       int getClosureStatus();
+
+  Client connection constructor:
+    WsConnection(String uri, WsHahdler handler) throws Exception;
+
+    Methods:
+      void setHandshakeSoTimeout(int millis);
+      void setConnectionSoTimeout(int millis, boolean ping);
+      void setMaxMessageLength(int len) throws IllegalArgumentException; // incoming messages
+      void open() throws Exception;
 
 Usage example see in:
   https://github.com/miktim/WebSocket/blob/master/test/WsClientTest.java
   https://github.com/miktim/WebSocket/blob/master/test/WsServerTest.java
+  
