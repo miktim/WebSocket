@@ -10,11 +10,11 @@ Release notes:
 
 Overview:
   Constructors:
-    WsManager();
-    WsManager(String netInterface);
+    WebSocket();
+    WebSocket(InetAddress bindAddr);
 
     Constants (may vary):
-      String MANAGER_VERSION = "0.2.0";
+      String VERSION = "0.2.0";
       int DEFAULT_LISTENER_MAX_CONNECTIONS = 8;
       int DEFAULT_HANDSHAKE_TIMEOUT = 0;
       int DEFAULT_PING_TIMEOUT = 0;
@@ -28,7 +28,6 @@ Overview:
       WsListener listen(int port, WsHandler handler); 
       WsListener listenSafely(int port, WsHandler handler); 
       WsConnection connect(String uri, WsHahdler handler) throws Exception;
-      void closeListener(long listenerId);
       void closeAll();
 
   Interface:
