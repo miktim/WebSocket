@@ -656,22 +656,15 @@ public class WsConnection {
         os.flush();
     }
 
-    private void stream(int opData, InputStream is)
-            throws IOException {
+    private void stream(int opData, InputStream is) throws IOException {
+        BufferedInputStream bis = new BufferedInputStream(is);
         byte[] buf = new byte[2048];
-        int pos = 0;
         int op = opData & 0xF;
-        for (int len = is.read(buf); len >= 0; len = is.read(buf, pos, len)) {
-            if (len < buf.length) {
-                pos = len;
-                len = buf.length - pos;
-            } else {
-                pos = 0;
-                len = buf.length;
-                sendPayload(op, buf);
-                op = OP_CONTINUATION;
-            }
+        int len;
+        for (len = bis.read(buf); len == buf.length; len = bis.read(buf)) {
+            sendPayload(op, buf);
+            op = OP_CONTINUATION;
         }
-        sendPayload(op | OP_FINAL, Arrays.copyOf(buf, pos));
+        sendPayload(op | OP_FINAL, Arrays.copyOf(buf, len > 0 ? len : 0));
     }
 }
