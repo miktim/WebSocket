@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo $(javac --version)
+echo $(javac -version)
 jname=WebSocket
 cpath=./org/samples/java/websocket
 if [ ! -d ${cpath} ]
