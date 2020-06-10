@@ -44,7 +44,7 @@ public class WsClientTest {
                         + " " + e.toString()
                         + " Closure status:"
                         + (con != null ? con.getClosureStatus() : null));
-//                e.printStackTrace();
+                e.printStackTrace();
             }
 
             @Override
@@ -53,6 +53,8 @@ public class WsClientTest {
                     if (s.length() < 128) {
                         con.send(s + s);
                         System.out.println("Server handle TEXT: " + s);
+                    } else {
+                        con.send(s);
                     }
 
                 } catch (IOException e) {
@@ -109,11 +111,12 @@ public class WsClientTest {
 
             @Override
             public void onMessage(WsConnection con, String s) {
-                System.out.println(s);
                 try {
                     if (s.length() < 128) {
                         con.send(s + s);
                         System.out.println("Client handle TEXT: " + s);
+                    } else {
+                        con.send(s);
                     }
                 } catch (IOException e) {
                     System.out.println("Client handle TEXT: " + con.getPath()
@@ -153,7 +156,7 @@ public class WsClientTest {
 //        wsServer.setKeystore(new File(path,"samplecacerts"), "changeit"); // need client auth
         wsServer.setKeystore(new File(path, "testkeys"), "passphrase");
 // */
-        int stopTimeout = 5000;
+        int stopTimeout = 10000;
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
@@ -167,10 +170,14 @@ public class WsClientTest {
                 + (stopTimeout / 1000) + " seconds");
         wsServer.start();
         wsServer.setMaxConnections(1);
-        WsConnection wsClient = new WsConnection(
-                "wss://localhost:" + port + "/test", clientHandler);
-        wsClient.open();
-        (new WsConnection(
-                "wss://localhost:" + port + "/excess_connection", clientHandler)).open();
+        try {
+            WsConnection wsClient = new WsConnection(
+                    "wss://localhost:" + port + "/test", clientHandler);
+            wsClient.open();
+            (new WsConnection(
+                    "wss://localhost:" + port + "/excess_connection", clientHandler)).open();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

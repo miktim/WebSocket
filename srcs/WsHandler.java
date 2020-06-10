@@ -16,6 +16,6 @@ public interface WsHandler {
 //   conn may be null in the server handler (fatal ServerSocket exception)
     public void onError(WsConnection conn, Exception e);
 // for the future if the maximum message length is exceeded
-//   public void onTextStream(WsConnection con, InputStream is );
-//   public void onBinaryStream(WsConnection con, InputStream is);
+//   public void onStream(WsConnection conn, WsConnection.TextInputStream is );
+//   public void onStream(WsConnection conn, WsConnection.BinaryInputStream is);
 }

@@ -180,7 +180,13 @@ public class WsConnection {
         }
     }
 
-    /* WebSocket Server connection */
+    /*    
+    public synchronized void setHandler(WsHandler handler) {
+        this.handler = handler;
+        if (this.isOpen()) this.handler.onOpen(this);
+    }
+     */
+ /* WebSocket Server connection */
     WsConnection(Socket s, WsHandler h) {
         this.socket = s;
         this.handler = h;
@@ -277,7 +283,7 @@ public class WsConnection {
     }
 
     public void open()
-            throws IOException, NoSuchAlgorithmException {
+            throws Exception {
         if (!isClientConn && isOpen()) {
             throw new SocketException();
         }
@@ -286,19 +292,17 @@ public class WsConnection {
             if (port < 0) {
                 port = isSecure ? 443 : 80;
             }
-            if (isSecure) {
-                ((SSLSocket) socket).connect(
-                        new InetSocketAddress(requestURI.getHost(), port));
-                ((SSLSocket) socket).startHandshake();
-            } else {
-                socket.connect(
-                        new InetSocketAddress(requestURI.getHost(), port));
-            }
             this.socket.setSoTimeout(handshakeSoTimeout);
+            this.socket.connect(
+                    new InetSocketAddress(requestURI.getHost(), port));
+            if (isSecure) {
+//                ((SSLSocket) socket).setUseClientMode(true);
+                ((SSLSocket) socket).startHandshake();
+            }
             handshakeServer();
             this.socket.setSoTimeout(connectionSoTimeout);
             (new Thread(new WsClientThread(this))).start();
-        } catch (IOException | NoSuchAlgorithmException e) {
+        } catch (Exception e) {
             try {
                 this.socket.close();
             } catch (IOException ie) {
@@ -357,11 +361,15 @@ public class WsConnection {
         Headers headers = new Headers();
         BufferedReader br = new BufferedReader(
                 new InputStreamReader(socket.getInputStream()));
+        String line = br.readLine();
+        if(line.startsWith("\u0016\u0003\u0003")){
+            throw new javax.net.ssl.SSLHandshakeException("plain_text_socket");
+        }
         headers.add(REQUEST_LINE_HEADER,
-                br.readLine().replaceAll("  ", " ").trim());
+                line.replaceAll("  ", " ").trim());
         String[] pair = new String[0];
         while (true) {
-            String line = br.readLine();
+            line = br.readLine();
             if (line == null || line.isEmpty()) {
                 break;
             }
@@ -420,21 +428,6 @@ public class WsConnection {
     static final String PING_PAYLOAD = "Pong";
     static final byte[] EMPTY_PAYLOAD = new byte[0];
 
-    /*    // java 1.7_79
-    private int read(byte[] buf, int off, int cnt) throws IOException {
-        InputStream is = this.socket.getInputStream();
-        int start = off;
-        int end = off + cnt;
-        while (start < end) {
-            int b = is.read();
-            if (b == -1) {
-                break;
-            }
-            buf[start++] = (byte) b;
-        }
-        return start - off;
-    }
-     */
     void listenInputStream(boolean pingPong) throws IOException {
         BufferedInputStream is = new BufferedInputStream(socket.getInputStream());
         boolean pingSended = false;
@@ -476,7 +469,6 @@ public class WsConnection {
                 }
                 if (serviceLen > 0) {
                     if (is.read(service, 0, serviceLen) != serviceLen) {//java 1.7.79
-//                    if (read(service, 0, serviceLen) != serviceLen) {
                         closeDueTo(INVALID_DATA, new EOFException("frame_length"));
                     }
                     payloadLen = 0;
@@ -489,7 +481,6 @@ public class WsConnection {
                 if ((b2 & MASKED_DATA) != 0) {
                     serviceLen = 4;
                     if (is.read(service, 0, serviceLen) != serviceLen) {
-//                    if (read(service, 0, serviceLen) != serviceLen) {
                         closeDueTo(INVALID_DATA, new EOFException("frame_mask"));
                     }
                 }
@@ -502,7 +493,6 @@ public class WsConnection {
 // get frame payload                
                 byte[] framePayload = new byte[(int) payloadLen];
                 if (is.read(framePayload) != framePayload.length) {
-//                if (read(framePayload, 0, framePayload.length) != framePayload.length) {
                     closeDueTo(INVALID_DATA, new EOFException("frame"));
                 }
 // unmask frame payload                
@@ -552,7 +542,7 @@ public class WsConnection {
                             sendPayload(OP_CLOSE, framePayload);
                         }
 //??? server 1001 -> 1006 browser | 1011 client                     
-                        this.socket.setSoLinger(true, 1); // seconds
+                        this.socket.setSoLinger(true, 2); // seconds
                         if (isSecure) {
                             ((SSLSocket) this.socket).close();
                         } else {
@@ -656,9 +646,12 @@ public class WsConnection {
         os.flush();
     }
 
+    private static final int STREAM_BUFFER_SIZE = 2048;
+
     private void stream(int opData, InputStream is) throws IOException {
-        BufferedInputStream bis = new BufferedInputStream(is);
-        byte[] buf = new byte[2048];
+        BufferedInputStream bis = new BufferedInputStream(
+                is, STREAM_BUFFER_SIZE);
+        byte[] buf = new byte[STREAM_BUFFER_SIZE];
         int op = opData & 0xF;
         int len;
         for (len = bis.read(buf); len == buf.length; len = bis.read(buf)) {

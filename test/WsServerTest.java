@@ -9,11 +9,9 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import org.samples.java.websocket.WsConnection;
 import org.samples.java.websocket.WsHandler;
 import org.samples.java.websocket.WsServer;
-import org.samples.java.websocket.WssServer;
 
 public class WsServerTest {
 

@@ -169,6 +169,7 @@ public class WsServer {
                     connection.maxMessageLength = server.maxMessageLength;
                     connection.handshakeClient();
                     socket.setSoTimeout(server.connectionSoTimeout);
+                    connection.pingPong = server.pingPong;
                     if (Thread.currentThread().getThreadGroup().activeCount()
                             > server.maxConnections) {
                         connection.close(WsConnection.TRY_AGAIN_LATER);
@@ -198,7 +199,6 @@ public class WsServer {
 
 //    private File ksFile = null;
 //    private String ksPassphrase = null;
-
     public void setKeystore(File jksFile, String passphrase) {
 //        this.ksFile = jksFile;
 //        this.ksPassphrase = passphrase;
