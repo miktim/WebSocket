@@ -9,7 +9,7 @@ Release notes:
   - secure connections implemented without client authentication.
 
 Overview:
-  Constructors:
+  Constructors (factory):
     WebSocket();
     WebSocket(InetAddress bindAddr);
 
@@ -37,7 +37,7 @@ Overview:
     Methods:
       boolean isOpen();
       boolean isSecure();
-      close()
+      void close();
 
   WsConnection:
     Constants:
