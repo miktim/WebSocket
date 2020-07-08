@@ -4,7 +4,7 @@ Testing:
   - WssServer was tested by Chromium with “chrome://flags/#allow-insecure-localhost” enabled
       and with own secure client.
 
-Certificates:
+Certificates (localhost self-signed):
   From https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/index.html
     - testkeys: Java 1.7+;
     - samplecacert: require client authentification.

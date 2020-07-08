@@ -25,6 +25,7 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
 //import javax.net.ssl.SSLSocket;
 //import javax.net.ssl.TrustManagerFactory;
 
@@ -130,7 +131,7 @@ public class WsServer {
             while (server.isRunning) {
                 try {
                     Socket socket = server.serverSocket.accept();
-                    socket.setSoTimeout(server.handshakeSoTimeout); // for handshake & ping
+                    socket.setSoTimeout(server.handshakeSoTimeout);
                     (new Thread(threadGroup,
                             new WsConnectionThread(server, socket))).start();
                 } catch (Exception e) {
@@ -141,7 +142,7 @@ public class WsServer {
                     }
                 }
             }
-// close connections            
+// close server connections            
             Thread[] threads = new Thread[threadGroup.activeCount()];
             threadGroup.enumerate(threads);
             for (int i = 0; i < threads.length; i++) {
@@ -197,16 +198,6 @@ public class WsServer {
         }
     }
 
-//    private File ksFile = null;
-//    private String ksPassphrase = null;
-    public void setKeystore(File jksFile, String passphrase) {
-//        this.ksFile = jksFile;
-//        this.ksPassphrase = passphrase;
-        System.setProperty("javax.net.ssl.trustStore", jksFile.getAbsolutePath());
-        System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
-//        System.setProperty("javax.net.ssl.keyStore", jksFile.getAbsolutePath());
-//        System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
-    }
 
 // https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/sockets/server/ClassFileServer.java
     private ServerSocketFactory getServerSocketFactory() throws Exception {

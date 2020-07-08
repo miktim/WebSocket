@@ -24,7 +24,6 @@ Overview:
       void setHandshakeSoTimeout(int millis);
       void setConnectionSoTimeout(int millis, boolean ping);
       void setMaxMessageLength(int len) throws IllegalArgumentException; // incoming messages
-      void setKeystore(File jksFile, String passphrase);
       void start() throws Exception;
       void stop();
 
@@ -33,13 +32,18 @@ Overview:
 
   WsConnection (server/client):
     Constants (may vary):
-      String WS_VERSION = "0.1.4";
+      String WS_VERSION = "0.1.5";
       int DEFAULT_HANDSHAKE_SO_TIMEOUT = 0;
       int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
       int DEFAULT_MAX_MESSAGE_LENGTH = 4096; // incoming messages
       WebSocket closure status codes see:
          https://tools.ietf.org/html/rfc6455#section-7.4
+         https://www.iana.org/assignments/websocket/websocket.xml#close-code-number
+         https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+
     Methods:
+      static void setKeyFile(File keyFile, String passphrase);
+      void setHandler(WsHandler handler) throws NullPointerException;
       boolean isOpen();
       boolean isSecure();
       boolean isClientSide();

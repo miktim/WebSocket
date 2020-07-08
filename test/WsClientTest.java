@@ -40,7 +40,8 @@ public class WsClientTest {
 
             @Override
             public void onError(WsConnection con, Exception e) {
-                System.out.println("Server handle ERROR: " + con.getPath()
+                System.out.println("Server handle ERROR: "
+                        + (con != null ? con.getPath() : null)
                         + " " + e.toString()
                         + " Closure status:"
                         + (con != null ? con.getClosureStatus() : null));
@@ -72,14 +73,6 @@ public class WsClientTest {
                             + " send error: " + e.toString());
                 }
             }
-            /*
-            @Override
-            public void onTextStream(WsConnection con, InputStream is) {
-            }
-            @Override
-            public void onBinaryStream(WsConnection con, InputStream is) {
-            }
-             */
         };
         WsHandler clientHandler = new WsHandler() {
             @Override
@@ -133,30 +126,24 @@ public class WsClientTest {
                             + " send error: " + e.toString());
                 }
             }
-            /*
-            @Override
-            public void onTextStream(WsConnection con, InputStream is) {
-            }
-            @Override
-            public void onBinaryStream(WsConnection con, InputStream is) {
-            }
-             */
         };
 
         int port = 8000 + WssServer.DEFAULT_SERVER_PORT;
+        String serverHost = "localhost";
+        String serverAddr = serverHost + ":" + port;
         final WsServer wsServer = new WssServer(
-                new InetSocketAddress("localhost", port), serverHandler);
+                new InetSocketAddress(serverHost, port), serverHandler);
         wsServer.setConnectionSoTimeout(1000, true); // ping
         wsServer.setMaxMessageLength(100000);
         /* Android       
-        wsServer.setKeystore(new File(getCacheDir(),"testkeys"), "passphrase");
+        WsConnection.setKeyFile(new File(getCacheDir(),"testkeys"), "passphrase");
          */
 // /* Desktop       
-//        wsServer.setKeystore(new File(path, "localhost.jks"), "password"); // from java 1.8
-//        wsServer.setKeystore(new File(path,"samplecacerts"), "changeit"); // need client auth
-        wsServer.setKeystore(new File(path, "testkeys"), "passphrase");
+//        WsConnection.setKeyFile(new File(path, "localhost.jks"), "password"); // from java 1.8
+//        WsConnection.setKeyFile(new File(path,"samplecacerts"), "changeit"); // need client auth
+        WsConnection.setKeyFile(new File(path, "testkeys"), "passphrase");
 // */
-        int stopTimeout = 10000;
+        int stopTimeout = 30000;
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
@@ -172,10 +159,10 @@ public class WsClientTest {
         wsServer.setMaxConnections(1);
         try {
             WsConnection wsClient = new WsConnection(
-                    "wss://localhost:" + port + "/test", clientHandler);
+                    "wss://" + serverAddr + "/test", clientHandler);
             wsClient.open();
             (new WsConnection(
-                    "wss://localhost:" + port + "/excess_connection", clientHandler)).open();
+                    "wss://" + serverAddr + "/excess_connection", clientHandler)).open();
         } catch (Exception e) {
             e.printStackTrace();
         }

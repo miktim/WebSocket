@@ -16,6 +16,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.EOFException;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -38,13 +39,15 @@ import javax.net.ssl.SSLSocketFactory;
 
 public class WsConnection {
 
-    public static final String WS_VERSION = "0.1.4";
+    public static final String WS_VERSION = "0.1.5";
     public static final int DEFAULT_HANDSHAKE_SO_TIMEOUT = 0;
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
     public static final int DEFAULT_MAX_MESSAGE_LENGTH = 2048;
 
-// closure status codes see RFC: https://tools.ietf.org/html/rfc6455#section-7.4 
-// https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+// Closure status codes see:
+//  https://tools.ietf.org/html/rfc6455#section-7.4
+//  https://www.iana.org/assignments/websocket/websocket.xml#close-code-number 
+//  https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
     public static final int NORMAL_CLOSURE = 1000; //*
     public static final int GOING_AWAY = 1001; //* shutdown or socket timeout
     public static final int PROTOCOL_ERROR = 1002; //* 
@@ -54,7 +57,7 @@ public class WsConnection {
     public static final int INVALID_DATA = 1007; // non utf-8 text, for example
     public static final int POLICY_VIOLATION = 1008; //
     public static final int MESSAGE_TOO_BIG = 1009; // *
-    public static final int UNSUPPORTED_EXTENSION = 1010; // client only 
+    public static final int UNSUPPORTED_EXTENSION = 1010; // 
     public static final int INTERNAL_ERROR = 1011; //* server only
     public static final int TRY_AGAIN_LATER = 1013; //* server overloaded 
 
@@ -63,15 +66,22 @@ public class WsConnection {
 
     private final Socket socket;
     private Headers requestHeaders;
-    final WsHandler handler;
+    WsHandler handler;
     private URI requestURI;
     private final boolean isClientConn;
     private final boolean isSecure;
     private int closureStatus = GOING_AWAY;
-    int maxMessageLength = Integer.MAX_VALUE;
+    int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH;
     int handshakeSoTimeout = DEFAULT_HANDSHAKE_SO_TIMEOUT;
     int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
     boolean pingPong = false;
+
+    public static void setKeyFile(File keyFile, String passphrase) {
+        System.setProperty("javax.net.ssl.trustStore", keyFile.getAbsolutePath());
+        System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
+//        System.setProperty("javax.net.ssl.keyStore", jksFile.getAbsolutePath());
+//        System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
+    }
 
     public boolean isOpen() {
         return !(this.socket == null || this.socket.isClosed() || this.socket.isInputShutdown());
@@ -180,13 +190,14 @@ public class WsConnection {
         }
     }
 
-    /*    
-    public synchronized void setHandler(WsHandler handler) {
+    public synchronized void setHandler(WsHandler handler) 
+            throws NullPointerException {
+        if (handler == null) throw new NullPointerException();
         this.handler = handler;
         if (this.isOpen()) this.handler.onOpen(this);
     }
-     */
- /* WebSocket Server connection */
+
+    /* WebSocket Server connection */
     WsConnection(Socket s, WsHandler h) {
         this.socket = s;
         this.handler = h;
@@ -296,7 +307,7 @@ public class WsConnection {
             this.socket.connect(
                     new InetSocketAddress(requestURI.getHost(), port));
             if (isSecure) {
-//                ((SSLSocket) socket).setUseClientMode(true);
+//                ((SSLSocket) socket).setUseClientMode(true); // 
                 ((SSLSocket) socket).startHandshake();
             }
             handshakeServer();
@@ -362,7 +373,7 @@ public class WsConnection {
         BufferedReader br = new BufferedReader(
                 new InputStreamReader(socket.getInputStream()));
         String line = br.readLine();
-        if(line.startsWith("\u0016\u0003\u0003")){
+        if (line.startsWith("\u0016\u0003\u0003")) {
             throw new javax.net.ssl.SSLHandshakeException("plain_text_socket");
         }
         headers.add(REQUEST_LINE_HEADER,
@@ -484,7 +495,7 @@ public class WsConnection {
                         closeDueTo(INVALID_DATA, new EOFException("frame_mask"));
                     }
                 }
-// check payloadLen                
+// check payloadLen
                 if (payloadLen + payload.length > maxMessageLength) {
                     is.skip(payloadLen);
                     closeDueTo(MESSAGE_TOO_BIG, new BufferUnderflowException());
@@ -541,7 +552,7 @@ public class WsConnection {
                             }
                             sendPayload(OP_CLOSE, framePayload);
                         }
-//??? server 1001 -> 1006 browser | 1011 client                     
+//??? server 1001 -> 1006 browser | 1011 client
                         this.socket.setSoLinger(true, 2); // seconds
                         if (isSecure) {
                             ((SSLSocket) this.socket).close();
@@ -583,10 +594,10 @@ public class WsConnection {
     private Exception closureException = null;
 
     private void closeDueTo(int closureStatus, Exception e) {
-        close(closureStatus);
         if (closureException == null) {
             closureException = e;
         }
+        close(closureStatus);
     }
 
     private void unmaskPayload(byte[] mask, byte[] payload) {

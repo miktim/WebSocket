@@ -46,9 +46,11 @@ public class WsServerTest {
 
             @Override
             public void onError(WsConnection con, Exception e) {
-                System.out.println("Handle ERROR: " + con.getPath()
+                System.out.println("Handle ERROR: " 
+                        + (con != null ? con.getPath() : null)
                         + " " + e.toString()
-                        + " Closure status:" + con.getClosureStatus());
+                        + " Closure status:"
+                        + (con != null ? con.getClosureStatus() : null));
 //                e.printStackTrace();
             }
 
@@ -85,21 +87,13 @@ public class WsServerTest {
                             + " send error: " + e.toString());
                 }
             }
-            /*
-            @Override
-            public void onTextStream(WsConnection con, InputStream is) {
-            }
-            @Override
-            public void onBinaryStream(WsConnection con, InputStream is) {
-            }
-             */
         };
 
         final WsServer wsServer = new WsServer(8080, serverHandler);
         wsServer.setConnectionSoTimeout(5000, true); // ping
         wsServer.setMaxMessageLength(100000);
-//        wsServer.setKeystore(new File(path, "localhost.jks"), "password");// java 1.8
-//        wsServer.setKeystore(new File(path, "testkeys"), "passphrase");// java 1.7
+//        WsConnection.setKeyFile(new File(path, "localhost.jks"), "password");// java 1.8
+//        WsConnection.setKeyFile(new File(path, "testkeys"), "passphrase");// java 1.7
         int stopTimeout = 40000;
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
