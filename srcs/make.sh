@@ -15,4 +15,8 @@ if [ $? -eq 0 ] ; then
 #  WsHandler.java WsConnection.java WsServer.java WssServer.java
 fi
 rm -f -r ./org
-more < ./compile.log
+#more < ./compile.log
+cat compile.log
+echo
+echo Completed. Press any key...
+read
