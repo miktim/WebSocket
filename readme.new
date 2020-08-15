@@ -25,8 +25,8 @@ Overview:
       void setPingTimeout(int millis, boolean ping);
       void setMaxMessageLength(int len) throws IllegalArgumentException;
       void setKeystore(File jksFile, String passphrase);
-      WsListener listen(int port, WsHandler handler); 
-      WsListener listenSafely(int port, WsHandler handler); 
+      WsListener listen(int port, WsHandler handler) throws Exception; 
+      WsListener listenSafely(int port, WsHandler handler) throws Exception; 
       WsConnection connect(String uri, WsHahdler handler) throws Exception;
       void closeAll();
 
@@ -46,6 +46,7 @@ Overview:
       boolean isOpen();
       boolean isSecure();
       boolean isListenerSide();
+      void setHandler(WsHandler handler) throws NullPointerException;
       String getPath();
       String getPeerHost();
       int getMaxMessageLength();
