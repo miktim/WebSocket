@@ -145,8 +145,8 @@ public class WsServer {
 // close server connections            
             Thread[] threads = new Thread[threadGroup.activeCount()];
             threadGroup.enumerate(threads);
-            for (int i = 0; i < threads.length; i++) {
-                threads[i].run();
+            for (Thread thread : threads) {
+                thread.run();
             }
         }
     }
@@ -170,7 +170,7 @@ public class WsServer {
                     connection.maxMessageLength = server.maxMessageLength;
                     connection.handshakeClient();
                     socket.setSoTimeout(server.connectionSoTimeout);
-                    connection.pingPong = server.pingPong;
+                    connection.pingEnabled = server.pingPong;
                     if (Thread.currentThread().getThreadGroup().activeCount()
                             > server.maxConnections) {
                         connection.close(WsConnection.TRY_AGAIN_LATER);
@@ -184,20 +184,19 @@ public class WsServer {
                     }
                 }
             } catch (Exception e) {
-                server.handler.onError(connection, e);
-//                e.printStackTrace(); // WebSocket handshake exception
-            }
-            if (connection.isOpen()) { //!this.socket.isClosed()) {
+                connection.closeSocket();
+                server.handler.onError(connection, e); // WebSocket handshake exception
+//                e.printStackTrace(); 
+            } 
+            if (!this.socket.isClosed()) {
                 try {
-                    this.socket.setSoLinger(true, 2);
-                    this.socket.close();
-                } catch (IOException ie) {
-//                    ie.printStackTrace();
+                    this.socket.close(); // force close
+                } catch (IOException e) {
+//                    e.printStackTrace();
                 }
             }
         }
     }
-
 
 // https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/sockets/server/ClassFileServer.java
     private ServerSocketFactory getServerSocketFactory() throws Exception {

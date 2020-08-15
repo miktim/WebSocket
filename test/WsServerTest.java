@@ -90,11 +90,11 @@ public class WsServerTest {
         };
 
         final WsServer wsServer = new WsServer(8080, serverHandler);
-        wsServer.setConnectionSoTimeout(5000, true); // ping
+        wsServer.setConnectionSoTimeout(1000, true); // ping
         wsServer.setMaxMessageLength(100000);
 //        WsConnection.setKeyFile(new File(path, "localhost.jks"), "password");// java 1.8
 //        WsConnection.setKeyFile(new File(path, "testkeys"), "passphrase");// java 1.7
-        int stopTimeout = 40000;
+        int stopTimeout = 20000;
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
