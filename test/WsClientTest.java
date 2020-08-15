@@ -143,7 +143,7 @@ public class WsClientTest {
 //        WsConnection.setKeyFile(new File(path,"samplecacerts"), "changeit"); // need client auth
         WsConnection.setKeyFile(new File(path, "testkeys"), "passphrase");
 // */
-        int stopTimeout = 30000;
+        int stopTimeout = 20000;
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
@@ -155,8 +155,8 @@ public class WsClientTest {
         System.out.println("\r\nTest WebSocket secure client\r\n"
                 + "Server will be stopped after "
                 + (stopTimeout / 1000) + " seconds");
-        wsServer.start();
         wsServer.setMaxConnections(1);
+        wsServer.start();
         try {
             WsConnection wsClient = new WsConnection(
                     "wss://" + serverAddr + "/test", clientHandler);
