@@ -14,7 +14,6 @@ package org.samples.java.websocket;
 //import com.sun.net.httpserver.Headers;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -25,7 +24,6 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
-import javax.net.ssl.SSLSocket;
 //import javax.net.ssl.SSLSocket;
 //import javax.net.ssl.TrustManagerFactory;
 
@@ -39,7 +37,7 @@ public class WsServer {
     private int maxConnections = DEFAULT_MAX_CONNECTIONS;
     int handshakeSoTimeout = WsConnection.DEFAULT_HANDSHAKE_SO_TIMEOUT;
     int connectionSoTimeout = WsConnection.DEFAULT_CONNECTION_SO_TIMEOUT;
-    boolean pingPong = true;
+    boolean pingEnabled = true;
     private int maxMessageLength = WsConnection.DEFAULT_MAX_MESSAGE_LENGTH;
     private InetSocketAddress socketAddress;
     private ServerSocket serverSocket;
@@ -64,16 +62,25 @@ public class WsServer {
         return isSecure;
     }
 
-// websocket handshake    
     public void setHanshakeSoTimeout(int millis, boolean ping) {
         handshakeSoTimeout = millis;
     }
 
-// websocket connection/ping    
+    public int getHandshakeSoTimeout() {
+        return handshakeSoTimeout;
+    }
+
     public void setConnectionSoTimeout(int millis, boolean ping) {
         connectionSoTimeout = millis;
-        pingPong = ping;
+        pingEnabled = ping;
+    }
 
+    public int getConnectionSoTimeout() {
+        return connectionSoTimeout;
+    }
+
+    public boolean isPingEnabled() {
+        return pingEnabled && connectionSoTimeout > 0;
     }
 
     public void setMaxMessageLength(int len) throws IllegalArgumentException {
@@ -83,11 +90,23 @@ public class WsServer {
         this.maxMessageLength = len;
     }
 
+    public int getMaxMessageLength() {
+        return maxMessageLength;
+    }
+
     public void setMaxConnections(int cnt) throws IllegalArgumentException {
         if (cnt <= 0) {
             throw new IllegalArgumentException();
         }
         this.maxConnections = cnt;
+    }
+
+    public int getMaxConnections() {
+        return maxConnections;
+    }
+
+    public WsHandler getHandler() {
+        return handler;
     }
 
     public void start() throws Exception {
@@ -167,34 +186,24 @@ public class WsServer {
             try {
                 if (connection == null) {
                     connection = new WsConnection(socket, server.handler);
-                    connection.maxMessageLength = server.maxMessageLength;
                     connection.handshakeClient();
-                    socket.setSoTimeout(server.connectionSoTimeout);
-                    connection.pingEnabled = server.pingPong;
+                    connection.setMaxMessageLength(server.maxMessageLength);
+                    connection.setConnectionSoTimeout(server.connectionSoTimeout, server.pingEnabled);
                     if (Thread.currentThread().getThreadGroup().activeCount()
                             > server.maxConnections) {
                         connection.close(WsConnection.TRY_AGAIN_LATER);
+                        connection.getHandler().onClose(connection);
                     } else {
-                        connection.handler.onOpen(connection);
+                        connection.getHandler().onOpen(connection);
+                        connection.listenInputStream();
                     }
-                    connection.listenInputStream(server.pingPong);
                 } else {
-                    if (connection.isOpen()) {
-                        connection.close(WsConnection.GOING_AWAY); // server stopped
-                    }
+                    connection.close(WsConnection.GOING_AWAY); // server stopped
                 }
             } catch (Exception e) {
-                connection.closeSocket();
-                server.handler.onError(connection, e); // WebSocket handshake exception
-//                e.printStackTrace(); 
-            } 
-            if (!this.socket.isClosed()) {
-                try {
-                    this.socket.close(); // force close
-                } catch (IOException e) {
-//                    e.printStackTrace();
-                }
+                connection.getHandler().onError(connection, e); // WebSocket handshake exception
             }
+            connection.closeSocket(); // force close
         }
     }
 

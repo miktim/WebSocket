@@ -17,6 +17,7 @@
             var testuri = 'ws://localhost:8080/test/';
             var msg = 'Hello Server!';
             var maxMsgLength = 0;
+            var maxMsgEnd;
             var testNo = 0;
             var tests = [
                 'server handler (request path) not found (1008 expected)',
@@ -58,6 +59,7 @@
                             event.target.close();
                     } else if (url.endsWith('3')) { //message too big
                         maxMsgLength = event.data.length;
+                        maxMsgEnd = event.data.substring(event.data.length - 80);
                         event.target.send(event.data + event.data);
                     } else {
                         event.target.send(event.data);
@@ -70,6 +72,9 @@
                 webSocket.onclose = event => {
 // event: .code .reason .wasClean
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+                    if(event.target.url.endsWith("3")){
+                        show((maxMsgLength) + " chars received:   ..." + maxMsgEnd);
+                    }
                     show('onclose: ' + event.code
                             + ':' + event.reason
                             + ':' + event.wasClean

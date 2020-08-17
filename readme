@@ -20,9 +20,10 @@ Overview:
     Methods:
       boolean isRunning();
       boolean isSecure();
-      void setMaxConnections(int max) throws IllegalArgumentException;
-      void setHandshakeSoTimeout(int millis);
+      void setMaxConnections(int max) throws IllegalArgumentException; //get
+      void setHandshakeSoTimeout(int millis); // get
       void setConnectionSoTimeout(int millis, boolean ping);
+      boolean isPingEnabled();
       void setMaxMessageLength(int len) throws IllegalArgumentException; // incoming messages
       void start() throws Exception;
       void stop();
@@ -30,19 +31,28 @@ Overview:
   Interface:
     WsHandler  see: https://github.com/miktim/WsServer/blob/master/srcs/WsHandler.java
 
-  WsConnection (server/client):
+  WsConnection:
     Constants (may vary):
       String WS_VERSION = "0.1.5";
-      int DEFAULT_HANDSHAKE_SO_TIMEOUT = 0;
-      int DEFAULT_CONNECTION_SO_TIMEOUT = 0;
+      int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;
+      int DEFAULT_CONNECTION_SO_TIMEOUT = 5000; // ping enabled
       int DEFAULT_MAX_MESSAGE_LENGTH = 4096; // incoming messages
-      WebSocket closure status codes see:
+
+      WebSocket closure status codes:
+         NORMAL_CLOSURE, GOING_AWAY, PROTOCOL_ERROR, UNSUPPORTED_DATA, NO_STATUS,
+         ABNORMAL_CLOSURE, INVALID_DATA, POLICY_VIOLATION, MESSAGE_TOO_BIG,
+         UNSUPPORTED_EXTENSION, INTERNAL_ERROR, TRY_AGAIN_LATER
+      See:
          https://tools.ietf.org/html/rfc6455#section-7.4
          https://www.iana.org/assignments/websocket/websocket.xml#close-code-number
          https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
 
     Methods:
       static void setKeyFile(File keyFile, String passphrase);
+      void setHandshakeSoTimeout(int millis); 
+      void setConnectionSoTimeout(int millis, boolean ping); 
+      boolean isPingEnabled();
+      void setMaxMessageLength(int len) throws IllegalArgumentException; // incoming messages
       void setHandler(WsHandler handler) throws NullPointerException;
       boolean isOpen();
       boolean isSecure();
@@ -62,9 +72,6 @@ Overview:
     WsConnection(String uri, WsHahdler handler) throws Exception;
 
     Methods:
-      void setHandshakeSoTimeout(int millis);
-      void setConnectionSoTimeout(int millis, boolean ping);
-      void setMaxMessageLength(int len) throws IllegalArgumentException; // incoming messages
       void open() throws Exception;
 
 Usage example see in:

@@ -67,6 +67,7 @@ public class WsServerTest {
 
                     } else if (testPath.endsWith("3")) { // check message too big
 //                        System.out.println("MsgLen:" + s.length());
+//                        con.send(s+s);
                         con.streamText(
                                 new ByteArrayInputStream((s + s).getBytes("utf-8")));
                     } else {
@@ -91,10 +92,10 @@ public class WsServerTest {
 
         final WsServer wsServer = new WsServer(8080, serverHandler);
         wsServer.setConnectionSoTimeout(1000, true); // ping
-        wsServer.setMaxMessageLength(100000);
+        wsServer.setMaxMessageLength(200000);
 //        WsConnection.setKeyFile(new File(path, "localhost.jks"), "password");// java 1.8
 //        WsConnection.setKeyFile(new File(path, "testkeys"), "passphrase");// java 1.7
-        int stopTimeout = 20000;
+        int stopTimeout = 30000;
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
@@ -103,7 +104,9 @@ public class WsServerTest {
                 timer.cancel();
             }
         }, stopTimeout);
-        System.out.println("\r\nTest WebSocket server\r\nServer will be stopped after "
+        System.out.println("\r\nTest WebSocket server"
+                +"\r\nmaxMessageLength = " + wsServer.getMaxMessageLength()
+                +"\r\nServer will be stopped after "
                 + (stopTimeout / 1000) + " seconds");
         wsServer.start();
         /* Android
