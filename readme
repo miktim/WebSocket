@@ -7,7 +7,8 @@ Release notes:
   - WebSocket extensions not supported;
   - secure connections implemented without client authentication.
 
-Overview:
+Overview (setter marked with * has corresponding getter):
+
   Server constructors:
     WsServer(int bindPort, WsHandler handler) throws NullPointerException;
     WsServer(InetSocketAddress bindAddr, WsHandler handler) throws NullPointerException;
@@ -18,13 +19,13 @@ Overview:
       int DEFAULT_SERVER_PORT;
       int DEFAULT_MAX_CONNECTIONS = 8;
     Methods:
+      void setMaxConnections(int max) throws IllegalArgumentException; //*
+      void setMaxMessageLength(int len) throws IllegalArgumentException; //* incoming messages
+      void setHandshakeSoTimeout(int millis); //*
+      void setConnectionSoTimeout(int millis, boolean ping); //*
+      boolean isPingEnabled();
       boolean isRunning();
       boolean isSecure();
-      void setMaxConnections(int max) throws IllegalArgumentException; //get
-      void setHandshakeSoTimeout(int millis); // get
-      void setConnectionSoTimeout(int millis, boolean ping);
-      boolean isPingEnabled();
-      void setMaxMessageLength(int len) throws IllegalArgumentException; // incoming messages
       void start() throws Exception;
       void stop();
 
@@ -44,22 +45,21 @@ Overview:
          UNSUPPORTED_EXTENSION, INTERNAL_ERROR, TRY_AGAIN_LATER
       See:
          https://tools.ietf.org/html/rfc6455#section-7.4
-         https://www.iana.org/assignments/websocket/websocket.xml#close-code-number
          https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+         https://www.iana.org/assignments/websocket/websocket.xml#close-code-number
 
     Methods:
-      static void setKeyFile(File keyFile, String passphrase);
-      void setHandshakeSoTimeout(int millis); 
-      void setConnectionSoTimeout(int millis, boolean ping); 
+      static void setKeyFile(File keyFile, String passphrase); // to jvm trustStore
+      void setMaxMessageLength(int len) throws IllegalArgumentException; //* incoming messages
+      void setHandshakeSoTimeout(int millis); //*
+      void setConnectionSoTimeout(int millis, boolean ping); //*
       boolean isPingEnabled();
-      void setMaxMessageLength(int len) throws IllegalArgumentException; // incoming messages
-      void setHandler(WsHandler handler) throws NullPointerException;
+      void setHandler(WsHandler handler) throws NullPointerException; //*
       boolean isOpen();
       boolean isSecure();
       boolean isClientSide();
       String getPath();
       String getPeerHost();
-      int getMaxMessageLength();
       void send(String message) throws IOException;
       void send(byte[] message) throws IOException;
       void streamText(InputStream is) throws IOException;
