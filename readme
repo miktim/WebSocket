@@ -1,5 +1,5 @@
 # Java SE WebSocket listener/connector,  MIT (c) 2020 miktim@mail.ru
-Down with the client-server paradigm!
+Down with the client-server paradigm! On development stage...
 
 Release notes:
   - java SE 1.7+, Android compatible;
@@ -10,29 +10,34 @@ Release notes:
 
 Overview:
   Constructors:
-    WsManager();
-    WsManager(String netInterface);
+    WebSocket();
+    WebSocket(InetAddress bindAddr);
 
     Constants (may vary):
-      String MANAGER_VERSION = "0.2.0";
+      String VERSION = "0.2.0";
       int DEFAULT_LISTENER_MAX_CONNECTIONS = 8;
-      int DEFAULT_HANDSHAKE_TIMEOUT = 0;
-      int DEFAULT_PING_TIMEOUT = 0;
+      int DEFAULT_HANDSHAKE_TIMEOUT = 5000;
+      int DEFAULT_CONNECTION_TIMEOUT = 5000;
       int DEFAULT_MAX_MESSAGE_LENGTH = 4096; // incoming messages
     Methods:
       void setListenerMaxConnections(int max) throws IllegalArgumentExceptions;
       void setHandshakeTimeout(int millis);
-      void setPingTimeout(int millis, boolean ping);
+      void setConnectionTimeout(int millis, boolean pingEnabled);
       void setMaxMessageLength(int len) throws IllegalArgumentException;
-      void setKeystore(File jksFile, String passphrase);
-      long listen(int port, WsHandler handler); // listener Id returns
-      long listenSafely(int port, WsHandler handler); // listener Id returns
+      void setKeystore(File keyFile, String passphrase);
+      WsListener listen(int port, WsHandler handler) throws Exception; //
+      WsListener listenSafely(int port, WsHandler handler) throws Exception; //
       WsConnection connect(String uri, WsHahdler handler) throws Exception;
-      void closeListener(long listenerId);
       void closeAll();
 
   Interface:
-    WsHandler  see: https://github.com/miktim/WsServer/blob/master/srcs/WsHandler.java
+    WsHandler  see: https://github.com/miktim/WsServer/blob/new/srcs/WsHandler.java
+
+  WsListener:
+    Methods:
+      boolean isOpen();
+      boolean isSecure();
+      void close();
 
   WsConnection:
     Constants:
@@ -43,7 +48,6 @@ Overview:
       boolean isListenerSide();
       String getPath();
       String getPeerHost();
-      int getMaxMessageLength();
       void send(String message) throws IOException;
       void send(byte[] message) throws IOException;
       void streamText(InputStream is) throws IOException;
@@ -53,5 +57,5 @@ Overview:
       int getClosureStatus();
 
 Usage example see in:
-  https://github.com/miktim/WebSocket/blob/master/test/WsClientTest.java
-  https://github.com/miktim/WebSocket/blob/master/test/WsServerTest.java
+  https://github.com/miktim/WebSocket/blob/new/test/WsClientTest.java
+  https://github.com/miktim/WebSocket/blob/new/test/WsServerTest.java
