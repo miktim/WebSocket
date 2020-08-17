@@ -1,4 +1,5 @@
 # Java SE lightweight WebSocket client/server package,  MIT (c) 2020 miktim@mail.ru
+New look: https://github.com/miktim/WebSocket/tree/new
 
 Release notes:
   - java SE 1.7+, Android compatible;
@@ -21,8 +22,8 @@ Overview (setter marked with * has corresponding getter):
     Methods:
       void setMaxConnections(int max) throws IllegalArgumentException; //*
       void setMaxMessageLength(int len) throws IllegalArgumentException; //* incoming messages
-      void setHandshakeSoTimeout(int millis); //*
-      void setConnectionSoTimeout(int millis, boolean ping); //*
+      void setHandshakeSoTimeout(int millis); //* opening/closing handshake
+      void setConnectionSoTimeout(int millis, boolean pingEnable); //*
       boolean isPingEnabled();
       boolean isRunning();
       boolean isSecure();
@@ -52,7 +53,7 @@ Overview (setter marked with * has corresponding getter):
       static void setKeyFile(File keyFile, String passphrase); // to jvm trustStore
       void setMaxMessageLength(int len) throws IllegalArgumentException; //* incoming messages
       void setHandshakeSoTimeout(int millis); //*
-      void setConnectionSoTimeout(int millis, boolean ping); //*
+      void setConnectionSoTimeout(int millis, boolean pingEnable); //*
       boolean isPingEnabled();
       void setHandler(WsHandler handler) throws NullPointerException; //*
       boolean isOpen();
@@ -77,4 +78,7 @@ Overview (setter marked with * has corresponding getter):
 Usage example see in:
   https://github.com/miktim/WebSocket/blob/master/test/WsClientTest.java
   https://github.com/miktim/WebSocket/blob/master/test/WsServerTest.java
+  
+New look: https://github.com/miktim/WebSocket/tree/new
+
   
