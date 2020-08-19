@@ -192,11 +192,10 @@ public class WsServer {
                     if (Thread.currentThread().getThreadGroup().activeCount()
                             > server.maxConnections) {
                         connection.close(WsConnection.TRY_AGAIN_LATER);
-                        connection.getHandler().onClose(connection);
                     } else {
                         connection.getHandler().onOpen(connection);
-                        connection.listenInputStream();
                     }
+                    connection.listenInputStream();
                 } else {
                     connection.close(WsConnection.GOING_AWAY); // server stopped
                 }

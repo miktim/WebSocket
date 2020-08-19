@@ -46,7 +46,7 @@ public class WsServerTest {
 
             @Override
             public void onError(WsConnection con, Exception e) {
-                System.out.println("Handle ERROR: " 
+                System.out.println("Handle ERROR: "
                         + (con != null ? con.getPath() : null)
                         + " " + e.toString()
                         + " Closure status:"
@@ -105,8 +105,8 @@ public class WsServerTest {
             }
         }, stopTimeout);
         System.out.println("\r\nTest WebSocket server"
-                +"\r\nmaxMessageLength = " + wsServer.getMaxMessageLength()
-                +"\r\nServer will be stopped after "
+                + "\r\nIncoming maxMessageLength = " + wsServer.getMaxMessageLength()
+                + "\r\nServer will be stopped after "
                 + (stopTimeout / 1000) + " seconds");
         wsServer.start();
         /* Android
