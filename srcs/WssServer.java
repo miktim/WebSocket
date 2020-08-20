@@ -1,6 +1,5 @@
 /*
  * WssServer. Secure WebSocket Server, MIT (c) 2020 miktim@mail.ru
- *
  * Created: 2020-03-31
  */
 package org.samples.java.websocket;

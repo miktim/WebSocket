@@ -1,10 +1,9 @@
 /*
- * WebSocket client/server test. MIT (c) 2020 miktim@mail.ru
+ * WssServer, secure WsConnection test. MIT (c) 2020 miktim@mail.ru
  */
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.samples.java.websocket.WsConnection;
@@ -19,6 +18,11 @@ public class WsClientTest {
         if (args.length > 0) {
             path = args[0];
         }
+
+        String serverHost = "localhost";
+        int port = 8000 + WssServer.DEFAULT_SERVER_PORT;
+        String serverAddr = serverHost + ":" + port;
+
         WsHandler serverHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
@@ -134,12 +138,8 @@ public class WsClientTest {
             }
         };
 
-        int port = 8000 + WssServer.DEFAULT_SERVER_PORT;
-        String serverHost = "localhost";
-        String serverAddr = serverHost + ":" + port;
         int maxMsgLen = 100000;
-        final WsServer wsServer = new WssServer(
-                new InetSocketAddress(serverHost, port), serverHandler);
+        final WsServer wsServer = new WssServer(port, serverHandler);
         wsServer.setConnectionSoTimeout(1000, true); // ping
         wsServer.setMaxMessageLength(maxMsgLen);
         /* Android       
@@ -147,7 +147,6 @@ public class WsClientTest {
          */
 // /* Desktop       
 //        WsConnection.setKeyFile(new File(path, "localhost.jks"), "password"); // from java 1.8
-//        WsConnection.setKeyFile(new File(path,"samplecacerts"), "changeit"); // need client auth
         WsConnection.setKeyFile(new File(path, "testkeys"), "passphrase");
 // */
         int stopTimeout = 10000;
@@ -159,10 +158,13 @@ public class WsClientTest {
                 timer.cancel();
             }
         }, stopTimeout);
-        System.out.println("\r\nTest WebSocket secure client"
+        System.out.println("\r\nWssServer, secure WsConnection test ("
+                + WsConnection.VERSION + ")"
+                + "\r\nClient connects to " + serverAddr
                 + "\r\nServer maxConnections = 1"
                 + "\r\nServer will be stopped after "
-                + (stopTimeout / 1000) + " seconds");
+                + (stopTimeout / 1000) + " seconds"
+                + "\r\n");
         wsServer.setMaxConnections(1);
         wsServer.start();
         try {

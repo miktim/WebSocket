@@ -28,16 +28,16 @@ Overview (setter marked with * has corresponding getter):
       boolean isRunning();
       boolean isSecure();
       void start() throws Exception;
-      void stop();
+      void stop(); // closes all active connections
 
   Interface:
     WsHandler  see: https://github.com/miktim/WsServer/blob/master/srcs/WsHandler.java
 
   WsConnection:
     Constants (may vary):
-      String WS_VERSION = "0.1.5";
+      String VERSION = "1.1.5";
       int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;
-      int DEFAULT_CONNECTION_SO_TIMEOUT = 5000; // ping enabled
+      int DEFAULT_CONNECTION_SO_TIMEOUT = 10000; // ping enabled
       int DEFAULT_MAX_MESSAGE_LENGTH = 4096; // incoming messages
 
       WebSocket closure status codes:

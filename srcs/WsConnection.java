@@ -35,13 +35,13 @@ import java.util.Arrays;
 import java.util.Random;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
-//import java.util.Base64; // from java 1.8
+//import java.util.Base64; // java 1.8+
 
 public class WsConnection {
 
-    public static final String WS_VERSION = "0.1.5";
+    public static final String VERSION = "1.1.5";
     public static final int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;
-    public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 5000;
+    public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 10000;
     public static final int DEFAULT_MAX_MESSAGE_LENGTH = 2048;
 
 // Closure status codes see:
@@ -344,6 +344,7 @@ public class WsConnection {
     }
 
     private void handshakeServer() throws IOException {
+        closureStatus = PROTOCOL_ERROR;
         String requestLine = "GET " + requestURI.getPath() + " HTTP/1.1";
         byte[] byteKey = new byte[16];
 //        (new SecureRandom()).nextBytes(byteKey);
@@ -437,7 +438,7 @@ public class WsConnection {
     void listenInputStream() throws IOException {
         BufferedInputStream is = new BufferedInputStream(
                 socket.getInputStream(), this.maxMessageLength);
-        boolean pingSended = false;
+        boolean pingSent = false;
         boolean maskedData;
         int opData = 0;
         byte[] payload = EMPTY_PAYLOAD;
@@ -505,6 +506,7 @@ public class WsConnection {
                         throw new EOFException("frame_mask");
                     }
                 }
+// client MUST mask the data, server - no
                 if (Boolean.compare(this.isClientSide, maskedData) == 0) {
                     closeDueTo(PROTOCOL_ERROR, new ProtocolException("mask_mismatch"));
                 }
@@ -548,7 +550,7 @@ public class WsConnection {
                 if (maskedData) {
                     umaskPayload(service, framePayload);
                 }
-// execute frame op
+// perform frame op
                 switch (b1) {
                     case OP_CONTINUATION:
                         if (this.closureStatus == 0) {
@@ -569,13 +571,13 @@ public class WsConnection {
                         break;
                     }
                     case OP_PONG: {
-                        if (pingSended
+                        if (pingSent
                                 && Arrays.equals(framePayload, PING_PAYLOAD)) {
                         } else {
                             closeDueTo(PROTOCOL_ERROR,
                                     new ProtocolException("unexpected_pong"));
                         }
-                        pingSended = false;
+                        pingSent = false;
                         break;
                     }
                     case OP_PING: {
@@ -584,6 +586,8 @@ public class WsConnection {
                     }
                     case OP_CLOSE: { // close handshake
                         done = true;
+                        pingEnabled = false;
+                        socket.setSoTimeout(handshakeSoTimeout);
                         if (closureStatus == 0) {
                             sendPayload(OP_CLOSE, framePayload);
                             if (framePayload.length > 1) {
@@ -601,8 +605,8 @@ public class WsConnection {
                     }
                 }
             } catch (SocketTimeoutException e) {
-                if (this.pingEnabled && !pingSended) {
-                    pingSended = true;
+                if (this.pingEnabled && !pingSent) {
+                    pingSent = true;
                     sendPayload(OP_PING, PING_PAYLOAD);
                 } else {
                     done = true;

@@ -1,12 +1,11 @@
 Testing:
   - WsServer has been tested with desktop browsers:
-      Firefox 68.8, Chrome 83.0, Chromium 81.0, Opera 68.0, Yandex 20.4 (MS Edge is not supported);
+      Firefox 68.8, Chrome 83.0, Chromium 81.0, Opera 68.0, Yandex 20.4 (MS Edge - it's unknown);
   - WssServer was tested by Chromium with “chrome://flags/#allow-insecure-localhost” enabled
       and with own secure client.
 
 Certificates (localhost self-signed):
   From https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/index.html
     - testkeys: Java 1.7+;
-    - samplecacert: require client authentification.
   Self-made:
     - localhost.jks: Java 1.8+

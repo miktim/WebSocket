@@ -134,8 +134,8 @@ public class WsServer {
         private final WsServer server;
         private ThreadGroup threadGroup;
 
-        WsServerThread(WsServer wss) {
-            server = wss;
+        WsServerThread(WsServer srv) {
+            server = srv;
         }
 
         @Override

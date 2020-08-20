@@ -10,6 +10,7 @@
     </head>
     <body>
         <div>WsServer test<br><br></div>
+<!-- server throws error 1002 (Protocol Error) -->
         <script src="http://localhost:8080/http_request.js"></script>
         <script>
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
@@ -20,7 +21,7 @@
             var maxMsgEnd;
             var testNo = 0;
             var tests = [
-                'server handler (request path) not found (1008 expected)',
+                'server handler "did not find" the request path (1008 expected)',
                 'closing websocket by browser (1005 expected)',
                 'closing websocket by the server handler (1000 expected)',
                 'waiting message too big (1009 expected)',
@@ -73,7 +74,7 @@
 // event: .code .reason .wasClean
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
                     if(event.target.url.endsWith("3")){
-                        show((maxMsgLength) + " chars received:   ..." + maxMsgEnd);
+                        show((maxMsgLength*2) + " chars sent:   ..." + maxMsgEnd);
                     }
                     show('onclose: ' + event.code
                             + ':' + event.reason
@@ -83,7 +84,7 @@
                     if (++testNo < tests.length)
                         connectWs(testuri + testNo);
                     else
-                        show('Test completed');
+                        show('Completed.');
                 };
             }
 

@@ -1,6 +1,5 @@
 /*
- * WebSocket server test MIT (c) 2020 miktim@mail.ru
- *
+ * WebSocket server test. MIT (c) 2020 miktim@mail.ru
  * Created: 2020-03-09
  */
 
@@ -104,10 +103,11 @@ public class WsServerTest {
                 timer.cancel();
             }
         }, stopTimeout);
-        System.out.println("\r\nTest WebSocket server"
+        System.out.println("\r\nWsServer test"
                 + "\r\nIncoming maxMessageLength = " + wsServer.getMaxMessageLength()
                 + "\r\nServer will be stopped after "
-                + (stopTimeout / 1000) + " seconds");
+                + (stopTimeout / 1000) + " seconds"
+                + "\r\n");
         wsServer.start();
         /* Android
         Intent browserIntent = new Intent(Intent.ACTION_VIEW,
