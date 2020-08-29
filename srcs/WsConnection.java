@@ -28,6 +28,7 @@ import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.BufferUnderflowException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 //import java.security.SecureRandom;
@@ -39,10 +40,10 @@ import javax.net.ssl.SSLSocketFactory;
 
 public class WsConnection {
 
-    public static final String VERSION = "1.1.6";
+    public static final String VERSION = "1.2.0";
     public static final int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 10000;
-    public static final int DEFAULT_MAX_MESSAGE_LENGTH = 2048;
+    public static final int DEFAULT_MAX_MESSAGE_LENGTH = 4096;
 
 // Closure status codes see:
 //  https://tools.ietf.org/html/rfc6455#section-7.4
@@ -52,11 +53,11 @@ public class WsConnection {
     public static final int GOING_AWAY = 1001; //* 
     public static final int PROTOCOL_ERROR = 1002; //* 
     public static final int UNSUPPORTED_DATA = 1003; //* 
-    public static final int NO_STATUS = 1005; //* closing without code
-    public static final int ABNORMAL_CLOSURE = 1006; // 
-    public static final int INVALID_DATA = 1007; //* 
+    public static final int NO_STATUS = 1005; //* 
+    public static final int ABNORMAL_CLOSURE = 1006; //* 
+    public static final int INVALID_DATA = 1007; // 
     public static final int POLICY_VIOLATION = 1008; //
-    public static final int MESSAGE_TOO_BIG = 1009; // *
+    public static final int MESSAGE_TOO_BIG = 1009; //*
     public static final int UNSUPPORTED_EXTENSION = 1010; // 
     public static final int INTERNAL_ERROR = 1011; //* 
     public static final int TRY_AGAIN_LATER = 1013; //*  
@@ -71,6 +72,7 @@ public class WsConnection {
     private final boolean isClientSide;
     private final boolean isSecure;
     private int closureStatus = GOING_AWAY;
+    private String closureReason = "";
     private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH;
     private int handshakeSoTimeout = DEFAULT_HANDSHAKE_SO_TIMEOUT;
     private int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
@@ -185,18 +187,30 @@ public class WsConnection {
         return this.closureStatus;
     }
 
+    public String getClosureReason() {
+        return this.closureReason;
+    }
+
     public void close() {
         close(NO_STATUS);
     }
 
-    public void close(int status) {
+    public void close(int closureStatus) {
+        close(closureStatus, "");
+    }
+
+    public synchronized void close(int status, String reason) {
         if (this.closureStatus == 0) {
             status = (status & 0x7FFF) == 0 ? NO_STATUS : status;
+            reason = reason == null ? "" : reason;
             byte[] payload = new byte[0];
             if (status != NO_STATUS) {
                 payload = new byte[2];
                 payload[0] = (byte) (status >>> 8);
                 payload[1] = (byte) (status & 0xFF);
+                byte[] msgBytes = reason.getBytes(StandardCharsets.UTF_8);
+                payload = combine(payload,
+                        Arrays.copyOf(msgBytes, Math.min(msgBytes.length, 123)));
             }
             try {
                 sendPayload(OP_CLOSE, payload);
@@ -476,7 +490,7 @@ public class WsConnection {
                         break;
                     }
                     default: {
-                        closeDueTo(PROTOCOL_ERROR, new ProtocolException("unsupported_op"));
+                        closeDueTo(UNSUPPORTED_DATA, new ProtocolException("unsupported_op"));
                     }
                 }
 // get frame payload length
@@ -505,7 +519,7 @@ public class WsConnection {
                         throw new EOFException("frame_mask");
                     }
                 }
-// client MUST mask the data, server - no
+// client MUST mask the data, server MUST NOT
                 if (Boolean.compare(this.isClientSide, maskedData) == 0) {
                     closeDueTo(PROTOCOL_ERROR, new ProtocolException("mask_mismatch"));
                 }
@@ -555,7 +569,8 @@ public class WsConnection {
                             if (opData == OP_BINARY) {
                                 handler.onMessage(this, payload);
                             } else {
-                                handler.onMessage(this, new String(payload, "utf-8"));
+                                handler.onMessage(this,
+                                        new String(payload, StandardCharsets.UTF_8));
                             }
                         }
                         opData = 0;
@@ -583,6 +598,10 @@ public class WsConnection {
                             if (framePayload.length > 1) {
                                 closureStatus = -(((framePayload[0] & 0xFF) << 8)
                                         + (framePayload[1] & 0xFF));
+                                closureReason = new String(
+                                        Arrays.copyOfRange(framePayload, 2, framePayload.length - 2),
+                                        StandardCharsets.UTF_8
+                                );
                             } else {
                                 closureStatus = -NO_STATUS;
                             }
@@ -590,7 +609,7 @@ public class WsConnection {
                         break;
                     }
                     default: {
-                        closeDueTo(PROTOCOL_ERROR,
+                        closeDueTo(UNSUPPORTED_DATA,
                                 new ProtocolException("unsupported_op"));
                     }
                 }
@@ -604,7 +623,7 @@ public class WsConnection {
                 }
             } catch (EOFException e) {
                 done = true;
-                closeDueTo(ABNORMAL_CLOSURE,e);
+                closeDueTo(ABNORMAL_CLOSURE, e);
             } catch (Exception e) {
                 done = true;
                 closeDueTo(INTERNAL_ERROR, e);

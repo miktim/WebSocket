@@ -25,7 +25,7 @@ public class WsServerTest {
                 System.out.println("Handle OPEN: " + con.getPath()
                         + " Peer: " + con.getPeerHost());
                 if (!con.getPath().startsWith("/test")) {
-                    con.close(WsConnection.POLICY_VIOLATION);
+                    con.close(WsConnection.POLICY_VIOLATION, "path not found");
                     return;
                 }
                 try {
@@ -69,6 +69,7 @@ public class WsServerTest {
 //                        con.send(s+s);
                         con.streamText(
                                 new ByteArrayInputStream((s + s).getBytes("utf-8")));
+                    } else if (testPath.endsWith("4")) { // ping, wait server shutdown
                     } else {
                         con.send(s);
                     }
