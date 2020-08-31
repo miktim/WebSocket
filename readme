@@ -14,17 +14,17 @@ Overview:
     WebSocket(InetAddress bindAddr);
 
     Constants (may vary):
-      String VERSION = "0.2.0";
+      String VERSION = "0.0.1";
       int DEFAULT_LISTENER_MAX_CONNECTIONS = 8;
       int DEFAULT_HANDSHAKE_TIMEOUT = 5000;
-      int DEFAULT_CONNECTION_TIMEOUT = 5000;
+      int DEFAULT_CONNECTION_TIMEOUT = 10000;// ping enabled
       int DEFAULT_MAX_MESSAGE_LENGTH = 4096; // incoming messages
     Methods:
+      static void setKeystore(File keyFile, String passphrase);
       void setListenerMaxConnections(int max) throws IllegalArgumentExceptions;
       void setHandshakeTimeout(int millis);
       void setConnectionTimeout(int millis, boolean pingEnabled);
       void setMaxMessageLength(int len) throws IllegalArgumentException;
-      void setKeystore(File keyFile, String passphrase);
       WsListener listen(int port, WsHandler handler) throws Exception; //
       WsListener listenSafely(int port, WsHandler handler) throws Exception; //
       WsConnection connect(String uri, WsHahdler handler) throws Exception;
@@ -43,6 +43,7 @@ Overview:
     Constants:
       WebSocket closure status codes see: https://tools.ietf.org/html/rfc6455#section-7.4
     Methods:
+      void setHandler(WsHandler handler) throws NullPointerException;
       boolean isOpen();
       boolean isSecure();
       boolean isListenerSide();
@@ -53,8 +54,9 @@ Overview:
       void streamText(InputStream is) throws IOException;
       void streamBinary(InputStream is) throws IOException;
       void close();
-      void close(int statusCode);
+      void close(int statusCode, String reason);
       int getClosureStatus();
+      String getClosureReason();
 
 Usage example see in:
   https://github.com/miktim/WebSocket/blob/new/test/WsClientTest.java
