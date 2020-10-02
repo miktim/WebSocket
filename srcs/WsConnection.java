@@ -40,7 +40,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 public class WsConnection {
 
-    public static final String VERSION = "1.2.0";
+    public static final String VERSION = "1.2.1";
     public static final int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 10000;
     public static final int DEFAULT_MAX_MESSAGE_LENGTH = 4096;
@@ -192,7 +192,7 @@ public class WsConnection {
     }
 
     public void close() {
-        close(NO_STATUS);
+        close(NO_STATUS, "");
     }
 
     public void close(int closureStatus) {
@@ -202,13 +202,12 @@ public class WsConnection {
     public synchronized void close(int status, String reason) {
         if (this.closureStatus == 0) {
             status = (status & 0x7FFF) == 0 ? NO_STATUS : status;
-            reason = reason == null ? "" : reason;
             byte[] payload = new byte[0];
             if (status != NO_STATUS) {
                 payload = new byte[2];
                 payload[0] = (byte) (status >>> 8);
                 payload[1] = (byte) (status & 0xFF);
-                byte[] msgBytes = reason.getBytes(StandardCharsets.UTF_8);
+                byte[] msgBytes = (reason == null ? "" : reason).getBytes(StandardCharsets.UTF_8);
                 payload = combine(payload,
                         Arrays.copyOf(msgBytes, Math.min(msgBytes.length, 123)));
             }
@@ -639,10 +638,13 @@ public class WsConnection {
     void closeSocket() {
         if (this.isOpen()) {
             try {
-                Thread.sleep(300);
+//                if (this.isClientSide) {
+                Thread.sleep(300); //?2MSL(60sec)
+//                }
                 if (this.isSecure) {
                     ((SSLSocket) this.socket).close();
                 } else {
+                    this.socket.shutdownInput();
                     this.socket.close();
                 }
             } catch (IOException | InterruptedException e) {
@@ -685,8 +687,8 @@ public class WsConnection {
 
     private synchronized void sendPayload(int opData, byte[] payload)
             throws IOException {
-        if (closureStatus != 0 || !isOpen()) {
-            return;
+        if (closureStatus != 0) { // || !isOpen()) {
+            return; // close frame sent, ignore output
         }
         boolean masked = this.isClientSide;
         BufferedOutputStream os
@@ -711,53 +713,53 @@ public class WsConnection {
             }
             header = combine(header, mask); // 32bit int payload length
         }
-        try {
-            if (masked) {
-                header[1] |= MASKED_DATA;
+        if (masked) {
+            header[1] |= MASKED_DATA;
 //            (new SecureRandom()).nextBytes(mask);
-                (new Random()).nextBytes(mask); // Random enough
-                header = combine(header, mask); // add mask
-                byte[] maskedPayload = payload.clone();
-                umaskPayload(mask, maskedPayload);
-                os.write(header, 0, header.length);
-                os.write(maskedPayload, 0, payload.length);
-            } else {
-                os.write(header, 0, header.length);
-                os.write(payload, 0, payload.length);
-            }
-            os.flush();
-        } catch (IOException e) {
-            this.close(ABNORMAL_CLOSURE);
-            throw e;
+            (new Random()).nextBytes(mask); // Random enough
+            header = combine(header, mask); // add mask
+            byte[] maskedPayload = payload.clone();
+            umaskPayload(mask, maskedPayload);
+            os.write(header, 0, header.length);
+            os.write(maskedPayload, 0, payload.length);
+        } else {
+            os.write(header, 0, header.length);
+            os.write(payload, 0, payload.length);
         }
+        os.flush();
     }
 
     private static final int STREAM_BUFFER_SIZE = 2048;
 
     private synchronized void sendOrStreamData(
             int opData, byte[] msg, InputStream is) throws IOException {
-        if (is != null) {
-            BufferedInputStream bis = new BufferedInputStream(is);
-            byte[] buf = new byte[STREAM_BUFFER_SIZE];
-            int op = opData & 0xF;
-            int len;
-            while (true) {
-                try {
-                    len = this.read(bis, buf, 0, buf.length);
-                } catch (IOException e) {
-                    this.close(INTERNAL_ERROR);
-                    throw e;
+        try {
+            if (is != null) {
+                BufferedInputStream bis = new BufferedInputStream(is);
+                byte[] buf = new byte[STREAM_BUFFER_SIZE];
+                int op = opData & 0xF;
+                int len;
+                while (true) {
+                    try {
+                        len = this.read(bis, buf, 0, buf.length);
+                    } catch (IOException e) {
+                        this.close(INTERNAL_ERROR);
+                        throw e;
+                    }
+                    if (len < buf.length) {
+                        break;
+                    }
+                    sendPayload(op, buf);
+                    op = OP_CONTINUATION;
                 }
-                if (len < buf.length) {
-                    break;
-                }
-                sendPayload(op, buf);
-                op = OP_CONTINUATION;
-            }
 // be sure to send the final frame!            
-            sendPayload(op | OP_FINAL, Arrays.copyOf(buf, len >= 0 ? len : 0));
-        } else {
-            sendPayload(opData | OP_FINAL, msg);
+                sendPayload(op | OP_FINAL, Arrays.copyOf(buf, len >= 0 ? len : 0));
+            } else {
+                sendPayload(opData | OP_FINAL, msg);
+            }
+        } catch (IOException e) {
+            this.close(ABNORMAL_CLOSURE); // guess send error
+            throw e;
         }
     }
 
