@@ -185,12 +185,13 @@ public class WsServer {
         public void run() {
             try {
                 if (connection == null) {
+                    boolean busy = Thread.currentThread().getThreadGroup().activeCount()
+                            > server.maxConnections;
                     connection = new WsConnection(socket, server.handler);
                     connection.handshakeClient();
                     connection.setMaxMessageLength(server.maxMessageLength);
                     connection.setConnectionSoTimeout(server.connectionSoTimeout, server.pingEnabled);
-                    if (Thread.currentThread().getThreadGroup().activeCount()
-                            > server.maxConnections) {
+                    if (busy) {
                         connection.close(WsConnection.TRY_AGAIN_LATER);
                     } else {
                         connection.getHandler().onOpen(connection);
