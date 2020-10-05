@@ -1,11 +1,13 @@
 # Java SE WebSocket listener/connector,  MIT (c) 2020 miktim@mail.ru
 Down with the client-server paradigm! On development stage...
+Traditional approach: https://github.com/miktim/WebSocket/tree/master
 
 Release notes:
   - java SE 1.7+, Android compatible;
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - WebSocket version: 13;
   - WebSocket extensions not supported;
+  - message size is limited to 2147483647 bytes (Integer.MAX_VALUE);
   - secure connections implemented without client authentication.
 
 Overview:
@@ -14,17 +16,13 @@ Overview:
     WebSocket(InetAddress bindAddr);
 
     Constants (may vary):
-      String VERSION = "0.0.1";
-      int DEFAULT_LISTENER_MAX_CONNECTIONS = 8;
-      int DEFAULT_HANDSHAKE_TIMEOUT = 5000;
-      int DEFAULT_CONNECTION_TIMEOUT = 10000;// ping enabled
-      int DEFAULT_MAX_MESSAGE_LENGTH = 4096; // incoming messages
+      String VERSION = "2.0.0";
+      int DEFAULT_HANDSHAKE_TIMEOUT = 5000;  // milliseconds
+      int DEFAULT_CONNECTION_TIMEOUT = 10000;// milliseconds, ping enabled
     Methods:
       static void setKeystore(File keyFile, String passphrase);
-      void setListenerMaxConnections(int max) throws IllegalArgumentExceptions;
       void setHandshakeTimeout(int millis);
       void setConnectionTimeout(int millis, boolean pingEnabled);
-      void setMaxMessageLength(int len) throws IllegalArgumentException;
       WsListener listen(int port, WsHandler handler) throws Exception; //
       WsListener listenSafely(int port, WsHandler handler) throws Exception; //
       WsConnection connect(String uri, WsHahdler handler) throws Exception;
@@ -43,21 +41,19 @@ Overview:
     Constants:
       WebSocket closure status codes see: https://tools.ietf.org/html/rfc6455#section-7.4
     Methods:
-      void setHandler(WsHandler handler) throws NullPointerException;
       boolean isOpen();
       boolean isSecure();
       boolean isListenerSide();
       String getPath();
       String getPeerHost();
+      void setHandler(WsHandler handler) throws NullPointerException;
       void send(String message) throws IOException;
       void send(byte[] message) throws IOException;
-      void streamText(InputStream is) throws IOException;
-      void streamBinary(InputStream is) throws IOException;
       void close();
       void close(int statusCode, String reason);
-      int getClosureStatus();
+      int getClosureCode();
       String getClosureReason();
 
 Usage example see in:
-  https://github.com/miktim/WebSocket/blob/new/test/WsClientTest.java
-  https://github.com/miktim/WebSocket/blob/new/test/WsServerTest.java
+  https://github.com/miktim/WebSocket/blob/new/test/WsConnectionTest.java
+  https://github.com/miktim/WebSocket/blob/new/test/WsListenerTest.java
