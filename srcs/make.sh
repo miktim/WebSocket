@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo $(javac --version)
+echo $(javac -version)
 jname=WebSocket
 cpath=./org/samples/java/websocket
 if [ ! -d ${cpath} ]
@@ -8,11 +8,15 @@ if [ ! -d ${cpath} ]
   else rm -f ${cpath}/*.*
 fi
 javac -Xstdout ./compile.log -Xlint:unchecked -cp ${cpath} -d ./ \
-  WsHandler.java Headers.java WsConnection.java WsServer.java WssServer.java
+  WsHandler.java Headers.java WsConnection.java WebSocket.java WsListener.java
 if [ $? -eq 0 ] ; then
   jar cvf ./${jname}.jar ${cpath}/*.class
 #  javadoc -d ./${jname}Doc -nodeprecated -use package-info.java \
-#  WsHandler.java WsConnection.java WsServer.java WssServer.java
+#  WsHandler.java WsConnection.java WebSocket.java WsListener.java
 fi
 rm -f -r ./org
-more < ./compile.log
+#more < ./compile.log
+cat compile.log
+echo
+echo Completed. Press any key...
+read

@@ -1,38 +1,38 @@
 /*
- * WebSocket server test MIT (c) 2020 miktim@mail.ru
- *
+ * WebSocket listener test. MIT (c) 2020 miktim@mail.ru
  * Created: 2020-03-09
  */
 
-import java.io.ByteArrayInputStream;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
+import java.net.InetAddress;
 import org.samples.java.websocket.WsConnection;
 import org.samples.java.websocket.WsHandler;
-import org.samples.java.websocket.WsServer;
-import org.samples.java.websocket.WssServer;
+import org.samples.java.websocket.WsListener;
+import org.samples.java.websocket.WebSocket;
 
-public class WsServerTest {
+public class WsListenerTest {
+
+    public static final int MAX_MESSAGE_LENGTH = 500000;
 
     public static void main(String[] args) throws Exception {
         String path = (new File(".")).getAbsolutePath();
         if (args.length > 0) {
             path = args[0];
         }
-        WsHandler serverHandler = new WsHandler() {
+        WsHandler listenerHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
                 System.out.println("Handle OPEN: " + con.getPath()
                         + " Peer: " + con.getPeerHost());
                 if (!con.getPath().startsWith("/test")) {
-                    con.close(WsConnection.POLICY_VIOLATION);
+                    con.close(WsConnection.POLICY_VIOLATION, "path not found");
                     return;
                 }
                 try {
-                    con.send("Hello Client!");
+                    con.send("Hello Browser!");
                 } catch (IOException e) {
                     System.out.println("Handle OPEN: " + con.getPath()
                             + " send error: " + e.toString());
@@ -43,14 +43,16 @@ public class WsServerTest {
             @Override
             public void onClose(WsConnection con) {
                 System.out.println("Handle CLOSE: " + con.getPath()
-                        + " Closure status:" + con.getClosureStatus());
+                        + " Closure status:" + con.getClosureCode());
             }
 
             @Override
             public void onError(WsConnection con, Exception e) {
-                System.out.println("Handle ERROR: " + con.getPath()
+                System.out.println("Handle ERROR: "
+                        + (con != null ? con.getPath() : null)
                         + " " + e.toString()
-                        + " Closure status:" + con.getClosureStatus());
+                        + " Closure status:"
+                        + (con != null ? con.getClosureCode() : null));
 //                e.printStackTrace();
             }
 
@@ -60,15 +62,19 @@ public class WsServerTest {
                     String testPath = con.getPath();
                     if (testPath.endsWith("2")) { // check handler closure
                         if (s.length() > 128) {
-                            con.close();
+                            con.close(WsConnection.NORMAL_CLOSURE, "");
                         } else {
                             con.send(s + s);
                         }
 
                     } else if (testPath.endsWith("3")) { // check message too big
 //                        System.out.println("MsgLen:" + s.length());
-                        con.streamText(
-                                new ByteArrayInputStream((s + s).getBytes("utf-8")));
+                        if (s.getBytes().length > MAX_MESSAGE_LENGTH) {
+                            con.close(WsConnection.MESSAGE_TOO_BIG, "");
+                        } else {
+                            con.send(s + s);
+                        }
+                    } else if (testPath.endsWith("4")) { // ping, wait listener shutdown
                     } else {
                         con.send(s);
                     }
@@ -87,42 +93,35 @@ public class WsServerTest {
                             + " send error: " + e.toString());
                 }
             }
-            /*
-            @Override
-            public void onTextStream(WsConnection con, InputStream is) {
-            }
-            @Override
-            public void onBinaryStream(WsConnection con, InputStream is) {
-            }
-             */
         };
-
-        final WsServer wsServer = new WsServer(8080, serverHandler);
-        wsServer.setConnectionSoTimeout(5000, true); // ping
-        wsServer.setMaxMessageLength(100000);
-//        wsServer.setKeystore(new File(path, "localhost.jks"), "password");// java 1.8
-//        wsServer.setKeystore(new File(path, "testkeys"), "passphrase");// java 1.7
-        int stopTimeout = 40000;
+        final WebSocket webSocket = 
+                new WebSocket(InetAddress.getByName("localhost"));
+        webSocket.setConnectionSoTimeout(1000, true); // ping
+        final WsListener listener = webSocket.listen(8080, listenerHandler);
+//        WebSocket.setKeystore(new File(path, "localhost.jks"), "password");// java 1.8
+//        WebSocket.setKeystore(new File(path, "testkeys"), "passphrase");// java 1.7
+        int stopTimeout = 30000;
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                wsServer.stop();
+                listener.close();
                 timer.cancel();
             }
         }, stopTimeout);
-        System.out.println("\r\nTest WebSocket server\r\nServer will be stopped after "
-                + (stopTimeout / 1000) + " seconds");
-        wsServer.start();
+        System.out.println("\r\nWebSocket Listener test"
+                + "\r\nIncoming maxMessageLength = " + MAX_MESSAGE_LENGTH
+                + "\r\nListener will be closed after "
+                + (stopTimeout / 1000) + " seconds"
+                + "\r\n");
         /* Android
         Intent browserIntent = new Intent(Intent.ACTION_VIEW,
-                Uri.parse("file:///android_asset/WsServerTest.html"));
+                Uri.parse("file:///android_asset/WsListenerTest.html"));
         startActivity(browserIntent);
          */
 // /* Desktop 
-        java.awt.Desktop.getDesktop().open(new File(path, "WsServerTest.html"));
+        java.awt.Desktop.getDesktop().open(new File(path, "WsListenerTest.html"));
 // */
-
     }
 
 }

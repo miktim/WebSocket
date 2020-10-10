@@ -1,29 +1,31 @@
 <!DOCTYPE html>
 <!--
-  WsServer test, MIT (c) 2020 miktim@mail.ru
+  WsListener test, MIT (c) 2020 miktim@mail.ru
 -->
 <html>
     <head>
-        <title>WsServer test</title>
+        <title>WsListener test</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
     <body>
-        <div>WsServer test<br><br></div>
+        <div>WsListener test<br><br></div>
+<!-- listener throws error 1002 (Protocol Error) -->
         <script src="http://localhost:8080/http_request.js"></script>
         <script>
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
             var erruri = 'ws://localhost:8080/echo';
             var testuri = 'ws://localhost:8080/test/';
-            var msg = 'Hello Server!';
+            var msg = 'Hello Listener!';
             var maxMsgLength = 0;
+            var maxMsgEnd;
             var testNo = 0;
             var tests = [
-                'server handler (request path) not found (1008 expected)',
+                'listener "did not find" the request path (1008 expected)',
                 'closing websocket by browser (1005 expected)',
-                'closing websocket by the server handler (1000 expected)',
+                'closing websocket by the listener (1000 expected)',
                 'waiting message too big (1009 expected)',
-                'waiting for server shutdown (1001 expected)'
+                'ping, waiting for listener closure (1001 expected)'
             ];
 
             try {
@@ -58,6 +60,7 @@
                             event.target.close();
                     } else if (url.endsWith('3')) { //message too big
                         maxMsgLength = event.data.length;
+                        maxMsgEnd = event.data.substring(event.data.length - 80);
                         event.target.send(event.data + event.data);
                     } else {
                         event.target.send(event.data);
@@ -70,6 +73,9 @@
                 webSocket.onclose = event => {
 // event: .code .reason .wasClean
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+                    if(event.target.url.endsWith("3")){
+                        show((maxMsgLength*2) + " chars sent:   ..." + maxMsgEnd);
+                    }
                     show('onclose: ' + event.code
                             + ':' + event.reason
                             + ':' + event.wasClean
@@ -78,7 +84,7 @@
                     if (++testNo < tests.length)
                         connectWs(testuri + testNo);
                     else
-                        show('Test finished');
+                        show('Completed.');
                 };
             }
 

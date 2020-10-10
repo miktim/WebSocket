@@ -1,11 +1,9 @@
 /*
- * WsHandler. WebSocket client/server handler, MIT (c) 2020 miktim@mail.ru
+ * WsHandler. WebSocket  handler, MIT (c) 2020 miktim@mail.ru
  *
  * Created: 2020-03-09
  */
 package org.samples.java.websocket;
-
-//import java.io.InputStream;
 
 public interface WsHandler {
     public void onOpen(WsConnection conn);
@@ -15,7 +13,4 @@ public interface WsHandler {
 // onError: conn may be null in the server handler (fatal ServerSocket exception)
 //          check connection closure status
     public void onError(WsConnection conn, Exception e);
-// for the future if the maximum message length is exceeded
-//    public void onTextStream(WsConnection con, InputStream is );
-//    public void onBinaryStream(WsConnection con, InputStream is);
 }

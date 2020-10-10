@@ -17,7 +17,6 @@ import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.ProtocolException;
@@ -27,43 +26,54 @@ import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.BufferUnderflowException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-//import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Random;
+//import java.security.SecureRandom;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
-//import java.util.Base64; // from java 1.8
+//import java.util.Base64; // java 1.8+
 
-public class WsConnection {
+public class WsConnection extends Thread {
 
-// closure status codes see RFC: https://tools.ietf.org/html/rfc6455#section-7.4 
-// https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+    public static final String VERSION = "2.0.0";
+    public static final int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000; // open/close handshake
+    public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 20000; // ping
+
+// Closure status codes see:
+//  https://tools.ietf.org/html/rfc6455#section-7.4
+//  https://www.iana.org/assignments/websocket/websocket.xml#close-code-number 
+//  https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
     public static final int NORMAL_CLOSURE = 1000; //*
-    public static final int GOING_AWAY = 1001; //* shutdown or socket timeout
+    public static final int GOING_AWAY = 1001; //* 
     public static final int PROTOCOL_ERROR = 1002; //* 
-    public static final int UNSUPPORTED_DATA = 1003; //* unsupported opcode
-    public static final int NO_STATUS = 1005; //* closing without code
-    public static final int ABNORMAL_CLOSURE = 1006; // closing without close farame
-    public static final int INVALID_DATA = 1007; // non utf-8 text, for example
+    public static final int UNSUPPORTED_DATA = 1003; //* 
+    public static final int NO_STATUS = 1005; //* 
+    public static final int ABNORMAL_CLOSURE = 1006; //* 
+    public static final int INVALID_DATA = 1007; // 
     public static final int POLICY_VIOLATION = 1008; //
-    public static final int MESSAGE_TOO_BIG = 1009; // *
-    public static final int UNSUPPORTED_EXTENSION = 1010; // client only 
-    public static final int INTERNAL_ERROR = 1011; //* server only
-    public static final int TRY_AGAIN_LATER = 1013; //* server overloaded 
+    public static final int MESSAGE_TOO_BIG = 1009; //*
+    public static final int UNSUPPORTED_EXTENSION = 1010; // 
+    public static final int INTERNAL_ERROR = 1011; //* 
+    public static final int TRY_AGAIN_LATER = 1013; //*  
 
 // request line header name
     private static final String REQUEST_LINE_HEADER = "_RequestLine";
 
     private final Socket socket;
-    private Headers requestHeaders;
-    final WsHandler handler;
+    private WsHandler handler;
+    private Headers peerHeaders;
     private URI requestURI;
-    private final boolean isClientConn;
+    private final boolean isClientSide;
     private final boolean isSecure;
-    private int closureStatus = GOING_AWAY;
-    int maxMessageLength = Integer.MAX_VALUE;
+    private int closureCode = GOING_AWAY;
+    private String closureReason = "";
+    private int handshakeSoTimeout = DEFAULT_HANDSHAKE_SO_TIMEOUT;
+    private int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
+    private boolean pingEnabled = true;
+    private final MessageDigest messageDigest = MessageDigest.getInstance("SHA-1");
 
     public boolean isOpen() {
         return !(this.socket == null || this.socket.isClosed() || this.socket.isInputShutdown());
@@ -73,8 +83,44 @@ public class WsConnection {
         return isSecure;
     }
 
-    public boolean isClientSide() {
-        return isClientConn;
+    void setHandshakeSoTimeout(int millis) {
+        handshakeSoTimeout = millis;
+    }
+
+    public int getHandshakeSoTimeout() {
+        return handshakeSoTimeout;
+    }
+
+    void setConnectionSoTimeout(int millis, boolean ping)
+            throws SocketException {
+        connectionSoTimeout = millis;
+        pingEnabled = ping;
+    }
+
+    public int getConnectionSoTimeout() {
+        return connectionSoTimeout;
+    }
+
+    public boolean isPingEnabled() {
+        return pingEnabled && connectionSoTimeout > 0;
+    }
+
+    public void setHandler(WsHandler handler) throws NullPointerException {
+        if (handler == null) {
+            throw new NullPointerException();
+        }
+        this.handler = handler;
+        if (this.isOpen()) {
+            this.handler.onOpen(this);
+        }
+    }
+
+    public WsHandler getHandler() {
+        return handler;
+    }
+
+    public boolean isListenerSide() {
+        return !this.isClientSide;
     }
 
     public String getPath() {
@@ -96,72 +142,82 @@ public class WsConnection {
         }
     }
 
-    public synchronized void send(byte[] message) throws IOException {
-        if (this.closureStatus == 0) {
-            sendPayload(OP_BINARY | OP_FINAL, message);
-        } else {
-            throw new IOException("socket_closed");
+    public void send(byte[] message) throws IOException {
+        send(OP_BINARY | OP_FINAL, message);
+    }
+
+    public void send(String message) throws IOException {
+        send(OP_TEXT | OP_FINAL, message.getBytes("utf-8"));
+    }
+
+    private static final int MAX_PAYLOAD_LENGTH = 4096;
+
+    private synchronized void send(int opData, byte[] msg) throws IOException {
+        try {
+            if (msg.length > MAX_PAYLOAD_LENGTH) {
+                int op = opData & 0xF;
+                int off = 0;
+                for (; msg.length - off > MAX_PAYLOAD_LENGTH; off += MAX_PAYLOAD_LENGTH) {
+                    sendPayload(op, Arrays.copyOfRange(
+                            msg, off, off + MAX_PAYLOAD_LENGTH));
+                    op = OP_CONTINUATION;
+                }
+// be sure to send the final frame!            
+                sendPayload(op | OP_FINAL, Arrays.copyOfRange(msg, off, msg.length));
+            } else {
+                sendPayload(opData | OP_FINAL, msg);
+            }
+        } catch (IOException e) {
+            this.close(ABNORMAL_CLOSURE, ""); // guess send error
+            throw e;
         }
     }
 
-    public synchronized void send(String message) throws IOException {
-        if (this.closureStatus == 0) {
-            sendPayload(OP_TEXT | OP_FINAL, message.getBytes());
-        } else {
-            throw new IOException("socket_closed");
-        }
+    public int getClosureCode() {
+        return this.closureCode;
     }
 
-    public synchronized void streamText(InputStream is) throws IOException {
-        stream(OP_TEXT, is);
+    public String getClosureReason() {
+        return this.closureReason;
     }
 
-    public synchronized void streamBinary(InputStream is) throws IOException {
-        stream(OP_BINARY, is);
+    public void close() {
+        close(NO_STATUS, "");
     }
 
-    public int getMaxMessageLength() {
-        return maxMessageLength;
-    }
-
-    public int getClosureStatus() {
-        return this.closureStatus;
-    }
-
-    public synchronized void close() {
-        close(NO_STATUS);
-    }
-
-    public synchronized void close(int status) {
-        if (this.closureStatus == 0) {
-            this.closureStatus = status;
-            if (isOpen()) {
-                int absCode = Math.abs(status);
-                byte[] payload = new byte[0];
-                if (absCode != NO_STATUS) {
-                    payload = new byte[2];
-                    payload[0] = (byte) (absCode >>> 8);
-                    payload[1] = (byte) (absCode & 0xFF);
-                }
-                try {
-                    sendPayload(OP_CLOSE | OP_FINAL, payload);
-                } catch (IOException e) {
-//                    handler.onError(this,
-//                            new IOException("closure_error:" + status, e));
-                }
+    public synchronized void close(int status, String reason) {
+        if (this.closureCode == 0) {
+            status = (status & 0x7FFF) == 0 ? NO_STATUS : status;
+            byte[] payload = new byte[0];
+            if (status != NO_STATUS) {
+                payload = new byte[2];
+                payload[0] = (byte) (status >>> 8);
+                payload[1] = (byte) (status & 0xFF);
+                byte[] msgBytes = (reason == null ? "" : reason).getBytes(StandardCharsets.UTF_8);
+                payload = combine(payload,
+                        Arrays.copyOf(msgBytes, Math.min(msgBytes.length, 123)));
+            }
+            try {
+                this.socket.setSoTimeout(handshakeSoTimeout);
+                pingEnabled = false;
+                sendPayload(OP_CLOSE, payload);
+                this.closureCode = status; // disable sending data
+            } catch (IOException e) {
+                this.closureCode = status;
+//                handler.onError(this, new IOException("closure_error", e));
             }
         }
     }
 
-    /* WebSocket Server connection */
-    WsConnection(Socket s, WsHandler h) {
+// WebSocket Server connection
+    WsConnection(Socket s, WsHandler h) throws NoSuchAlgorithmException {
         this.socket = s;
         this.handler = h;
         this.isSecure = checkSecure();
-        this.isClientConn = false;
+        this.isClientSide = false;
     }
 
-    final boolean checkSecure() {
+    private boolean checkSecure() {
         try {
             if (((SSLSocket) socket).getSession() != null) {
                 return true;
@@ -171,18 +227,13 @@ public class WsConnection {
         return false;
     }
 
-    void start() throws IOException, URISyntaxException, NoSuchAlgorithmException {
-        handshakeClient();
-        this.handler.onOpen(this);
-        listenInputStream(false);
-    }
-
-    void handshakeClient() throws IOException, URISyntaxException, NoSuchAlgorithmException {
-        this.requestHeaders = receiveHeaders(this.socket);
-        String[] parts = requestHeaders.getFirst(REQUEST_LINE_HEADER).split(" ");
+    void handshakeClient() throws IOException, URISyntaxException {
+        closureCode = PROTOCOL_ERROR;
+        this.peerHeaders = receiveHeaders(this.socket);
+        String[] parts = peerHeaders.getFirst(REQUEST_LINE_HEADER).split(" ");
         this.requestURI = new URI(parts[1]);
-        String upgrade = requestHeaders.getFirst("Upgrade");
-        String key = requestHeaders.getFirst("Sec-WebSocket-Key");
+        String upgrade = peerHeaders.getFirst("Upgrade");
+        String key = peerHeaders.getFirst("Sec-WebSocket-Key");
 //        int version = Integer.parseInt(requestHeaders.getFirst("Sec-WebSocket-Version"));
 //        String protocol = requestHeaders.getFirst("Sec-WebSocket-Protocol"); // chat, superchat
 
@@ -197,13 +248,12 @@ public class WsConnection {
             sendHeaders(this.socket, responseHeaders, "HTTP/1.1 101 Upgrade");
         } else {
             sendHeaders(this.socket, null, "HTTP/1.1 400 Bad Request");
-            socket.close();
             throw new ProtocolException("bad_request");
         }
-        closureStatus = 0;
+        closureCode = 0;
     }
 
-    void sendHeaders(Socket socket, Headers hs, String line)
+    private void sendHeaders(Socket socket, Headers hs, String line)
             throws IOException {
         StringBuilder sb = new StringBuilder(line);
         sb.append("\r\n");
@@ -217,122 +267,88 @@ public class WsConnection {
         socket.getOutputStream().flush();
     }
 
-    /* WebSocket client connection */
-    public WsConnection(String uri, WsHandler handler) throws
+//  WebSocket client connection
+    WsConnection(String uri, WsHandler handler) throws
             URISyntaxException, NullPointerException,
             IOException, NoSuchAlgorithmException {
-        this.isClientConn = true;
-        if (handler == null) {
+        this.isClientSide = true;
+        if (uri == null || handler == null) {
             throw new NullPointerException();
         }
         this.handler = handler;
         this.requestURI = new URI(uri);
-        this.requestHeaders = new Headers();
         String scheme = requestURI.getScheme();
         String host = requestURI.getHost();
         if (host == null || scheme == null) {
-            throw new URISyntaxException(uri, "scheme and host required");
+            throw new URISyntaxException(uri, "scheme_and_host_required");
         }
         if (!(scheme.equals("ws") || scheme.equals("wss"))) {
-            throw new URISyntaxException(uri, "unsupported scheme");
+            throw new URISyntaxException(uri, "unsupported_scheme");
         }
         if (scheme.equals("wss")) {
+            this.isSecure = true;
             SSLSocketFactory factory
                     = (SSLSocketFactory) SSLSocketFactory.getDefault();
             this.socket
                     = (SSLSocket) factory.createSocket();
-            this.isSecure = true;
         } else {
             this.isSecure = false;
             socket = new Socket();
         }
     }
 
-    public void open()
-            throws IOException, NoSuchAlgorithmException {
-        if (!isClientConn && isOpen()) {
-            throw new SocketException();
-        }
+    void open() throws IOException { //TODO open(bindAddr)
         try {
             int port = requestURI.getPort();
             if (port < 0) {
                 port = isSecure ? 443 : 80;
             }
-            if (isSecure) {
-                ((SSLSocket) socket).connect(
-                        new InetSocketAddress(requestURI.getHost(), port));
-                ((SSLSocket) socket).startHandshake();
-            } else {
-                socket.connect(
-                        new InetSocketAddress(requestURI.getHost(), port));
-            }
-            handshakeServer();
-            this.socket.setSoTimeout(0);
-            (new Thread(new WsClientThread(this))).start();
-        } catch (IOException | NoSuchAlgorithmException e) {
-            try {
-                this.socket.close();
-            } catch (IOException ie) {
-            }
+            this.socket.setSoTimeout(handshakeSoTimeout);
+            this.socket.connect(
+                    new InetSocketAddress(requestURI.getHost(), port));
+        } catch (IOException e) {
+            closeSocket();
             throw e;
         }
     }
 
-    private class WsClientThread implements Runnable {
-
-        private final WsConnection connection;
-
-        WsClientThread(WsConnection conn) {
-            this.connection = conn;
-        }
-
-        @Override
-        public void run() {
-            connection.closureStatus = 0;
-            connection.handler.onOpen(connection);
-            try {
-                this.connection.listenInputStream(false);
-            } catch (IOException e) {
-                this.connection.handler.onError(connection, e);
-            }
-        }
-    }
-
-    private void handshakeServer()
-            throws IOException, NoSuchAlgorithmException {
+    private void handshakeServer() throws IOException {
+        closureCode = PROTOCOL_ERROR;
         String requestLine = "GET " + requestURI.getPath() + " HTTP/1.1";
         byte[] byteKey = new byte[16];
 //        (new SecureRandom()).nextBytes(byteKey);
         (new Random()).nextBytes(byteKey);
         String key = base64Encode(byteKey);
-        requestHeaders.add("Host", requestURI.getHost()
+        Headers headers = new Headers();
+        headers.add("Host", requestURI.getHost()
                 + ":" + requestURI.getPort());
-        requestHeaders.add("Upgrade", "websocket");
-        requestHeaders.add("Connection", "Upgrade,keep-alive");
-        requestHeaders.add("Sec-WebSocket-Key", key);
-        requestHeaders.add("Sec-WebSocket-Version", "13");
+        headers.add("Upgrade", "websocket");
+        headers.add("Connection", "Upgrade,keep-alive");
+        headers.add("Sec-WebSocket-Key", key);
+        headers.add("Sec-WebSocket-Version", "13");
 
-        sendHeaders(this.socket, requestHeaders, requestLine);
-        Headers headers = receiveHeaders(this.socket);
-        try {
-            if (!(headers.getFirst(REQUEST_LINE_HEADER).split(" ")[1].equals("101")
-                    && headers.getFirst("Sec-WebSocket-Accept").equals(sha1Hash(key)))) {
-                throw new ProtocolException("client_handshake");
-            }
-        } catch (Exception e) {
+        sendHeaders(this.socket, headers, requestLine);
+        this.peerHeaders = receiveHeaders(this.socket);
+        if (!(peerHeaders.getFirst(REQUEST_LINE_HEADER).split(" ")[1].equals("101")
+                && peerHeaders.getFirst("Sec-WebSocket-Accept").equals(sha1Hash(key)))) {
             throw new ProtocolException("client_handshake");
         }
+        closureCode = 0;
     }
 
-    static Headers receiveHeaders(Socket socket) throws IOException {
+    private static Headers receiveHeaders(Socket socket) throws IOException {
         Headers headers = new Headers();
         BufferedReader br = new BufferedReader(
                 new InputStreamReader(socket.getInputStream()));
+        String line = br.readLine();
+        if (line.startsWith("\u0016\u0003\u0003")) {
+            throw new javax.net.ssl.SSLHandshakeException("plain_text_socket");
+        }
         headers.add(REQUEST_LINE_HEADER,
-                br.readLine().replaceAll("  ", " ").trim());
+                line.replaceAll("  ", " ").trim());
         String[] pair = new String[0];
         while (true) {
-            String line = br.readLine();
+            line = br.readLine();
             if (line == null || line.isEmpty()) {
                 break;
             }
@@ -346,11 +362,9 @@ public class WsConnection {
         return headers;
     }
 
-    private static String sha1Hash(String key) throws NoSuchAlgorithmException {
-        MessageDigest md = MessageDigest.getInstance("SHA-1");
-        return base64Encode(
-                md.digest((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
-                        .getBytes()));
+    private String sha1Hash(String key) {
+        return base64Encode(this.messageDigest.digest(
+                (key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").getBytes()));
     }
 
     public static String base64Encode(byte[] b) {
@@ -377,8 +391,26 @@ public class WsConnection {
 //        return Base64.getEncoder().encodeToString(b);
     }
 
+    @Override
+    public void run() {
+        try {
+//            this.socket.setSoTimeout(handshakeSoTimeout);
+            if (isClientSide) {
+                handshakeServer();
+            } else {
+                handshakeClient();
+            }
+            this.socket.setSoTimeout(connectionSoTimeout);
+            this.closureCode = 0;
+            this.handler.onOpen(this);
+            this.listenInputStream();
+        } catch (Exception e) { // ?java.lang.OutOfMemoryError
+            this.handler.onError(this, e);
+            this.closeSocket();
+        }
+    }
+
     static final int OP_FINAL = 0x80;
-    static final int OP_EXTENSONS = 0x70;
     static final int OP_CONTINUATION = 0x0;
     static final int OP_TEXT = 0x1;
     static final int OP_BINARY = 0x2;
@@ -388,110 +420,130 @@ public class WsConnection {
     static final int OP_PING = 0x89;
     static final int OP_PONG = 0x8A;
     static final int MASKED_DATA = 0x80;
-    static final String PING_PAYLOAD = "Pong";
+    static final byte[] PING_PAYLOAD = "PingPong".getBytes();
     static final byte[] EMPTY_PAYLOAD = new byte[0];
 
-/*    // java 1.7_79
-    private int read(byte[] buf, int off, int cnt) throws IOException {
-        InputStream is = this.socket.getInputStream();
-        int start = off;
-        int end = off + cnt;
-        while (start < end) {
-            int b = is.read();
-            if (b == -1) {
-                break;
-            }
-            buf[start++] = (byte) b;
-        }
-        return start - off;
-    }
-*/
-    void listenInputStream(boolean pingPong) throws IOException {
+    void listenInputStream() throws IOException {
         BufferedInputStream is = new BufferedInputStream(socket.getInputStream());
-        boolean pingSended = false;
+        boolean pingSent = false;
+        boolean maskedData;
         int opData = 0;
         byte[] payload = EMPTY_PAYLOAD;
         byte[] service = new byte[8]; //buffer for frame header elements
-        while (this.isOpen()) {
+        boolean done = false;
+
+        while (!done) {
             try {
                 int b1 = is.read();
+                int b2 = is.read();
+                if ((b1 | b2) == -1) {
+                    throw new EOFException("frame_op");
+                }
 // check op    
                 switch (b1) {
                     case OP_TEXT_FINAL:
                     case OP_TEXT:
                     case OP_BINARY_FINAL:
                     case OP_BINARY: {
-                        opData = b1 & 0xF;
-                        b1 &= OP_FINAL;
-                        break;
+                        if (opData == 0) {
+                            opData = b1 & 0xF;
+                            b1 &= OP_FINAL;
+                            break;
+                        }
                     }
                     case OP_CONTINUATION:
-                    case OP_FINAL:
+                    case OP_FINAL: {
+                        if (opData != 0) {
+                            break;
+                        }
+                    }
                     case OP_PING:
                     case OP_PONG:
                     case OP_CLOSE: {
                         break;
                     }
                     default: {
-                        closeDueTo(PROTOCOL_ERROR, new ProtocolException());
+                        closeDueTo(UNSUPPORTED_DATA, new ProtocolException("unsupported_op"));
                     }
                 }
-                int b2 = is.read();
-// get payload length
-                long payloadLen = b2 & 0x7F;
+// get frame payload length
+                long framePayloadLen = b2 & 0x7F;
                 int serviceLen = 0;
-                if (payloadLen == 126L) {
+                if (framePayloadLen == 126L) {
                     serviceLen = 2;
-                } else if (payloadLen == 127L) {
+                } else if (framePayloadLen == 127L) {
                     serviceLen = 8;
                 }
                 if (serviceLen > 0) {
-                    if (is.read(service, 0, serviceLen) != serviceLen) {//java 1.7.79
-//                    if (read(service, 0, serviceLen) != serviceLen) {
-                        closeDueTo(INVALID_DATA, new EOFException("frame_length"));
+                    if (this.read(is, service, 0, serviceLen) != serviceLen) {
+                        throw new EOFException("frame_length");
                     }
-                    payloadLen = 0;
+                    framePayloadLen = 0;
                     for (int i = 0; i < serviceLen; i++) {
-                        payloadLen <<= 8;
-                        payloadLen += (service[i] & 0xFF);
+                        framePayloadLen <<= 8;
+                        framePayloadLen += (service[i] & 0xFF);
                     }
                 }
 // get mask 
-                if ((b2 & MASKED_DATA) != 0) {
+                maskedData = (b2 & MASKED_DATA) != 0;
+                if (maskedData) {
                     serviceLen = 4;
-                    if (is.read(service, 0, serviceLen) != serviceLen) {
-//                    if (read(service, 0, serviceLen) != serviceLen) {
-                        closeDueTo(INVALID_DATA, new EOFException("frame_mask"));
+                    if (this.read(is, service, 0, serviceLen) != serviceLen) {
+                        throw new EOFException("frame_mask");
                     }
                 }
-// check payloadLen                
-                if (payloadLen + payload.length > maxMessageLength) {
-                    is.skip(payloadLen);
-                    closeDueTo(MESSAGE_TOO_BIG, new BufferUnderflowException());
-                    continue;
+// client MUST mask the data, server MUST NOT
+                if (Boolean.compare(this.isClientSide, maskedData) == 0) {
+                    closeDueTo(PROTOCOL_ERROR, new ProtocolException("mask_mismatch"));
                 }
-// get frame payload                
-                byte[] framePayload = new byte[(int) payloadLen];
-                if (is.read(framePayload) != framePayload.length) {
-//                if (read(framePayload, 0, framePayload.length) != framePayload.length) {
-                    closeDueTo(INVALID_DATA, new EOFException("frame"));
-                }
-// unmask frame payload                
-                if ((b2 & MASKED_DATA) != 0) {
-                    unmaskPayload(service, framePayload);
-                }
-
+// check frame payload length
                 switch (b1) {
                     case OP_CONTINUATION:
-                        payload = combine(payload, framePayload);
+                    case OP_FINAL: {
+                        if (closureCode == 0
+                                && (framePayloadLen + payload.length
+                                <= (long) Integer.MAX_VALUE)) {
+                            break;
+                        }
+                    }
+                    case OP_PING:
+                    case OP_PONG:
+                    case OP_CLOSE: {
+                        if (framePayloadLen <= 125L) {
+                            break;
+                        }
+                    }
+                    default: {
+                        closeDueTo(MESSAGE_TOO_BIG, new BufferUnderflowException());
+                        is.skip(framePayloadLen);
+                        framePayloadLen = 0;
+                    }
+                }
+// read frame payload                
+                byte[] framePayload = new byte[(int) framePayloadLen];
+                if (this.read(is, framePayload, 0, (int) framePayloadLen)
+                        != framePayload.length) {
+                    throw new EOFException("frame_payload");
+                }
+// unmask frame payload                
+                if (maskedData) {
+                    umaskPayload(service, framePayload);
+                }
+// perform frame op
+                switch (b1) {
+                    case OP_CONTINUATION:
+                        if (this.closureCode == 0) {
+                            payload = combine(payload, framePayload);
+                        }
                         break;
                     case OP_FINAL: {
-                        payload = combine(payload, framePayload);
-                        if (this.closureStatus == 0) {
+                        if (this.closureCode == 0) {
+                            payload = combine(payload, framePayload);
                             if (opData == OP_BINARY) {
                                 handler.onMessage(this, payload);
                             } else {
-                                handler.onMessage(this, new String(payload, "utf-8"));
+                                handler.onMessage(this,
+                                        new String(payload, StandardCharsets.UTF_8));
                             }
                         }
                         opData = 0;
@@ -499,78 +551,103 @@ public class WsConnection {
                         break;
                     }
                     case OP_PONG: {
-                        if (pingSended
-                                && (new String(framePayload)).equals(PING_PAYLOAD)) {
+                        if (pingSent
+                                && Arrays.equals(framePayload, PING_PAYLOAD)) {
                         } else {
-                            handler.onError(this,
+                            closeDueTo(PROTOCOL_ERROR,
                                     new ProtocolException("unexpected_pong"));
                         }
-                        pingSended = false;
+                        pingSent = false;
                         break;
                     }
                     case OP_PING: {
-                        sendPayload(OP_PONG | OP_FINAL, framePayload);
+                        sendPayload(OP_PONG, framePayload);
                         break;
                     }
                     case OP_CLOSE: { // close handshake
-                        if (closureStatus == 0) {
-                            if (framePayload.length > 1) {
-                                closureStatus = -(((framePayload[0] & 0xFF) << 8)
-                                        + (framePayload[1] & 0xFF));
-                            } else {
-                                closureStatus = -NO_STATUS;
-                            }
+                        done = true;
+                        if (closureCode == 0) {
                             sendPayload(OP_CLOSE, framePayload);
-                        }
-//??? server 1001 -> 1006 browser | 1011 client                     
-                        this.socket.setSoLinger(true, 1); // seconds
-                        if (isSecure) {
-                            ((SSLSocket) this.socket).close();
-                        } else {
-                            this.socket.shutdownInput();
-                            this.socket.close();
+                            if (framePayload.length > 1) {
+                                closureCode = -(((framePayload[0] & 0xFF) << 8)
+                                        + (framePayload[1] & 0xFF));
+                                closureReason = new String(
+                                        Arrays.copyOfRange(framePayload, 2, framePayload.length - 2),
+                                        StandardCharsets.UTF_8
+                                );
+                            } else {
+                                closureCode = -NO_STATUS;
+                            }
                         }
                         break;
                     }
                     default: {
-                        closeDueTo(PROTOCOL_ERROR,
-                                new ProtocolException("unknown_frame"));
+                        closeDueTo(UNSUPPORTED_DATA,
+                                new ProtocolException("unsupported_op"));
                     }
                 }
             } catch (SocketTimeoutException e) {
-                if (!pingSended && pingPong) {
-                    pingSended = true;
-                    sendPayload(OP_PING | OP_FINAL, PING_PAYLOAD.getBytes());
+                if (this.pingEnabled && !pingSent && this.closureCode == 0) {
+                    pingSent = true;
+                    sendPayload(OP_PING, PING_PAYLOAD);
                 } else {
-                    closeDueTo(-GOING_AWAY, e);
-                    break;
+                    done = true;
+                    closeDueTo(GOING_AWAY, e);
                 }
-            } catch (SocketException e) {
-                if (closureStatus == 0) {
-                    closeDueTo(INTERNAL_ERROR, e);
-                }
-                break;
-            } catch (Exception e) { // Exception?
+            } catch (EOFException e) {
+                done = true;
+                closeDueTo(ABNORMAL_CLOSURE, e);
+            } catch (Exception e) {
+                done = true;
                 closeDueTo(INTERNAL_ERROR, e);
-                break;
+            } catch (Error e) {// large messages can throw java.lang.OutOfMemoryError
+                done = true;
+                closeDueTo(INTERNAL_ERROR, new Exception(e.toString(), e));
             }
         }
+        closeSocket();
         if (closureException != null) {
             handler.onError(this, closureException);
         }
         handler.onClose(this);
     }
 
-    private Exception closureException = null;
-
-    private void closeDueTo(int closureStatus, Exception e) {
-        close(closureStatus);
-        if (closureException == null) {
-            closureException = e;
+    void closeSocket() {
+        if (this.isOpen()) {
+            try {
+                if (this.isSecure) {
+                    ((SSLSocket) this.socket).close();
+                } else {
+                    this.socket.shutdownInput();
+                    this.socket.close();
+                }
+            } catch (IOException e) {
+//                e.printStackTrace();
+            }
         }
     }
 
-    private void unmaskPayload(byte[] mask, byte[] payload) {
+    private int read(BufferedInputStream bis, byte[] buf, int off, int len)
+            throws IOException {
+        int bytesRead = 0;
+        for (int n = bis.read(buf, off, len); n > 0 && bytesRead < len;) {
+            bytesRead += n;
+            n = bis.read(buf, off + bytesRead, len - bytesRead);
+        }
+        return bytesRead;
+    }
+
+    private Exception closureException = null;
+
+    private void closeDueTo(int status, Exception e) {
+        if (closureCode == 0 && closureException == null) {
+            closureException = e;
+        }
+        close(status, "");
+    }
+
+// unmask/mask payload
+    private void umaskPayload(byte[] mask, byte[] payload) {
         for (int i = 0; i < payload.length; i++) {
             payload[i] ^= mask[i % 4];
         }
@@ -585,27 +662,26 @@ public class WsConnection {
 
     private synchronized void sendPayload(int opData, byte[] payload)
             throws IOException {
-        if (!isOpen()) {
-            return;
+        if (closureCode != 0) { // || !isOpen()) {
+            return; // close frame sent, ignore output
         }
-        boolean masked = isClientConn;
-        BufferedOutputStream os = 
-                new BufferedOutputStream(this.socket.getOutputStream());
+        boolean masked = this.isClientSide;
+        BufferedOutputStream os
+                = new BufferedOutputStream(this.socket.getOutputStream());
         byte[] header = new byte[2];
         header[0] = (byte) opData;
         byte[] mask = {0, 0, 0, 0};
-        int b2 = masked ? MASKED_DATA : 0;
         int payloadLen = payload.length;
         if (payloadLen < 126) {
-            header[1] = (byte) (b2 | payloadLen);
+            header[1] = (byte) (payloadLen);
         } else if (payloadLen < 0x10000) {
-            header[1] = (byte) (b2 | 126);
-            header = combine(header, header); // increase by 2 bytes
+            header[1] = (byte) 126;
+            header = combine(header, header); // increase the header by 2 bytes
             header[2] = (byte) (payloadLen >>> 8);
             header[3] = (byte) payloadLen;
         } else {
-            header[1] = (byte) (b2 | 127);
-            header = combine(header, mask);// 4 zero bytes of 64bit payload length
+            header[1] = (byte) 127;
+            header = combine(header, mask);// add 4 zero bytes of 64bit payload length
             for (int i = 3; i > 0; i--) {
                 mask[i] = (byte) (payloadLen & 0xFF);
                 payloadLen >>>= 8;
@@ -613,36 +689,19 @@ public class WsConnection {
             header = combine(header, mask); // 32bit int payload length
         }
         if (masked) {
+            header[1] |= MASKED_DATA;
 //            (new SecureRandom()).nextBytes(mask);
-            (new Random()).nextBytes(mask); // enough
+            (new Random()).nextBytes(mask); // Random enough
             header = combine(header, mask); // add mask
             byte[] maskedPayload = payload.clone();
-            unmaskPayload(mask, maskedPayload);
-            os.write(header);
-            os.write(maskedPayload);
+            umaskPayload(mask, maskedPayload);
+            os.write(header, 0, header.length);
+            os.write(maskedPayload, 0, payload.length);
         } else {
-            os.write(header);
-            os.write(payload);
+            os.write(header, 0, header.length);
+            os.write(payload, 0, payload.length);
         }
         os.flush();
     }
 
-    private void stream(int opData, InputStream is)
-            throws IOException {
-        byte[] buf = new byte[2048];
-        int pos = 0;
-        int op = opData & 0xF;
-        for (int len = is.read(buf); len >= 0; len = is.read(buf, pos, len)) {
-            if (len < buf.length) {
-                pos = len;
-                len = buf.length - pos;
-            } else {
-                pos = 0;
-                len = buf.length;
-                sendPayload(op, buf);
-                op = OP_CONTINUATION;
-            }
-        }
-        sendPayload(op | OP_FINAL, Arrays.copyOf(buf, pos));
-    }
 }

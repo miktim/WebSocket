@@ -1,5 +1,5 @@
 # Java SE WebSocket listener/connector,  MIT (c) 2020 miktim@mail.ru
-Down with the client-server paradigm! On development stage...
+Down with the client-server paradigm!
 Traditional approach: https://github.com/miktim/WebSocket/tree/master
 
 Release notes:
@@ -15,14 +15,10 @@ Overview:
     WebSocket();
     WebSocket(InetAddress bindAddr);
 
-    Constants (may vary):
-      String VERSION = "2.0.0";
-      int DEFAULT_HANDSHAKE_TIMEOUT = 5000;  // milliseconds
-      int DEFAULT_CONNECTION_TIMEOUT = 10000;// milliseconds, ping enabled
     Methods:
       static void setKeystore(File keyFile, String passphrase);
-      void setHandshakeTimeout(int millis);
-      void setConnectionTimeout(int millis, boolean pingEnabled);
+      void setHandshakeSoTimeout(int millis);
+      void setConnectionSoTimeout(int millis, boolean pingEnabled);
       WsListener listen(int port, WsHandler handler) throws Exception; //
       WsListener listenSafely(int port, WsHandler handler) throws Exception; //
       WsConnection connect(String uri, WsHahdler handler) throws Exception;
@@ -38,19 +34,31 @@ Overview:
       void close();
 
   WsConnection:
-    Constants:
-      WebSocket closure status codes see: https://tools.ietf.org/html/rfc6455#section-7.4
+    Constants (may vary):
+      String VERSION = "2.0.0";
+      int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;  // milliseconds
+      int DEFAULT_CONNECTION_SO_TIMEOUT = 20000;// milliseconds, ping enabled
+
+      WebSocket closure status codes:
+         NORMAL_CLOSURE, GOING_AWAY, PROTOCOL_ERROR, UNSUPPORTED_DATA, NO_STATUS,
+         ABNORMAL_CLOSURE, INVALID_DATA, POLICY_VIOLATION, MESSAGE_TOO_BIG,
+         UNSUPPORTED_EXTENSION, INTERNAL_ERROR, TRY_AGAIN_LATER
+      See:
+         https://tools.ietf.org/html/rfc6455#section-7.4
+         https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+         https://www.iana.org/assignments/websocket/websocket.xml#close-code-number
+
     Methods:
+      void setHandler(WsHandler handler) throws NullPointerException;
       boolean isOpen();
       boolean isSecure();
       boolean isListenerSide();
       String getPath();
       String getPeerHost();
-      void setHandler(WsHandler handler) throws NullPointerException;
       void send(String message) throws IOException;
       void send(byte[] message) throws IOException;
-      void close();
-      void close(int statusCode, String reason);
+      void close(); // close without status code
+      void close(int statusCode, String reason); // a reason longer than 123 bytes is truncated
       int getClosureCode();
       String getClosureReason();
 
