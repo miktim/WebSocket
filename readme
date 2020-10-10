@@ -12,12 +12,12 @@ Release notes:
 
 Overview:
   Constructors:
-    WebSocket();
-    WebSocket(InetAddress bindAddr);
+    WebSocket() throws Exception;
+    WebSocket(InetAddress bindAddr) throws Exception;
 
     Methods:
       static void setKeystore(File keyFile, String passphrase);
-      void setHandshakeSoTimeout(int millis);
+      void setHandshakeSoTimeout(int millis); 
       void setConnectionSoTimeout(int millis, boolean pingEnabled);
       WsListener listen(int port, WsHandler handler) throws Exception; //
       WsListener listenSafely(int port, WsHandler handler) throws Exception; //
@@ -36,7 +36,7 @@ Overview:
   WsConnection:
     Constants (may vary):
       String VERSION = "2.0.0";
-      int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;  // milliseconds
+      int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;  // milliseconds, open/close handshake
       int DEFAULT_CONNECTION_SO_TIMEOUT = 20000;// milliseconds, ping enabled
 
       WebSocket closure status codes:
