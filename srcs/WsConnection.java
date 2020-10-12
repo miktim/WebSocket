@@ -1,5 +1,5 @@
 /*
- * WsConnection. WebSocket client/server connection, MIT (c) 2020 miktim@mail.ru
+ * WsConnection. WebSocket connection, MIT (c) 2020 miktim@mail.ru
  *
  * Release notes:
  * - java SE 1.7+;
@@ -15,9 +15,12 @@ package org.samples.java.websocket;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ProtocolException;
 import java.net.Socket;
@@ -38,7 +41,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 public class WsConnection extends Thread {
 
-    public static final String VERSION = "2.0.0";
+    public static final String VERSION = "2.1.0";
     public static final int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000; // open/close handshake
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 20000; // ping
 
@@ -105,7 +108,25 @@ public class WsConnection extends Thread {
         return pingEnabled && connectionSoTimeout > 0;
     }
 
-    public void setHandler(WsHandler handler) throws NullPointerException {
+    public static final int DEFAULT_MAX_MESSAGE_LENGTH = Integer.MAX_VALUE;
+    private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH; //in bytes
+    private boolean streamingEnabled = false;
+
+    void setMaxMessageLength(int maxLen, boolean enableStreaming) {
+        maxMessageLength = maxLen;
+        streamingEnabled = enableStreaming;
+    }
+
+    public int getMaxMessageLength() {
+        return maxMessageLength;
+    }
+
+    public boolean isStreamingEnabled() {
+        return streamingEnabled;
+    }
+
+    public synchronized void setHandler(WsHandler handler)
+            throws NullPointerException {
         if (handler == null) {
             throw new NullPointerException();
         }
@@ -143,32 +164,46 @@ public class WsConnection extends Thread {
     }
 
     public void send(byte[] message) throws IOException {
-        send(OP_BINARY | OP_FINAL, message);
+//        sendPayload(OP_BINARY | OP_FINAL, message);
+        send(new ByteArrayInputStream(message), false);
     }
 
     public void send(String message) throws IOException {
-        send(OP_TEXT | OP_FINAL, message.getBytes("utf-8"));
+//        sendPayload(OP_TEXT | OP_FINAL, message.getBytes(StandardCharsets.UTF_8));
+        send(new ByteArrayInputStream(
+                message.getBytes(StandardCharsets.UTF_8)), true);
     }
 
-    private static final int MAX_PAYLOAD_LENGTH = 4096;
+    private static final int STREAM_PAYLOAD_LENGTH = 8192;
 
-    private synchronized void send(int opData, byte[] msg) throws IOException {
+    public synchronized void send(InputStream is, boolean isUTF8Text) throws IOException {
         try {
-            if (msg.length > MAX_PAYLOAD_LENGTH) {
-                int op = opData & 0xF;
-                int off = 0;
-                for (; msg.length - off > MAX_PAYLOAD_LENGTH; off += MAX_PAYLOAD_LENGTH) {
-                    sendPayload(op, Arrays.copyOfRange(
-                            msg, off, off + MAX_PAYLOAD_LENGTH));
-                    op = OP_CONTINUATION;
+// BufferedInputStream is not good for large payloads?
+//            BufferedInputStream bis = new BufferedInputStream(is);
+            byte[] buf = new byte[STREAM_PAYLOAD_LENGTH];
+            int op = isUTF8Text ? OP_TEXT : OP_BINARY;
+            while (true) {
+                int len = this.readFully(is, buf, 0, buf.length);
+                try {
+                    if (len == buf.length) {
+                        sendPayload(op, buf);
+                        op = OP_CONTINUATION;
+                    } else {
+// be sure to send the final frame even if eof is detected!            
+                        sendPayload(op | OP_FINAL,
+                                Arrays.copyOf(buf, len >= 0 ? len : 0));
+                        break;
+                    }
+                } catch (IOException e) {
+                    this.close(ABNORMAL_CLOSURE, "");
+                    throw e;
                 }
-// be sure to send the final frame!            
-                sendPayload(op | OP_FINAL, Arrays.copyOfRange(msg, off, msg.length));
-            } else {
-                sendPayload(opData | OP_FINAL, msg);
             }
+        } catch (NullPointerException e) {
+            throw e;
         } catch (IOException e) {
-            this.close(ABNORMAL_CLOSURE, ""); // guess send error
+// an exception is thrown, no OnError handler is called
+            this.close(INTERNAL_ERROR, ""); // guess read error
             throw e;
         }
     }
@@ -297,7 +332,10 @@ public class WsConnection extends Thread {
         }
     }
 
-    void open() throws IOException { //TODO open(bindAddr)
+    void open() throws IOException {
+        if (!isClientSide || this.socket.isConnected()) {
+            throw new SocketException();
+        }
         try {
             int port = requestURI.getPort();
             if (port < 0) {
@@ -306,6 +344,7 @@ public class WsConnection extends Thread {
             this.socket.setSoTimeout(handshakeSoTimeout);
             this.socket.connect(
                     new InetSocketAddress(requestURI.getHost(), port));
+//            this.start(); //
         } catch (IOException e) {
             closeSocket();
             throw e;
@@ -424,11 +463,14 @@ public class WsConnection extends Thread {
     static final byte[] EMPTY_PAYLOAD = new byte[0];
 
     void listenInputStream() throws IOException {
-        BufferedInputStream is = new BufferedInputStream(socket.getInputStream());
+// BufferedInputStream is not good for large payloads
+//        BufferedInputStream is = new BufferedInputStream(socket.getInputStream());
+        InputStream is = socket.getInputStream();
         boolean pingSent = false;
         boolean maskedData;
         int opData = 0;
-        byte[] payload = EMPTY_PAYLOAD;
+        byte[] message = EMPTY_PAYLOAD;
+        long messageLen = 0;
         byte[] service = new byte[8]; //buffer for frame header elements
         boolean done = false;
 
@@ -475,7 +517,7 @@ public class WsConnection extends Thread {
                     serviceLen = 8;
                 }
                 if (serviceLen > 0) {
-                    if (this.read(is, service, 0, serviceLen) != serviceLen) {
+                    if (this.readFully(is, service, 0, serviceLen) != serviceLen) {
                         throw new EOFException("frame_length");
                     }
                     framePayloadLen = 0;
@@ -488,7 +530,7 @@ public class WsConnection extends Thread {
                 maskedData = (b2 & MASKED_DATA) != 0;
                 if (maskedData) {
                     serviceLen = 4;
-                    if (this.read(is, service, 0, serviceLen) != serviceLen) {
+                    if (this.readFully(is, service, 0, serviceLen) != serviceLen) {
                         throw new EOFException("frame_mask");
                     }
                 }
@@ -500,9 +542,9 @@ public class WsConnection extends Thread {
                 switch (b1) {
                     case OP_CONTINUATION:
                     case OP_FINAL: {
+                        messageLen += framePayloadLen;
                         if (closureCode == 0
-                                && (framePayloadLen + payload.length
-                                <= (long) Integer.MAX_VALUE)) {
+                                && (messageLen <= (long) this.maxMessageLength)) {
                             break;
                         }
                     }
@@ -521,7 +563,7 @@ public class WsConnection extends Thread {
                 }
 // read frame payload                
                 byte[] framePayload = new byte[(int) framePayloadLen];
-                if (this.read(is, framePayload, 0, (int) framePayloadLen)
+                if (this.readFully(is, framePayload, 0, (int) framePayloadLen)
                         != framePayload.length) {
                     throw new EOFException("frame_payload");
                 }
@@ -533,21 +575,22 @@ public class WsConnection extends Thread {
                 switch (b1) {
                     case OP_CONTINUATION:
                         if (this.closureCode == 0) {
-                            payload = combine(payload, framePayload);
+                            message = combine(message, framePayload);
                         }
                         break;
                     case OP_FINAL: {
                         if (this.closureCode == 0) {
-                            payload = combine(payload, framePayload);
+                            message = combine(message, framePayload);
                             if (opData == OP_BINARY) {
-                                handler.onMessage(this, payload);
+                                handler.onMessage(this, message);
                             } else {
                                 handler.onMessage(this,
-                                        new String(payload, StandardCharsets.UTF_8));
+                                        new String(message, StandardCharsets.UTF_8));
                             }
                         }
                         opData = 0;
-                        payload = EMPTY_PAYLOAD;
+                        message = EMPTY_PAYLOAD;
+                        messageLen = 0;
                         break;
                     }
                     case OP_PONG: {
@@ -627,12 +670,12 @@ public class WsConnection extends Thread {
         }
     }
 
-    private int read(BufferedInputStream bis, byte[] buf, int off, int len)
+    private int readFully(InputStream is, byte[] buf, int off, int len)
             throws IOException {
         int bytesRead = 0;
-        for (int n = bis.read(buf, off, len); n > 0 && bytesRead < len;) {
+        for (int n = is.read(buf, off, len); n > 0 && bytesRead < len;) {
             bytesRead += n;
-            n = bis.read(buf, off + bytesRead, len - bytesRead);
+            n = is.read(buf, off + bytesRead, len - bytesRead);
         }
         return bytesRead;
     }
@@ -663,11 +706,13 @@ public class WsConnection extends Thread {
     private synchronized void sendPayload(int opData, byte[] payload)
             throws IOException {
         if (closureCode != 0) { // || !isOpen()) {
-            return; // close frame sent, ignore output
+// close handshake in progress            
+            throw new SocketException("close_handshake");
         }
         boolean masked = this.isClientSide;
-        BufferedOutputStream os
-                = new BufferedOutputStream(this.socket.getOutputStream());
+        OutputStream os = this.socket.getOutputStream();
+//        BufferedOutputStream os
+//                = new BufferedOutputStream(this.socket.getOutputStream());
         byte[] header = new byte[2];
         header[0] = (byte) opData;
         byte[] mask = {0, 0, 0, 0};

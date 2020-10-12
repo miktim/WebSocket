@@ -29,13 +29,14 @@ import javax.net.ssl.SSLServerSocketFactory;
 public class WsListener extends Thread {
 
     private boolean isRunning;
-    boolean isSecure;
-    int handshakeSoTimeout = WsConnection.DEFAULT_HANDSHAKE_SO_TIMEOUT;
-    int connectionSoTimeout = WsConnection.DEFAULT_CONNECTION_SO_TIMEOUT;
-    boolean pingEnabled = true;
+    private boolean isSecure;
+    private int handshakeSoTimeout = WsConnection.DEFAULT_HANDSHAKE_SO_TIMEOUT;
+    private int connectionSoTimeout = WsConnection.DEFAULT_CONNECTION_SO_TIMEOUT;
+    private boolean pingEnabled = true;
+    private String connectionPrefix; // connection thread name
     private InetSocketAddress socketAddress;
     private ServerSocket serverSocket;
-    WsHandler handler;
+    private WsHandler handler;
 
     WsListener(InetSocketAddress isa, WsHandler handler, boolean secure)
             throws Exception {
@@ -77,12 +78,32 @@ public class WsListener extends Thread {
         return pingEnabled && connectionSoTimeout > 0;
     }
 
+    private int maxMessageLength = WsConnection.DEFAULT_MAX_MESSAGE_LENGTH; //in bytes
+    private boolean streamingEnabled = false;
+
+    void setMaxMessageLength(int maxLen, boolean enableStreaming) {
+        maxMessageLength = maxLen;
+        streamingEnabled = enableStreaming;
+    }
+
+    public int getMaxMessageLength() {
+        return maxMessageLength;
+    }
+
+    public boolean isStreamingEnabled() {
+        return streamingEnabled;
+    }
+
     public WsHandler getHandler() {
         return handler;
     }
 
     public boolean isOpen() {
         return isRunning;
+    }
+
+    public WsConnection[] listConnections() {
+        return WebSocket.listByPrefix(WsConnection.class, connectionPrefix);
     }
 
     public void close() {
@@ -93,16 +114,10 @@ public class WsListener extends Thread {
 //            e.printStackTrace();
         }
 // close listener connections            
-        Thread[] threads = new Thread[Thread.activeCount()];
-        Thread.enumerate(threads);
-        for (Thread thread : threads) {
-            if (thread.getName().startsWith(connectionPrefix)) {
-                ((WsConnection) thread).close(WsConnection.GOING_AWAY, "");
-            }
+        for (WsConnection connection : listConnections()) {
+            connection.close(WsConnection.GOING_AWAY, "");
         }
     }
-
-    private String connectionPrefix;
 
     @Override
     public void run() {
@@ -116,6 +131,7 @@ public class WsListener extends Thread {
                     conn.setName(connectionPrefix + conn.getId());
                     conn.setHandshakeSoTimeout(handshakeSoTimeout);
                     conn.setConnectionSoTimeout(connectionSoTimeout, pingEnabled);
+                    conn.setMaxMessageLength(maxMessageLength, streamingEnabled);
                     socket.setSoTimeout(handshakeSoTimeout);
                     conn.start();
                 }

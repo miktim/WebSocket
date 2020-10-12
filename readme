@@ -7,8 +7,8 @@ Release notes:
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - WebSocket version: 13;
   - WebSocket extensions not supported;
-  - message size is limited to 2147483647 bytes (Integer.MAX_VALUE)
-    large messages can throw java.lang.OutOfMemoryError;
+  - incoming message length is limited to 2147483647 bytes (Integer.MAX_VALUE).
+    Note: large messages can throw handled java.lang.OutOfMemoryError;
   - secure connections implemented without client authentication.
 
 Overview:
@@ -19,10 +19,12 @@ Overview:
     Methods:
       static void setKeystore(File keyFile, String passphrase);
       void setHandshakeSoTimeout(int millis); 
-      void setConnectionSoTimeout(int millis, boolean pingEnabled);
+      void setConnectionSoTimeout(int millis, boolean enablePing);
       WsListener listen(int port, WsHandler handler) throws Exception; //
       WsListener listenSafely(int port, WsHandler handler) throws Exception; //
+      WsListener[] listListeners(); //++
       WsConnection connect(String uri, WsHahdler handler) throws Exception;
+      WsConnection[] listConnections(); //++
       void closeAll();
 
   Interface:
@@ -32,11 +34,12 @@ Overview:
     Methods:
       boolean isOpen();
       boolean isSecure();
+      WsConnection[] listConnections(); //++
       void close();
 
   WsConnection:
     Constants (may vary):
-      String VERSION = "2.0.0";
+      String VERSION = "2.1.0";
       int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;  // milliseconds, open/close handshake
       int DEFAULT_CONNECTION_SO_TIMEOUT = 20000;// milliseconds, ping enabled
 
@@ -58,6 +61,7 @@ Overview:
       String getPeerHost();
       void send(String message) throws IOException;
       void send(byte[] message) throws IOException;
+      void send(InputStream is, boolean isUTF8Text) throws IOException; //++
       void close(); // close without status code
       void close(int statusCode, String reason); // a reason longer than 123 bytes is truncated
       int getClosureCode();

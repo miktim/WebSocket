@@ -62,6 +62,7 @@
                         maxMsgLength = event.data.length;
                         maxMsgEnd = event.data.substring(event.data.length - 80);
                         event.target.send(event.data + event.data);
+//                        event.data = null; //force free memory 
                     } else {
                         event.target.send(event.data);
                     }

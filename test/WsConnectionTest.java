@@ -11,7 +11,7 @@ import org.samples.java.websocket.WebSocket;
 
 public class WsConnectionTest {
 
-    static final int MAX_MESSAGE_LENGTH = 500000;
+    static final int MAX_MESSAGE_LENGTH = 10000000;
 
     public static void main(String[] args) throws Exception {
         String path = (new File(".")).getAbsolutePath();
@@ -19,7 +19,7 @@ public class WsConnectionTest {
             path = args[0];
         }
 
-        String remoteHost = "localhost";
+        String remoteHost = "localhost"; //"192.168.1.106";
         int port = 8443;
         String remoteAddr = remoteHost + ":" + port;
 
@@ -138,11 +138,12 @@ public class WsConnectionTest {
 
         final WebSocket webSocket = new WebSocket();
         webSocket.setConnectionSoTimeout(1000, true); // ping
+// !both sides must use the same self-signed certificate
         /* Android       
         WebSocket.setKeystore(new File(getCacheDir(),"testkeys"), "passphrase");
          */
 // /* Desktop       
-//        WebSocket.setKeystore(new File(path, "localhost.jks"), "password"); // from java 1.8
+//        WebSocket.setKeystore(new File(path, "localhost.jks"), "password"); // java 1.8+
         WebSocket.setKeystore(new File(path, "testkeys"), "passphrase");
 // */
         webSocket.listenSafely(port, listenerHandler);
@@ -155,8 +156,8 @@ public class WsConnectionTest {
                 timer.cancel();
             }
         }, stopTimeout);
-        System.out.println("\r\nSecure WsConnection test ("
-                + WsConnection.VERSION + ")"
+        System.out.println("\r\nSecure WsConnection (v"
+                + WsConnection.VERSION + ") test"
                 + "\r\nClient connects to " + remoteAddr
                 + "\r\nListener will be closed after "
                 + (stopTimeout / 1000) + " seconds"

@@ -1,5 +1,5 @@
 /*
- * WebSocket. WebSocket manager, MIT (c) 2020 miktim@mail.ru
+ * WebSocket. WebSocket factory, MIT (c) 2020 miktim@mail.ru
  *
  * Release notes:
  * - Java SE 1.7+, Android compatible;
@@ -13,12 +13,14 @@ package org.samples.java.websocket;
 
 //import com.sun.net.httpserver.Headers;
 import java.io.File;
+import java.lang.reflect.Array;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Vector;
 //import javax.net.ssl.SSLSocket;
 //import javax.net.ssl.TrustManagerFactory;
 
@@ -60,6 +62,22 @@ public class WebSocket {
         pingPong = ping;
     }
 
+    private int maxMessageLength = WsConnection.DEFAULT_MAX_MESSAGE_LENGTH; //in bytes
+    private boolean streamingEnabled = false;
+
+    public void setMaxMessageLength(int maxLen, boolean enableStreaming) {
+        maxMessageLength = maxLen;
+        streamingEnabled = enableStreaming;
+    }
+    
+    public int getMaxMessageLength() {
+        return maxMessageLength;
+    }
+
+    public boolean isStreamingEnabled() {
+        return streamingEnabled;
+    }
+
     public WsListener listen(int port, WsHandler handler) throws Exception {
         return startListener(port, handler, false);
     }
@@ -75,6 +93,7 @@ public class WebSocket {
         listener.setName(listenerPrefix + listener.getId());
         listener.setHandshakeSoTimeout(handshakeSoTimeout);
         listener.setConnectionSoTimeout(connectionSoTimeout, pingPong);
+        listener.setMaxMessageLength(maxMessageLength, streamingEnabled);
         listener.start();
         return listener;
     }
@@ -91,22 +110,40 @@ public class WebSocket {
         connection.setName(connectionPrefix + connection.getId());
         connection.setHandshakeSoTimeout(handshakeSoTimeout);
         connection.setConnectionSoTimeout(connectionSoTimeout, pingPong);
-        connection.open();  //TODO open(bindAddr)
+        connection.open();
         connection.start();
         return connection;
     }
 
-    public void closeAll() {
-// close WebSocket listeners/connections           
+    @SuppressWarnings("unchecked")
+    static <T> T[] listByPrefix(Class<T> c, String prefix) {
+        Vector<T> vector = new Vector<>();
         Thread[] threads = new Thread[Thread.activeCount()];
         Thread.enumerate(threads);
         for (Thread thread : threads) {
-            if (thread.getName().startsWith(connectionPrefix)) {
-                ((WsConnection) thread).close(WsConnection.GOING_AWAY, "");
-            } else if (thread.getName().startsWith(listenerPrefix)) {
-                ((WsListener) thread).close();
+            if (thread.getName().startsWith(prefix)) {
+                vector.add((T) thread);
             }
         }
+        return vector.toArray((T[]) Array.newInstance(c, vector.size()));
     }
+
+    public WsConnection[] listConnections() {
+        return listByPrefix(WsConnection.class, connectionPrefix);
+    }
+
+    public WsListener[] listListeners() {
+        return listByPrefix(WsListener.class,listenerPrefix);
+    }
+
+    public void closeAll() {
+// close WebSocket listeners/connections 
+        for (WsListener listener : listListeners()) {
+            listener.close();
+        }
+        for (WsConnection conn : listConnections()) {
+            conn.close(WsConnection.GOING_AWAY, "");
+        }
+   }
 
 }

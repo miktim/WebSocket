@@ -15,7 +15,7 @@ import org.samples.java.websocket.WebSocket;
 
 public class WsListenerTest {
 
-    public static final int MAX_MESSAGE_LENGTH = 500000;
+    public static final int MAX_MESSAGE_LENGTH = 1000000;
 
     public static void main(String[] args) throws Exception {
         String path = (new File(".")).getAbsolutePath();
@@ -94,9 +94,11 @@ public class WsListenerTest {
                 }
             }
         };
+        
         final WebSocket webSocket = 
                 new WebSocket(InetAddress.getByName("localhost"));
         webSocket.setConnectionSoTimeout(1000, true); // ping
+        webSocket.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
         final WsListener listener = webSocket.listen(8080, listenerHandler);
 //        WebSocket.setKeystore(new File(path, "localhost.jks"), "password");// java 1.8
 //        WebSocket.setKeystore(new File(path, "testkeys"), "passphrase");// java 1.7
