@@ -41,7 +41,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 public class WsConnection extends Thread {
 
-    public static final String VERSION = "2.1.0";
+    public static final String VERSION = "2.2.0";
     public static final int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000; // open/close handshake
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 20000; // ping
 
@@ -114,7 +114,7 @@ public class WsConnection extends Thread {
 
     void setMaxMessageLength(int maxLen, boolean enableStreaming) {
         maxMessageLength = maxLen;
-        streamingEnabled = enableStreaming;
+//        streamingEnabled = enableStreaming;
     }
 
     public int getMaxMessageLength() {
@@ -164,26 +164,29 @@ public class WsConnection extends Thread {
     }
 
     public void send(byte[] message) throws IOException {
-//        sendPayload(OP_BINARY | OP_FINAL, message);
-        send(new ByteArrayInputStream(message), false);
+        sendPayload(OP_BINARY | OP_FINAL, message);
+//        send(new ByteArrayInputStream(message), false);
     }
 
     public void send(String message) throws IOException {
-//        sendPayload(OP_TEXT | OP_FINAL, message.getBytes(StandardCharsets.UTF_8));
-        send(new ByteArrayInputStream(
-                message.getBytes(StandardCharsets.UTF_8)), true);
+        sendPayload(OP_TEXT | OP_FINAL, message.getBytes(StandardCharsets.UTF_8));
+//        send(new ByteArrayInputStream(
+//                message.getBytes(StandardCharsets.UTF_8)), true);
     }
 
-    private static final int STREAM_PAYLOAD_LENGTH = 8192;
+    public static final int STREAM_PAYLOAD_LENGTH = 8192;
 
     public synchronized void send(InputStream is, boolean isUTF8Text) throws IOException {
+        if (is == null) {
+            throw new NullPointerException();
+        }
+        byte[] buf = new byte[STREAM_PAYLOAD_LENGTH];
         try {
 // BufferedInputStream is not good for large payloads?
-//            BufferedInputStream bis = new BufferedInputStream(is);
-            byte[] buf = new byte[STREAM_PAYLOAD_LENGTH];
+            BufferedInputStream bis = new BufferedInputStream(is);
             int op = isUTF8Text ? OP_TEXT : OP_BINARY;
             while (true) {
-                int len = this.readFully(is, buf, 0, buf.length);
+                int len = this.readFully(bis, buf, 0, buf.length);
                 try {
                     if (len == buf.length) {
                         sendPayload(op, buf);
@@ -199,8 +202,6 @@ public class WsConnection extends Thread {
                     throw e;
                 }
             }
-        } catch (NullPointerException e) {
-            throw e;
         } catch (IOException e) {
 // an exception is thrown, no OnError handler is called
             this.close(INTERNAL_ERROR, ""); // guess read error
@@ -463,7 +464,7 @@ public class WsConnection extends Thread {
     static final byte[] EMPTY_PAYLOAD = new byte[0];
 
     void listenInputStream() throws IOException {
-// BufferedInputStream is not good for large payloads
+// BufferedInputStream is not good for large payloads?
 //        BufferedInputStream is = new BufferedInputStream(socket.getInputStream());
         InputStream is = socket.getInputStream();
         boolean pingSent = false;
@@ -543,9 +544,14 @@ public class WsConnection extends Thread {
                     case OP_CONTINUATION:
                     case OP_FINAL: {
                         messageLen += framePayloadLen;
-                        if (closureCode == 0
-                                && (messageLen <= (long) this.maxMessageLength)) {
-                            break;
+                        if (closureCode == 0) {
+                            if (messageLen <= (long) this.maxMessageLength
+                                    || streamingEnabled) {
+                                break;
+                            } else {
+                                message = EMPTY_PAYLOAD;
+                                closeDueTo(MESSAGE_TOO_BIG, new BufferUnderflowException());
+                            }
                         }
                     }
                     case OP_PING:
@@ -554,9 +560,9 @@ public class WsConnection extends Thread {
                         if (framePayloadLen <= 125L) {
                             break;
                         }
+                        closeDueTo(PROTOCOL_ERROR, new ProtocolException());
                     }
                     default: {
-                        closeDueTo(MESSAGE_TOO_BIG, new BufferUnderflowException());
                         is.skip(framePayloadLen);
                         framePayloadLen = 0;
                     }

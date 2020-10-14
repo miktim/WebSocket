@@ -1,5 +1,5 @@
 /*
- * WebSocket listener test. MIT (c) 2020 miktim@mail.ru
+ * WebSocket WsListener test. MIT (c) 2020 miktim@mail.ru
  * Created: 2020-03-09
  */
 
@@ -15,8 +15,9 @@ import org.samples.java.websocket.WebSocket;
 
 public class WsListenerTest {
 
-    public static final int MAX_MESSAGE_LENGTH = 1000000;
-
+    public static final int MAX_MESSAGE_LENGTH = 1000000;//~1MB
+    public static final int LISTENER_SHUTDOWN_TIMEOUT = 30000;//30sec
+    
     public static void main(String[] args) throws Exception {
         String path = (new File(".")).getAbsolutePath();
         if (args.length > 0) {
@@ -102,7 +103,7 @@ public class WsListenerTest {
         final WsListener listener = webSocket.listen(8080, listenerHandler);
 //        WebSocket.setKeystore(new File(path, "localhost.jks"), "password");// java 1.8
 //        WebSocket.setKeystore(new File(path, "testkeys"), "passphrase");// java 1.7
-        int stopTimeout = 30000;
+
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
@@ -110,11 +111,11 @@ public class WsListenerTest {
                 listener.close();
                 timer.cancel();
             }
-        }, stopTimeout);
+        }, LISTENER_SHUTDOWN_TIMEOUT);
         System.out.println("\r\nWebSocket Listener test"
                 + "\r\nIncoming maxMessageLength = " + MAX_MESSAGE_LENGTH
                 + "\r\nListener will be closed after "
-                + (stopTimeout / 1000) + " seconds"
+                + (LISTENER_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
         /* Android
         Intent browserIntent = new Intent(Intent.ACTION_VIEW,

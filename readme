@@ -7,7 +7,7 @@ Release notes:
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - WebSocket version: 13;
   - WebSocket extensions not supported;
-  - incoming message length is limited to 2147483647 bytes (Integer.MAX_VALUE).
+  - incoming message length is limited to 2GB (Integer.MAX_VALUE).
     Note: large messages can throw handled java.lang.OutOfMemoryError;
   - secure connections implemented without client authentication.
 
@@ -18,8 +18,10 @@ Overview:
 
     Methods:
       static void setKeystore(File keyFile, String passphrase);
+//      void setSubprotocol(String protocols); //comma delimited, in order of preference
       void setHandshakeSoTimeout(int millis); 
       void setConnectionSoTimeout(int millis, boolean enablePing);
+      void setMaxMessageLength(int len, boolean enableStreaming); //+- enable flag ignored
       WsListener listen(int port, WsHandler handler) throws Exception; //
       WsListener listenSafely(int port, WsHandler handler) throws Exception; //
       WsListener[] listListeners(); //++
@@ -32,6 +34,7 @@ Overview:
 
   WsListener:
     Methods:
+//      String getSubprotocol();
       boolean isOpen();
       boolean isSecure();
       WsConnection[] listConnections(); //++
@@ -39,9 +42,11 @@ Overview:
 
   WsConnection:
     Constants (may vary):
-      String VERSION = "2.1.0";
+      String VERSION = "2.2.0";
       int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;  // milliseconds, open/close handshake
       int DEFAULT_CONNECTION_SO_TIMEOUT = 20000;// milliseconds, ping enabled
+      int DEFAULT_MAX_MESSAGE_SIZE = 2GB; // bytes, streaming disabled
+      int STREAM_PAYLOAD_LENGTH = 8192; //bytes
 
       WebSocket closure status codes:
          NORMAL_CLOSURE, GOING_AWAY, PROTOCOL_ERROR, UNSUPPORTED_DATA, NO_STATUS,
@@ -59,8 +64,9 @@ Overview:
       boolean isListenerSide();
       String getPath();
       String getPeerHost();
-      void send(String message) throws IOException;
-      void send(byte[] message) throws IOException;
+//      String getSubprotocol();
+      void send(String message) throws IOException; // send as single frame
+      void send(byte[] message) throws IOException; // send as single frame
       void send(InputStream is, boolean isUTF8Text) throws IOException; //++
       void close(); // close without status code
       void close(int statusCode, String reason); // a reason longer than 123 bytes is truncated

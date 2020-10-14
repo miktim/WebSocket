@@ -11,8 +11,9 @@ import org.samples.java.websocket.WebSocket;
 
 public class WsConnectionTest {
 
-    static final int MAX_MESSAGE_LENGTH = 10000000;
-
+    static final int MAX_MESSAGE_LENGTH = 100000; //~1MB
+    static final int LISTENER_SHUTDOWN_TIMEOUT = 10000; //10sec 
+    
     public static void main(String[] args) throws Exception {
         String path = (new File(".")).getAbsolutePath();
         if (args.length > 0) {
@@ -147,7 +148,7 @@ public class WsConnectionTest {
         WebSocket.setKeystore(new File(path, "testkeys"), "passphrase");
 // */
         webSocket.listenSafely(port, listenerHandler);
-        int stopTimeout = 10000;
+
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
@@ -155,12 +156,12 @@ public class WsConnectionTest {
                 webSocket.closeAll();
                 timer.cancel();
             }
-        }, stopTimeout);
+        }, LISTENER_SHUTDOWN_TIMEOUT);
         System.out.println("\r\nSecure WsConnection (v"
                 + WsConnection.VERSION + ") test"
                 + "\r\nClient connects to " + remoteAddr
                 + "\r\nListener will be closed after "
-                + (stopTimeout / 1000) + " seconds"
+                + (LISTENER_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
         webSocket.connect("wss://" + remoteAddr + "/test", clientHandler);
     }
