@@ -30,6 +30,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.BufferUnderflowException;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidParameterException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -41,7 +42,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 public class WsConnection extends Thread {
 
-    public static final String VERSION = "2.2.0";
+    public static final String VERSION = "2.1.1";
     public static final int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000; // open/close handshake
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 20000; // ping
 
@@ -164,30 +165,44 @@ public class WsConnection extends Thread {
     }
 
     public void send(byte[] message) throws IOException {
-        sendPayload(OP_BINARY | OP_FINAL, message);
+        syncSend(message, false);
+//        sendPayload(OP_BINARY | OP_FINAL, message);
 //        send(new ByteArrayInputStream(message), false);
     }
 
     public void send(String message) throws IOException {
-        sendPayload(OP_TEXT | OP_FINAL, message.getBytes(StandardCharsets.UTF_8));
+        syncSend(message.getBytes(StandardCharsets.UTF_8), true);
+//        sendPayload(OP_TEXT | OP_FINAL, message.getBytes(StandardCharsets.UTF_8));
 //        send(new ByteArrayInputStream(
 //                message.getBytes(StandardCharsets.UTF_8)), true);
     }
 
+    public void send(InputStream is, boolean isText) throws IOException {
+        syncSend(is, isText);
+    }
+
     public static final int STREAM_PAYLOAD_LENGTH = 8192;
 
-    public synchronized void send(InputStream is, boolean isUTF8Text) throws IOException {
-        if (is == null) {
-            throw new NullPointerException();
+    private synchronized void syncSend(Object obj, boolean isText) throws IOException {
+        if(obj == null){
+            throw new  NullPointerException();
         }
-        byte[] buf = new byte[STREAM_PAYLOAD_LENGTH];
+        int op = isText ? OP_TEXT : OP_BINARY;
         try {
+            if (obj instanceof byte[]) {
+                sendPayload(op | OP_FINAL, (byte[]) obj);
+            } else if (obj instanceof InputStream) {
 // BufferedInputStream is not good for large payloads?
-            BufferedInputStream bis = new BufferedInputStream(is);
-            int op = isUTF8Text ? OP_TEXT : OP_BINARY;
-            while (true) {
-                int len = this.readFully(bis, buf, 0, buf.length);
-                try {
+                byte[] buf = new byte[STREAM_PAYLOAD_LENGTH];
+                InputStream is = (InputStream) obj;
+                int len = 0;
+                while (true) {
+                    try {
+                        len = this.readFully(is, buf, 0, buf.length);
+                    } catch (IOException e) {
+                        this.close(INTERNAL_ERROR, "");
+                        throw e;
+                    }
                     if (len == buf.length) {
                         sendPayload(op, buf);
                         op = OP_CONTINUATION;
@@ -197,14 +212,12 @@ public class WsConnection extends Thread {
                                 Arrays.copyOf(buf, len >= 0 ? len : 0));
                         break;
                     }
-                } catch (IOException e) {
-                    this.close(ABNORMAL_CLOSURE, "");
-                    throw e;
                 }
+            } else {
+                throw new InvalidParameterException();
             }
         } catch (IOException e) {
-// an exception is thrown, no OnError handler is called
-            this.close(INTERNAL_ERROR, ""); // guess read error
+            this.close(ABNORMAL_CLOSURE, "");
             throw e;
         }
     }
