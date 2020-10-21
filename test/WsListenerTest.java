@@ -17,7 +17,7 @@ public class WsListenerTest {
 
     public static final int MAX_MESSAGE_LENGTH = 1000000;//~1MB
     public static final int LISTENER_SHUTDOWN_TIMEOUT = 30000;//30sec
-    
+
     public static void main(String[] args) throws Exception {
         String path = (new File(".")).getAbsolutePath();
         if (args.length > 0) {
@@ -27,7 +27,8 @@ public class WsListenerTest {
             @Override
             public void onOpen(WsConnection con) {
                 System.out.println("Handle OPEN: " + con.getPath()
-                        + " Peer: " + con.getPeerHost());
+                        + " Peer: " + con.getPeerHost()
+                        + " Subprotocol:" + con.getAgreedSubprotocol());
                 if (!con.getPath().startsWith("/test")) {
                     con.close(WsConnection.POLICY_VIOLATION, "path not found");
                     return;
@@ -44,7 +45,7 @@ public class WsListenerTest {
             @Override
             public void onClose(WsConnection con) {
                 System.out.println("Handle CLOSE: " + con.getPath()
-                        + " Closure status:" + con.getClosureCode());
+                        + " Closure status:" + con.getCloseCode());
             }
 
             @Override
@@ -53,7 +54,7 @@ public class WsListenerTest {
                         + (con != null ? con.getPath() : null)
                         + " " + e.toString()
                         + " Closure status:"
-                        + (con != null ? con.getClosureCode() : null));
+                        + (con != null ? con.getCloseCode() : null));
 //                e.printStackTrace();
             }
 
@@ -95,11 +96,12 @@ public class WsListenerTest {
                 }
             }
         };
-        
-        final WebSocket webSocket = 
-                new WebSocket(InetAddress.getByName("localhost"));
+
+        final WebSocket webSocket
+                = new WebSocket(InetAddress.getByName("localhost"));
         webSocket.setConnectionSoTimeout(1000, true); // ping
         webSocket.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
+        webSocket.setSubprotocol("chat, superChat");
         final WsListener listener = webSocket.listen(8080, listenerHandler);
 //        WebSocket.setKeystore(new File(path, "localhost.jks"), "password");// java 1.8
 //        WebSocket.setKeystore(new File(path, "testkeys"), "passphrase");// java 1.7

@@ -41,7 +41,7 @@ public class WsConnectionTest {
             @Override
             public void onClose(WsConnection con) {
                 System.out.println("Listener: handle CLOSE: " + con.getPath()
-                        + " Closure status:" + con.getClosureCode());
+                        + " Closure status:" + con.getCloseCode());
             }
 
             @Override
@@ -50,7 +50,7 @@ public class WsConnectionTest {
                         + (con != null ? con.getPath() : null)
                         + " " + e.toString()
                         + " Closure status:"
-                        + (con != null ? con.getClosureCode() : null));
+                        + (con != null ? con.getCloseCode() : null));
                 e.printStackTrace();
             }
 
@@ -96,14 +96,14 @@ public class WsConnectionTest {
             @Override
             public void onClose(WsConnection con) {
                 System.out.println("Client: handle CLOSE: " + con.getPath()
-                        + " Closure status:" + con.getClosureCode());
+                        + " Closure status:" + con.getCloseCode());
             }
 
             @Override
             public void onError(WsConnection con, Exception e) {
                 System.out.println("Client: handle ERROR: " + con.getPath()
                         + " " + e.toString()
-                        + " Closure status:" + con.getClosureCode());
+                        + " Closure status:" + con.getCloseCode());
 //                e.printStackTrace();
             }
 

@@ -86,6 +86,16 @@ public class WsListener extends Thread {
         streamingEnabled = enableStreaming;
     }
 
+    private String subprotocol = "";
+
+    public void setSubprotocol(String sub) {
+        subprotocol = (sub == null || sub.trim().isEmpty()) ? "" : sub.trim();
+    }
+
+    public String getSubprotocol() {
+        return subprotocol;
+    }
+
     public int getMaxMessageLength() {
         return maxMessageLength;
     }
@@ -132,6 +142,7 @@ public class WsListener extends Thread {
                     conn.setHandshakeSoTimeout(handshakeSoTimeout);
                     conn.setConnectionSoTimeout(connectionSoTimeout, pingEnabled);
                     conn.setMaxMessageLength(maxMessageLength, streamingEnabled);
+                    conn.setSubprotocol(subprotocol);
                     socket.setSoTimeout(handshakeSoTimeout);
                     conn.start();
                 }

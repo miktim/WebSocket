@@ -67,15 +67,25 @@ public class WebSocket {
 
     public void setMaxMessageLength(int maxLen, boolean enableStreaming) {
         maxMessageLength = maxLen;
-        streamingEnabled = enableStreaming;
+//        streamingEnabled = enableStreaming;
     }
-    
+
     public int getMaxMessageLength() {
         return maxMessageLength;
     }
 
     public boolean isStreamingEnabled() {
         return streamingEnabled;
+    }
+
+    private String subprotocol = "";
+
+    public void setSubprotocol(String sub) {
+        subprotocol = (sub == null || sub.trim().isEmpty()) ? "" : sub.trim();
+    }
+
+    public String getSubprotocol() {
+        return subprotocol;
     }
 
     public WsListener listen(int port, WsHandler handler) throws Exception {
@@ -94,6 +104,7 @@ public class WebSocket {
         listener.setHandshakeSoTimeout(handshakeSoTimeout);
         listener.setConnectionSoTimeout(connectionSoTimeout, pingPong);
         listener.setMaxMessageLength(maxMessageLength, streamingEnabled);
+        listener.setSubprotocol(subprotocol);
         listener.start();
         return listener;
     }
@@ -110,6 +121,8 @@ public class WebSocket {
         connection.setName(connectionPrefix + connection.getId());
         connection.setHandshakeSoTimeout(handshakeSoTimeout);
         connection.setConnectionSoTimeout(connectionSoTimeout, pingPong);
+        connection.setMaxMessageLength(maxMessageLength, streamingEnabled);
+        connection.setSubprotocol(subprotocol);
         connection.open();
         connection.start();
         return connection;
@@ -133,7 +146,7 @@ public class WebSocket {
     }
 
     public WsListener[] listListeners() {
-        return listByPrefix(WsListener.class,listenerPrefix);
+        return listByPrefix(WsListener.class, listenerPrefix);
     }
 
     public void closeAll() {
@@ -144,6 +157,6 @@ public class WebSocket {
         for (WsConnection conn : listConnections()) {
             conn.close(WsConnection.GOING_AWAY, "");
         }
-   }
+    }
 
 }

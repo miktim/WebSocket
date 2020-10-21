@@ -8,15 +8,15 @@ package org.samples.java.websocket;
 import java.util.HashMap;
 import java.util.Set;
 
-public class Headers {
+class Headers {
 
-    private final HashMap<String, String> headers = new HashMap<String, String>();
+    private final HashMap<String, String> headers = new HashMap<>();
 
-    public String getFirst(String key) {
+    String getFirst(String key) {
         return headers.get(key);
     }
 
-    public void add(String key, String value) {
+    void add(String key, String value) {
         String val = getFirst(key);
         if (val == null || val.isEmpty()) {
             headers.put(key, value);
@@ -25,7 +25,7 @@ public class Headers {
         }
     }
     
-    public Set<String> keySet() {
+    Set<String> keySet() {
         return headers.keySet();
     }
 }

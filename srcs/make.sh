@@ -9,7 +9,7 @@ if [ ! -d ${cpath} ]
 fi
 javac -Xstdout ./compile.log -Xlint:unchecked -cp ${cpath} -d ./ \
   *.java
-#  WsHandler.java Headers.java WsConnection.java WebSocket.java WsListener.java WsInputStream.java
+#  WsHandler.java Headers.java WsConnection.java WebSocket.java WsListener.java
 if [ $? -eq 0 ] ; then
   jar cvf ./${jname}.jar ${cpath}/*.class
 #  javadoc -d ./${jname}Doc -nodeprecated -use package-info.java \
