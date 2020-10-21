@@ -17,7 +17,8 @@ public class WsListenerTest {
 
     public static final int MAX_MESSAGE_LENGTH = 1000000;//~1MB
     public static final int LISTENER_SHUTDOWN_TIMEOUT = 30000;//30sec
-
+    public static final String WEBSOCKET_SUBPROTOCOL = "chat,superChat,superPooperChat";
+    
     public static void main(String[] args) throws Exception {
         String path = (new File(".")).getAbsolutePath();
         if (args.length > 0) {
@@ -101,7 +102,7 @@ public class WsListenerTest {
                 = new WebSocket(InetAddress.getByName("localhost"));
         webSocket.setConnectionSoTimeout(1000, true); // ping
         webSocket.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
-        webSocket.setSubprotocol("chat, superChat");
+        webSocket.setSubprotocol(WEBSOCKET_SUBPROTOCOL);
         final WsListener listener = webSocket.listen(8080, listenerHandler);
 //        WebSocket.setKeystore(new File(path, "localhost.jks"), "password");// java 1.8
 //        WebSocket.setKeystore(new File(path, "testkeys"), "passphrase");// java 1.7
@@ -116,6 +117,7 @@ public class WsListenerTest {
         }, LISTENER_SHUTDOWN_TIMEOUT);
         System.out.println("\r\nWebSocket Listener test"
                 + "\r\nIncoming maxMessageLength = " + MAX_MESSAGE_LENGTH
+                + "\r\nWebSocket Subprotocol = " + WEBSOCKET_SUBPROTOCOL
                 + "\r\nListener will be closed after "
                 + (LISTENER_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");

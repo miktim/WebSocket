@@ -418,7 +418,7 @@ public class WsConnection extends Thread {
         headers.add("Sec-WebSocket-Key", key);
         headers.add("Sec-WebSocket-Version", "13");
         if (!subprotocol.isEmpty()) {
-            headers.add("Sec-WebSocket-Protocol", subprotocol.replace(" ", ""));
+            headers.add("Sec-WebSocket-Protocol", subprotocol.replaceAll(" ", ""));
         }
 
         sendHeaders(this.socket, headers, requestLine);
