@@ -2,18 +2,18 @@
 
 echo $(javac -version)
 jname=WebSocket
-cpath=./org/samples/java/websocket
+cpath=/org/miktim/websocket/
 if [ ! -d ${cpath} ]
-  then mkdir -p ${cpath}
+  then mkdir -p .${cpath}
   else rm -f ${cpath}/*.*
 fi
-javac -Xstdout ./compile.log -Xlint:unchecked -cp ${cpath} -d ./ \
-  *.java
+javac -Xstdout ./compile.log -Xlint:unchecked -cp .${cpath} -d ./ \
+  ../src${cpath}*.java
 #  WsHandler.java Headers.java WsConnection.java WebSocket.java WsListener.java
 if [ $? -eq 0 ] ; then
-  jar cvf ./${jname}.jar ${cpath}/*.class
+  jar cvf ./${jname}.jar .${cpath}/*.class
 #  javadoc -d ./${jname}Doc -nodeprecated -use package-info.java \
-#  WsHandler.java WsConnection.java WebSocket.java WsListener.java WsInputStream.java
+#  WebSocket.java WsHandler.java WsListener.java WsConnection.java
 fi
 rm -f -r ./org
 #more < ./compile.log

@@ -3,7 +3,7 @@
  *
  * Created: 2020-03-09
  */
-package org.samples.java.websocket;
+package org.miktim.websocket;
 
 public interface WsHandler {
     public void onOpen(WsConnection conn);
@@ -11,10 +11,10 @@ public interface WsHandler {
     public void onMessage(WsConnection conn, String s );
     public void onMessage(WsConnection conn, byte[] b);
 // onStream: for the future if the specified maximum message length is exceeded
-//   - exiting the handler closes the input stream.    
+//   - exiting the handler closes the input stream.
 //  public void onStream(WsConnection conn, InputStream is, boolean isUTF8Text);
-// onError: 
-//   - conn may be null in the listener handler (fatal ServerSocket exception);
+// onError:
+//   - conn can be null in the listener handler (ServerSocket accept() exception, InterruptedException);
 //   - check connection closure status.
     public void onError(WsConnection conn, Exception e);
 }

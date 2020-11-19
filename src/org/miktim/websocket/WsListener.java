@@ -9,15 +9,17 @@
  *
  * Created: 2020-03-09
  */
-package org.samples.java.websocket;
+package org.miktim.websocket;
 
 //import com.sun.net.httpserver.Headers;
 import java.io.File;
 import java.io.FileInputStream;
+import java.lang.reflect.Array;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.KeyStore;
+import java.util.Vector;
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -86,22 +88,22 @@ public class WsListener extends Thread {
         streamingEnabled = enableStreaming;
     }
 
-    private String subprotocol = "";
-
-    public void setSubprotocol(String sub) {
-        subprotocol = (sub == null || sub.trim().isEmpty()) ? "" : sub.trim();
-    }
-
-    public String getSubprotocol() {
-        return subprotocol;
-    }
-
     public int getMaxMessageLength() {
         return maxMessageLength;
     }
 
     public boolean isStreamingEnabled() {
         return streamingEnabled;
+    }
+
+    private String subprotocol = null;
+
+    public void setSubprotocol(String sub) {
+        subprotocol = sub;
+    }
+
+    public String getSubprotocol() {
+        return subprotocol;
     }
 
     public WsHandler getHandler() {
@@ -112,8 +114,21 @@ public class WsListener extends Thread {
         return isRunning;
     }
 
+    @SuppressWarnings("unchecked")
+    static <T> T[] listByPrefix(Class<T> c, String prefix) {
+        Vector<T> vector = new Vector<>();
+        Thread[] threads = new Thread[Thread.activeCount()];
+        Thread.enumerate(threads);
+        for (Thread thread : threads) {
+            if (thread.getName().startsWith(prefix)) {
+                vector.add((T) thread);
+            }
+        }
+        return vector.toArray((T[]) Array.newInstance(c, vector.size()));
+    }
+
     public WsConnection[] listConnections() {
-        return WebSocket.listByPrefix(WsConnection.class, connectionPrefix);
+        return listByPrefix(WsConnection.class, connectionPrefix);
     }
 
     public void close() {
@@ -122,10 +137,6 @@ public class WsListener extends Thread {
             serverSocket.close();
         } catch (Exception e) {
 //            e.printStackTrace();
-        }
-// close listener connections            
-        for (WsConnection connection : listConnections()) {
-            connection.close(WsConnection.GOING_AWAY, "");
         }
     }
 
@@ -146,12 +157,16 @@ public class WsListener extends Thread {
                     socket.setSoTimeout(handshakeSoTimeout);
                     conn.start();
                 }
-            } catch (Exception e) {
+            } catch (Exception e) { // InterruptedException
                 if (this.isRunning) {
                     handler.onError(null, e);
                     this.close();
                 }
             }
+        }
+// close listener connections            
+        for (WsConnection connection : listConnections()) {
+            connection.close(WsConnection.GOING_AWAY, "");
         }
     }
 

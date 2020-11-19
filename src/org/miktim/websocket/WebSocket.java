@@ -9,18 +9,16 @@
  *
  * Created: 2020-06-06
  */
-package org.samples.java.websocket;
+package org.miktim.websocket;
 
 //import com.sun.net.httpserver.Headers;
 import java.io.File;
-import java.lang.reflect.Array;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Vector;
 //import javax.net.ssl.SSLSocket;
 //import javax.net.ssl.TrustManagerFactory;
 
@@ -67,7 +65,7 @@ public class WebSocket {
 
     public void setMaxMessageLength(int maxLen, boolean enableStreaming) {
         maxMessageLength = maxLen;
-//        streamingEnabled = enableStreaming;
+        streamingEnabled = enableStreaming;
     }
 
     public int getMaxMessageLength() {
@@ -78,10 +76,10 @@ public class WebSocket {
         return streamingEnabled;
     }
 
-    private String subprotocol = "";
+    private String subprotocol = null;
 
     public void setSubprotocol(String sub) {
-        subprotocol = (sub == null || sub.trim().isEmpty()) ? "" : sub.trim();
+        subprotocol = sub ;
     }
 
     public String getSubprotocol() {
@@ -128,25 +126,12 @@ public class WebSocket {
         return connection;
     }
 
-    @SuppressWarnings("unchecked")
-    static <T> T[] listByPrefix(Class<T> c, String prefix) {
-        Vector<T> vector = new Vector<>();
-        Thread[] threads = new Thread[Thread.activeCount()];
-        Thread.enumerate(threads);
-        for (Thread thread : threads) {
-            if (thread.getName().startsWith(prefix)) {
-                vector.add((T) thread);
-            }
-        }
-        return vector.toArray((T[]) Array.newInstance(c, vector.size()));
-    }
-
     public WsConnection[] listConnections() {
-        return listByPrefix(WsConnection.class, connectionPrefix);
+        return WsListener.listByPrefix(WsConnection.class, connectionPrefix);
     }
 
     public WsListener[] listListeners() {
-        return listByPrefix(WsListener.class, listenerPrefix);
+        return WsListener.listByPrefix(WsListener.class, listenerPrefix);
     }
 
     public void closeAll() {

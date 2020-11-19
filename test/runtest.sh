@@ -2,14 +2,14 @@
 
 echo $(javac -version)
 echo $(java -version)
-if [ -f ../srcs/WebSocket.jar ]; then
-  javac -cp ../srcs/WebSocket.jar WsListenerTest.java
-  javac -cp ../srcs/WebSocket.jar WsConnectionTest.java
-  java -cp ../srcs/WebSocket.jar:. WsConnectionTest
-  java -cp ../srcs/WebSocket.jar:. WsListenerTest
+if [ -f ./WebSocket.jar ]; then
+  javac -cp ./WebSocket.jar WsListenerTest.java
+  javac -cp ./WebSocket.jar WsConnectionTest.java
+  java -cp ./WebSocket.jar:. WsConnectionTest
+  java -cp ./WebSocket.jar:. WsListenerTest
   rm -f *.class
 else
-  echo First make the ../srcs/WebSocket.jar file.
+  echo First make the ./WebSocket.jar file.
 fi
 echo
 echo Completed. Press any key...

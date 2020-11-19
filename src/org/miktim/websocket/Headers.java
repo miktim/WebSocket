@@ -3,7 +3,7 @@
  *
  * Replaces the core class com.sun.net.httpserver.Headers for Android compatibility
  */
-package org.samples.java.websocket;
+package org.miktim.websocket;
 
 import java.util.HashMap;
 import java.util.Set;

@@ -9,11 +9,12 @@
  *
  * Created: 2020-03-09
  */
-package org.samples.java.websocket;
+package org.miktim.websocket;
 
 //import com.sun.net.httpserver.Headers;
 import java.io.BufferedReader;
 import java.io.EOFException;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -31,9 +32,7 @@ import java.security.InvalidParameterException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.Random;
-import java.util.Set;
 //import java.security.SecureRandom;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -41,7 +40,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 public class WsConnection extends Thread {
 
-    public static final String VERSION = "2.2.0";
+    public static final String VERSION = "2.2.1";
     public static final int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000; // open/close handshake
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 20000; // ping
 
@@ -108,13 +107,13 @@ public class WsConnection extends Thread {
         return pingEnabled && connectionSoTimeout > 0;
     }
 
-    public static final int DEFAULT_MAX_MESSAGE_LENGTH = Integer.MAX_VALUE;
+    public static final int DEFAULT_MAX_MESSAGE_LENGTH = 8192;
     private int maxMessageLength = DEFAULT_MAX_MESSAGE_LENGTH; //in bytes
     private boolean streamingEnabled = false;
 
     void setMaxMessageLength(int maxLen, boolean enableStreaming) {
         maxMessageLength = maxLen;
-//        streamingEnabled = enableStreaming;
+        streamingEnabled = enableStreaming;
     }
 
     public int getMaxMessageLength() {
@@ -125,42 +124,54 @@ public class WsConnection extends Thread {
         return streamingEnabled;
     }
 
-    private String subprotocol = "";
-    private String agreedSubprotocol = "";
+    private String subprotocolList = null;
+    private String agreedSubprotocol = null;
 
-    public void setSubprotocol(String sub) {
-        subprotocol = (sub == null || sub.trim().isEmpty()) ? "" : sub.trim();
+    void setSubprotocol(String sub) {
+        subprotocolList = sub;
     }
 
     public String getSubprotocol() {
-        return subprotocol;
+        return subprotocolList;
     }
 
     public String getAgreedSubprotocol() {
         return agreedSubprotocol;
     }
 
-    static Set<String> subprotocolsSet(String sub) {
-        if (sub == null) {
-            return new LinkedHashSet<>();
-        }
-        LinkedHashSet<String> subs = new LinkedHashSet<>(
-                Arrays.asList(sub.replaceAll(" ", "").split(",")));
-        subs.remove("");
-        return subs;
-    }
-
+// listener side
     private void setAgreedSubprotocol(Headers rq, Headers rs) {
-        Set<String> rqSubs
-                = subprotocolsSet(rq.getFirst("Sec-WebSocket-Protocol"));
-        Set<String> rsSubs = subprotocolsSet(subprotocol);
-        for (String sub : rqSubs) {
-            if (rsSubs.contains(sub)) {
-                agreedSubprotocol = sub;
-                rs.add("Sec-WebSocket-Protocol", sub);
-                break;
+        String sub = rq.getFirst("Sec-WebSocket-Protocol");
+        if (sub == null || subprotocolList == null) {
+            return;
+        }
+        String[] rqSubl = sub.replaceAll(" ", "").split(",");
+        String[] lsSubl = subprotocolList.replaceAll(" ", "").split(",");
+        for (String subRq : rqSubl) {
+            for (String subLs : lsSubl) {
+                if (subRq.equals(subLs)) {
+                    agreedSubprotocol = subRq;
+                    rs.add("Sec-WebSocket-Protocol", subRq);
+                    return;
+                }
             }
         }
+    }
+
+// client side
+    private boolean setAgreedSubprotocol(String rsSub) {
+        if ((agreedSubprotocol = rsSub) == null) {
+            return true; //???
+        } else if (subprotocolList == null) {
+            return false;
+        }
+        String[] subl = subprotocolList.replaceAll(" ", "").split(",");
+        for (String sub : subl) {
+            if (sub.equals(agreedSubprotocol)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public synchronized void setHandler(WsHandler handler)
@@ -201,16 +212,21 @@ public class WsConnection extends Thread {
         }
     }
 
+    public static void setKeyFile(File jksFile, String passphrase) {
+        System.setProperty("javax.net.ssl.trustStore", jksFile.getAbsolutePath());
+        System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
+//        System.setProperty("javax.net.ssl.keyStore", jksFile.getAbsolutePath());
+//        System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
+    }
+
     public void send(byte[] message) throws IOException {
         syncSend(message, false);
-//        sendPayload(OP_BINARY | OP_FINAL, message);
-//        send(new ByteArrayInputStream(message), false);
+//        syncSend(new ByteArrayInputStream(message), false);
     }
 
     public void send(String message) throws IOException {
         syncSend(message.getBytes(StandardCharsets.UTF_8), true);
-//        sendPayload(OP_TEXT | OP_FINAL, message.getBytes(StandardCharsets.UTF_8));
-//        send(new ByteArrayInputStream(
+//        syncSend(new ByteArrayInputStream(
 //                message.getBytes(StandardCharsets.UTF_8)), true);
     }
 
@@ -417,18 +433,20 @@ public class WsConnection extends Thread {
         headers.add("Connection", "Upgrade,keep-alive");
         headers.add("Sec-WebSocket-Key", key);
         headers.add("Sec-WebSocket-Version", "13");
-        if (!subprotocol.isEmpty()) {
-            headers.add("Sec-WebSocket-Protocol", subprotocol.replaceAll(" ", ""));
+        if (subprotocolList != null) {
+            headers.add("Sec-WebSocket-Protocol", subprotocolList.replaceAll(" ", ""));
         }
 
         sendHeaders(this.socket, headers, requestLine);
         this.peerHeaders = receiveHeaders(this.socket);
         if (!(peerHeaders.getFirst(REQUEST_LINE_HEADER).split(" ")[1].equals("101")
-                && peerHeaders.getFirst("Sec-WebSocket-Accept").equals(sha1Hash(key)))) {
+                && peerHeaders.getFirst("Sec-WebSocket-Accept").equals(sha1Hash(key))
+                && setAgreedSubprotocol(peerHeaders.getFirst("Sec-WebSocket-Protocol")))) {
             throw new ProtocolException("client_handshake");
         }
         String asub = peerHeaders.getFirst("Sec-WebSocket-Protocol");
-        this.agreedSubprotocol = asub != null ? asub : "";
+// close the connection if the negotiated subprotocolList is not in the client's subprotocolList list
+// (rfc 6455 4.1 server response 6.)       
         closeCode = 0;
     }
 
@@ -500,7 +518,7 @@ public class WsConnection extends Thread {
             this.closeCode = 0;
             this.handler.onOpen(this);
             this.listenInputStream();
-        } catch (Exception e) { // ?java.lang.OutOfMemoryError
+        } catch (Exception e) { // InterruptedException
             this.handler.onError(this, e);
             this.closeSocket();
         }
@@ -601,13 +619,12 @@ public class WsConnection extends Thread {
                     case OP_FINAL: {
                         messageLen += framePayloadLen;
                         if (closeCode == 0) {
-                            if (messageLen <= (long) this.maxMessageLength
-                                    || streamingEnabled) {
+                            if (messageLen <= (long) this.maxMessageLength) {
+//                                    || streamingEnabled) {
                                 break;
-                            } else {
-                                message = EMPTY_PAYLOAD;
-                                closeDueTo(MESSAGE_TOO_BIG, new BufferUnderflowException());
                             }
+                            message = EMPTY_PAYLOAD;
+                            closeDueTo(MESSAGE_TOO_BIG, new BufferUnderflowException());
                         }
                     }
                     case OP_PING:

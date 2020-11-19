@@ -11,7 +11,7 @@
     <body>
         <div>WsListener test<br><br></div>
         <!-- listener throws error 1002 (Protocol Error) -->
-        <script src="http://localhost:8080/http_request.js"></script>
+        <script src="http://localhost:8080/this_request_must_fail.js"></script>
         <script>
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
             var erruri = 'ws://localhost:8080/echo';
@@ -21,14 +21,14 @@
             var maxMsgEnd;
             var testNo = 0;
             var tests = [
-                'listener "did not find" the request path (1008 expected)',
+                'listener "did not find" the request path (1008 FireFox, 1006 others expected)',
                 'closing websocket by browser (1005 expected)',
                 'closing websocket by the listener (1000 expected)',
                 'waiting message too big (1009 expected)',
                 'ping, waiting for listener closure (1001 expected)'
             ];
             var webSocket;
-            var subProtocols = ["superChat", "chat"];
+            var subProtocols = ["superPooperChat"];//["superChat", "chat"];
             try {
                 connectWs(erruri);
 //            testNo = 3;
@@ -42,13 +42,12 @@
             }
             function connectWs(uri) {
                 if (testNo < tests.length)
-                    show('Test' + testNo + ': ' + tests[testNo]);
+                    show('Test' + testNo + ': ' + tests[testNo]
+                            + " Requested subprotocols: " + subProtocols);
                 webSocket = new WebSocket(uri, subProtocols);
-                subProtocols.unshift(subProtocols[1]); // rotate
-                subProtocols.splice(2); //
                 webSocket.onopen = event => {
 // WebSocket: .url .readyState .bufferedAmount .binaryType             
-                    show('onopen: ' + event.target.url + " Subprotocol: " + webSocket.protocol);
+                    show('onopen: ' + event.target.url + " Handshaked subprotocol: " + webSocket.protocol);
                     event.target.send(msg);
                 };
                 webSocket.onmessage = event => {
@@ -84,6 +83,10 @@
                             + ':' + event.reason
                             + ':' + event.wasClean
                             + ':' + event.target.url + '<br>');
+                    
+                    subProtocols = subProtocols.concat(["chat", "superChat"]);
+                    subProtocols.unshift(subProtocols[2]); // rotate
+                    subProtocols.splice(3);
 
                     if (++testNo < tests.length)
                         connectWs(testuri + testNo);

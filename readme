@@ -1,15 +1,13 @@
 # Java SE WebSocket listener/connector,  MIT (c) 2020 miktim@mail.ru
-Down with the client-server paradigm!
 Traditional approach: https://github.com/miktim/WebSocket/tree/master
 
 Release notes:
   - java SE 1.7+, Android compatible;
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
-  - WebSocket version: 13;
+  - supported WebSocket version: 13;
   - WebSocket extensions not supported;
   - client authentication not supported;
   - incoming message length is limited to 2GB (Integer.MAX_VALUE).
-    Note: large messages can throw handled java.lang.OutOfMemoryError.
 
 Overview:
   Constructors:
@@ -18,35 +16,35 @@ Overview:
 
     Methods:
       static void setKeystore(File keyFile, String passphrase);
-      void setSubprotocol(String protocols); //++ comma delimited, in order of preference
+      void setSubprotocol(String protocols); //null or comma delimited, in order of preference
       void setHandshakeSoTimeout(int millis); 
       void setConnectionSoTimeout(int millis, boolean enablePing);
-      void setMaxMessageLength(int len, boolean enableStreaming); //+- enable flag ignored
-      WsListener listen(int port, WsHandler handler) throws Exception; //
-      WsListener listenSafely(int port, WsHandler handler) throws Exception; //
+      void setMaxMessageLength(int maxlen, boolean enableStreaming); // !enable flag is ignored in this version
+      WsListener listen(int port, WsHandler handler) throws Exception; 
+      WsListener listenSafely(int port, WsHandler handler) throws Exception;
       WsListener[] listListeners(); 
       WsConnection connect(String uri, WsHahdler handler) throws Exception;
       WsConnection[] listConnections(); 
       void closeAll();
 
   Interface:
-    WsHandler  see: https://github.com/miktim/WsServer/blob/new/srcs/WsHandler.java
+    WsHandler  see: https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsHandler.java
 
   WsListener:
     Methods:
-      String getSubprotocol(); //++ comma delimited
+      String getSubprotocol(); // null or comma delimited list
       boolean isOpen();
       boolean isSecure();
-      WsConnection[] listConnections(); //++
-      void close();
+      WsConnection[] listConnections(); 
+      void close(); // also closes all associated connections
 
   WsConnection:
     Constants (may vary):
-      String VERSION = "2.2.0";
+      String VERSION = "2.2.1";
       int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;  // milliseconds, open/close handshake
       int DEFAULT_CONNECTION_SO_TIMEOUT = 20000;// milliseconds, ping enabled
       int DEFAULT_MAX_MESSAGE_SIZE = 8192; // bytes, streaming disabled
-      int STREAM_PAYLOAD_LENGTH = 8192; //bytes
+      int STREAM_PAYLOAD_LENGTH = 8192; // bytes
 
       Connection closing status codes:
          NORMAL_CLOSURE, GOING_AWAY, PROTOCOL_ERROR, UNSUPPORTED_DATA, NO_STATUS,
@@ -64,15 +62,15 @@ Overview:
       boolean isListenerSide();
       String getPath();
       String getPeerHost();
-      String getSubprotocol(); //++ comma delimited
-      String getAgreedSubprotocol(); //++
+      String getSubprotocol(); // returns null or comma delimited subprotocols
+      String getAgreedSubprotocol(); // returns null or agreed subprotocol
       void send(String message) throws IOException; // send as single frame
       void send(byte[] message) throws IOException; // send as single frame
-      void send(InputStream is, boolean isText) throws IOException; //
+      void send(InputStream is, boolean isText) throws IOException;
       void close(); // close without status code
       void close(int statusCode, String reason); // a reason longer than 123 bytes is truncated
-      int getCloseCode();//+- 0 is returned for an open connection
-      String getCloseReason();//+-
+      int getCloseCode(); // 0 is returned for an open connection, negative value - closed by other side
+      String getCloseReason();
 
 Usage example see in:
   https://github.com/miktim/WebSocket/blob/new/test/WsConnectionTest.java

@@ -3,22 +3,23 @@
  * Created: 2020-03-09
  */
 
+import java.io.ByteArrayInputStream;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
-import org.samples.java.websocket.WsConnection;
-import org.samples.java.websocket.WsHandler;
-import org.samples.java.websocket.WsListener;
-import org.samples.java.websocket.WebSocket;
+import org.miktim.websocket.WsConnection;
+import org.miktim.websocket.WsHandler;
+import org.miktim.websocket.WsListener;
+import org.miktim.websocket.WebSocket;
 
 public class WsListenerTest {
 
     public static final int MAX_MESSAGE_LENGTH = 1000000;//~1MB
     public static final int LISTENER_SHUTDOWN_TIMEOUT = 30000;//30sec
-    public static final String WEBSOCKET_SUBPROTOCOL = "chat,superChat,superPooperChat";
-    
+    public static final String WEBSOCKET_SUBPROTOCOL = "chat,superChat";
+
     public static void main(String[] args) throws Exception {
         String path = (new File(".")).getAbsolutePath();
         if (args.length > 0) {
@@ -71,9 +72,10 @@ public class WsListenerTest {
                         }
 
                     } else if (testPath.endsWith("3")) { // check message too big
-//                        System.out.println("MsgLen:" + s.length());
-                        if (s.getBytes().length > MAX_MESSAGE_LENGTH) {
-                            con.close(WsConnection.MESSAGE_TOO_BIG, "");
+//                        System.out.println("MsgLen:" + s.getBytes("utf-8").length);
+                        if (s.length() > 0xFFFF) {
+                            con.send(new ByteArrayInputStream(
+                                    (s + s).getBytes("utf-8")), true);
                         } else {
                             con.send(s + s);
                         }

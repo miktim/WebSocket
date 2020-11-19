@@ -1,28 +1,29 @@
 /*
  * Secure WsConnection test. MIT (c) 2020 miktim@mail.ru
  */
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.Timer;
 import java.util.TimerTask;
-import org.samples.java.websocket.WsConnection;
-import org.samples.java.websocket.WsHandler;
-import org.samples.java.websocket.WebSocket;
+import org.miktim.websocket.WsConnection;
+import org.miktim.websocket.WsHandler;
+import org.miktim.websocket.WebSocket;
 
 public class WsConnectionTest {
 
-    static final int MAX_MESSAGE_LENGTH = 100000; //~1MB
+    static final int MAX_MESSAGE_LENGTH = 1000000; //~1MB
     static final int LISTENER_SHUTDOWN_TIMEOUT = 10000; //10sec 
-    
+    static final String REMOTE_HOST = "localhost";//"192.168.1.106";
+
     public static void main(String[] args) throws Exception {
         String path = (new File(".")).getAbsolutePath();
         if (args.length > 0) {
             path = args[0];
         }
 
-        String remoteHost = "localhost"; //"192.168.1.106";
         int port = 8443;
-        String remoteAddr = remoteHost + ":" + port;
+        String remoteAddr = REMOTE_HOST + ":" + port;
 
         WsHandler listenerHandler = new WsHandler() {
             @Override
@@ -114,10 +115,10 @@ public class WsConnectionTest {
                         con.send(s + s);
                         System.out.println("Client: handle TEXT: " + s);
                     } else {
-                        if (s.getBytes("utf-8").length < MAX_MESSAGE_LENGTH) {
+                        if (s.getBytes("utf-8").length < (MAX_MESSAGE_LENGTH / 2)) {
                             con.send(s + s);
                         } else {
-                            con.send(s);
+                            con.send(new ByteArrayInputStream(s.getBytes("utf-8")), true);
                         }
                     }
                 } catch (IOException e) {
@@ -139,11 +140,12 @@ public class WsConnectionTest {
 
         final WebSocket webSocket = new WebSocket();
         webSocket.setConnectionSoTimeout(1000, true); // ping
+        webSocket.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
 // !both sides must use the same self-signed certificate
-        /* Android       
+        /* Android
         WebSocket.setKeystore(new File(getCacheDir(),"testkeys"), "passphrase");
          */
-// /* Desktop       
+// /* Desktop
 //        WebSocket.setKeystore(new File(path, "localhost.jks"), "password"); // java 1.8+
         WebSocket.setKeystore(new File(path, "testkeys"), "passphrase");
 // */
