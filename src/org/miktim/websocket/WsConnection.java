@@ -40,7 +40,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 public class WsConnection extends Thread {
 
-    public static final String VERSION = "2.2.1";
+    public static final String VERSION = "2.2.2";
     public static final int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000; // open/close handshake
     public static final int DEFAULT_CONNECTION_SO_TIMEOUT = 20000; // ping
 
@@ -48,6 +48,7 @@ public class WsConnection extends Thread {
 //  https://tools.ietf.org/html/rfc6455#section-7.4
 //  https://www.iana.org/assignments/websocket/websocket.xml#close-code-number 
 //  https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+
     public static final int NORMAL_CLOSURE = 1000; //*
     public static final int GOING_AWAY = 1001; //* 
     public static final int PROTOCOL_ERROR = 1002; //* 
@@ -59,7 +60,8 @@ public class WsConnection extends Thread {
     public static final int MESSAGE_TOO_BIG = 1009; //*
     public static final int UNSUPPORTED_EXTENSION = 1010; // 
     public static final int INTERNAL_ERROR = 1011; //* 
-    public static final int TRY_AGAIN_LATER = 1013; //*  
+    public static final int TRY_AGAIN_LATER = 1013; //*
+    
 
 // request line header name
     private static final String REQUEST_LINE_HEADER = "_RequestLine";
@@ -76,9 +78,9 @@ public class WsConnection extends Thread {
     private int connectionSoTimeout = DEFAULT_CONNECTION_SO_TIMEOUT;
     private boolean pingEnabled = true;
     private final MessageDigest messageDigest = MessageDigest.getInstance("SHA-1");
-
+    
     public boolean isOpen() {
-        return !(this.socket == null || this.socket.isClosed() || this.socket.isInputShutdown());
+        return closeCode == 0;
     }
 
     public boolean isSecure() {
@@ -124,15 +126,15 @@ public class WsConnection extends Thread {
         return streamingEnabled;
     }
 
-    private String subprotocolList = null;
+    private String subprotocols = null;
     private String agreedSubprotocol = null;
 
     void setSubprotocol(String sub) {
-        subprotocolList = sub;
+        subprotocols = sub;
     }
 
     public String getSubprotocol() {
-        return subprotocolList;
+        return subprotocols;
     }
 
     public String getAgreedSubprotocol() {
@@ -142,11 +144,11 @@ public class WsConnection extends Thread {
 // listener side
     private void setAgreedSubprotocol(Headers rq, Headers rs) {
         String sub = rq.getFirst("Sec-WebSocket-Protocol");
-        if (sub == null || subprotocolList == null) {
+        if (sub == null || subprotocols == null || subprotocols.trim().isEmpty()) {
             return;
         }
         String[] rqSubl = sub.replaceAll(" ", "").split(",");
-        String[] lsSubl = subprotocolList.replaceAll(" ", "").split(",");
+        String[] lsSubl = subprotocols.replaceAll(" ", "").split(",");
         for (String subRq : rqSubl) {
             for (String subLs : lsSubl) {
                 if (subRq.equals(subLs)) {
@@ -162,10 +164,10 @@ public class WsConnection extends Thread {
     private boolean setAgreedSubprotocol(String rsSub) {
         if ((agreedSubprotocol = rsSub) == null) {
             return true; //???
-        } else if (subprotocolList == null) {
+        } else if (subprotocols == null) {
             return false;
         }
-        String[] subl = subprotocolList.replaceAll(" ", "").split(",");
+        String[] subl = subprotocols.replaceAll(" ", "").split(",");
         for (String sub : subl) {
             if (sub.equals(agreedSubprotocol)) {
                 return true;
@@ -189,10 +191,6 @@ public class WsConnection extends Thread {
         return handler;
     }
 
-    public boolean isListenerSide() {
-        return !this.isClientSide;
-    }
-
     public String getPath() {
         if (requestURI != null) {
             return this.requestURI.getPath();
@@ -211,12 +209,11 @@ public class WsConnection extends Thread {
             return null;
         }
     }
-
-    public static void setKeyFile(File jksFile, String passphrase) {
-        System.setProperty("javax.net.ssl.trustStore", jksFile.getAbsolutePath());
-        System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
-//        System.setProperty("javax.net.ssl.keyStore", jksFile.getAbsolutePath());
-//        System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
+    
+    public String getSSLSessionProtocol() {
+        if(this.isSecure() && this.isSocketOpen()) 
+            return ((SSLSocket)this.socket).getSession().getProtocol();
+        return null;
     }
 
     public void send(byte[] message) throws IOException {
@@ -289,7 +286,7 @@ public class WsConnection extends Thread {
 
     public synchronized void close(int status, String reason) {
         if (this.closeCode == 0) {
-            status = (status & 0x7FFF) == 0 ? NO_STATUS : status;
+            status = (status < 1000 || status > 4999) ? NO_STATUS : status;
             byte[] payload = new byte[0];
             if (status != NO_STATUS) {
                 payload = new byte[2];
@@ -433,8 +430,8 @@ public class WsConnection extends Thread {
         headers.add("Connection", "Upgrade,keep-alive");
         headers.add("Sec-WebSocket-Key", key);
         headers.add("Sec-WebSocket-Version", "13");
-        if (subprotocolList != null) {
-            headers.add("Sec-WebSocket-Protocol", subprotocolList.replaceAll(" ", ""));
+        if (subprotocols != null && !subprotocols.trim().isEmpty()) {
+            headers.add("Sec-WebSocket-Protocol", subprotocols.trim());
         }
 
         sendHeaders(this.socket, headers, requestLine);
@@ -734,8 +731,13 @@ public class WsConnection extends Thread {
         handler.onClose(this);
     }
 
+    boolean isSocketOpen() {
+        return !(this.socket == null || this.socket.isClosed() 
+                || this.socket.isInputShutdown());
+    }
+
     void closeSocket() {
-        if (this.isOpen()) {
+        if (this.isSocketOpen()) {
             try {
                 if (this.isSecure) {
                     ((SSLSocket) this.socket).close();
@@ -784,7 +786,7 @@ public class WsConnection extends Thread {
 
     private synchronized void sendPayload(int opData, byte[] payload)
             throws IOException {
-        if (closeCode != 0) { // || !isOpen()) {
+        if (closeCode != 0) { // || !isSocketOpen()) {
 // close handshake in progress            
             throw new SocketException("close_handshake");
         }

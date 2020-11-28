@@ -1,8 +1,7 @@
 # Java SE WebSocket listener/connector,  MIT (c) 2020 miktim@mail.ru
-Traditional approach: https://github.com/miktim/WebSocket/tree/master
 
 Release notes:
-  - java SE 1.7+, Android compatible;
+  - Java SE 1.7+, Android compatible;
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - supported WebSocket version: 13;
   - WebSocket extensions not supported;
@@ -15,22 +14,22 @@ Overview:
     WebSocket(InetAddress bindAddr) throws Exception;
 
     Methods:
-      static void setKeystore(File keyFile, String passphrase);
-      void setSubprotocol(String protocols); //null or comma delimited, in order of preference
-      void setHandshakeSoTimeout(int millis); 
-      void setConnectionSoTimeout(int millis, boolean enablePing);
-      void setMaxMessageLength(int maxlen, boolean enableStreaming); // !enable flag is ignored in this version
+      static void setKeystore(File keyFile, String passphrase); // set jvm trusted keystore
+      void setSubprotocol(String protocols); // comma delimited subprotocols or null
+      void setHandshakeSoTimeout(int millis); // open/close handshake timeout
+      void setConnectionSoTimeout(int millis, boolean enablePing); // enable ping by timeout or close connection
+      void setMaxMessageLength(int maxlen, boolean enableStreaming); // !incoming streaming not yet implemented
       WsListener listen(int port, WsHandler handler) throws Exception; 
       WsListener listenSafely(int port, WsHandler handler) throws Exception;
-      WsListener[] listListeners(); 
       WsConnection connect(String uri, WsHahdler handler) throws Exception;
-      WsConnection[] listConnections(); 
+      WsListener[] listListeners();
+      WsConnection[] listConnections();
       void closeAll();
 
   Interface:
     WsHandler  see: https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsHandler.java
 
-  WsListener:
+  WsListener (extends Thread, is created with current WebSocket options):
     Methods:
       String getSubprotocol(); // null or comma delimited list
       boolean isOpen();
@@ -38,15 +37,15 @@ Overview:
       WsConnection[] listConnections(); 
       void close(); // also closes all associated connections
 
-  WsConnection:
+  WsConnection (extends Thread, is created with current WebSocket/WsListener options):
     Constants (may vary):
-      String VERSION = "2.2.1";
+      String VERSION = "2.2.2";
       int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;  // milliseconds, open/close handshake
       int DEFAULT_CONNECTION_SO_TIMEOUT = 20000;// milliseconds, ping enabled
       int DEFAULT_MAX_MESSAGE_SIZE = 8192; // bytes, streaming disabled
       int STREAM_PAYLOAD_LENGTH = 8192; // bytes
 
-      Connection closing status codes:
+      Connection closing status codes (1000-4999; is 0 for open connection):
          NORMAL_CLOSURE, GOING_AWAY, PROTOCOL_ERROR, UNSUPPORTED_DATA, NO_STATUS,
          ABNORMAL_CLOSURE, INVALID_DATA, POLICY_VIOLATION, MESSAGE_TOO_BIG,
          UNSUPPORTED_EXTENSION, INTERNAL_ERROR, TRY_AGAIN_LATER
@@ -56,20 +55,24 @@ Overview:
          https://www.iana.org/assignments/websocket/websocket.xml#close-code-number
 
     Methods:
-      void setHandler(WsHandler handler) throws NullPointerException;
-      boolean isOpen();
+      boolean isOpen(); // close status code == 0
       boolean isSecure();
-      boolean isListenerSide();
       String getPath();
       String getPeerHost();
+      void setHandler(WsHandler handler) throws NullPointerException;
+      int getHandshakeSoTimeout();
+      int getConnectionSoTimeout();
+      boolean isPingEnabled();
+      int getMaxMessageLength();
+      boolean isStreamingEnabled(); // !incoming streaming not yet implemented
       String getSubprotocol(); // returns null or comma delimited subprotocols
       String getAgreedSubprotocol(); // returns null or agreed subprotocol
       void send(String message) throws IOException; // send as single frame
       void send(byte[] message) throws IOException; // send as single frame
       void send(InputStream is, boolean isText) throws IOException;
-      void close(); // close without status code
+      void close(); // close without status code (NO_STATUS)
       void close(int statusCode, String reason); // a reason longer than 123 bytes is truncated
-      int getCloseCode(); // 0 is returned for an open connection, negative value - closed by other side
+      int getCloseCode(); // returns: 0 for an open connection; negative value - closed by other side
       String getCloseReason();
 
 Usage example see in:

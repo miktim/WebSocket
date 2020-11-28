@@ -76,14 +76,14 @@ public class WebSocket {
         return streamingEnabled;
     }
 
-    private String subprotocol = null;
+    private String subprotocols = null;
 
     public void setSubprotocol(String sub) {
-        subprotocol = sub ;
+        subprotocols = sub ;
     }
 
     public String getSubprotocol() {
-        return subprotocol;
+        return subprotocols;
     }
 
     public WsListener listen(int port, WsHandler handler) throws Exception {
@@ -102,7 +102,7 @@ public class WebSocket {
         listener.setHandshakeSoTimeout(handshakeSoTimeout);
         listener.setConnectionSoTimeout(connectionSoTimeout, pingPong);
         listener.setMaxMessageLength(maxMessageLength, streamingEnabled);
-        listener.setSubprotocol(subprotocol);
+        listener.setSubprotocol(subprotocols);
         listener.start();
         return listener;
     }
@@ -120,7 +120,7 @@ public class WebSocket {
         connection.setHandshakeSoTimeout(handshakeSoTimeout);
         connection.setConnectionSoTimeout(connectionSoTimeout, pingPong);
         connection.setMaxMessageLength(maxMessageLength, streamingEnabled);
-        connection.setSubprotocol(subprotocol);
+        connection.setSubprotocol(subprotocols);
         connection.open();
         connection.start();
         return connection;

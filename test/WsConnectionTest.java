@@ -29,7 +29,8 @@ public class WsConnectionTest {
             @Override
             public void onOpen(WsConnection con) {
                 System.out.println("Listener: handle OPEN: " + con.getPath()
-                        + " Peer: " + con.getPeerHost());
+                        + " Peer: " + con.getPeerHost()
+                        + " SecureProtocol: " + con.getSSLSessionProtocol());
                 try {
                     con.send("Hello Client!");
                 } catch (IOException e) {

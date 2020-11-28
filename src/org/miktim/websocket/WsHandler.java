@@ -10,9 +10,9 @@ public interface WsHandler {
     public void onClose(WsConnection conn);
     public void onMessage(WsConnection conn, String s );
     public void onMessage(WsConnection conn, byte[] b);
-// onStream: for the future if the specified maximum message length is exceeded
+// streaming message: for the future if the specified maximum message length is exceeded
 //   - exiting the handler closes the input stream.
-//  public void onStream(WsConnection conn, InputStream is, boolean isUTF8Text);
+//  public void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text);
 // onError:
 //   - conn can be null in the listener handler (ServerSocket accept() exception, InterruptedException);
 //   - check connection closure status.
