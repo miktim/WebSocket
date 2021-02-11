@@ -1,5 +1,5 @@
 /*
- * WebSocket. WebSocket factory, MIT (c) 2020 miktim@mail.ru
+ * WebSocket. WebSocket factory, MIT (c) 2020-2021 miktim@mail.ru
  *
  * Release notes:
  * - Java SE 1.7+, Android compatible;
@@ -44,8 +44,8 @@ public class WebSocket {
         bindAddress = bindAddr;
     }
 
-    public static void setKeystore(File jksFile, String passphrase) {
-        System.setProperty("javax.net.ssl.trustStore", jksFile.getAbsolutePath());
+    public static void setTrustStore(String jksFile, String passphrase) {
+        System.setProperty("javax.net.ssl.trustStore", jksFile);
         System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
 //        System.setProperty("javax.net.ssl.keyStore", jksFile.getAbsolutePath());
 //        System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
@@ -121,7 +121,7 @@ public class WebSocket {
         connection.setConnectionSoTimeout(connectionSoTimeout, pingPong);
         connection.setMaxMessageLength(maxMessageLength, streamingEnabled);
         connection.setSubprotocol(subprotocols);
-        connection.open();
+        connection.connect();
         connection.start();
         return connection;
     }

@@ -1,5 +1,5 @@
 /*
- * WsListener. WebSocket listener, MIT (c) 2020 miktim@mail.ru
+ * WsListener. WebSocket listener, MIT (c) 2020-2021 miktim@mail.ru
  *
  * Release notes:
  * - Java SE 1.7+, Android compatible;
@@ -145,10 +145,10 @@ public class WsListener extends Thread {
         if (!this.isRunning) {
             this.isRunning = true;
             connectionPrefix = "WsConnection-" + this.getId() + "-";
-            try {
-                while (this.isRunning) {
+            while (this.isRunning) {
+                try {
                     Socket socket = serverSocket.accept();
-                    WsConnection conn = new WsConnection(socket, handler);
+                    WsConnection conn = new WsConnection(socket, handler, isSecure);
                     conn.setName(connectionPrefix + conn.getId());
                     conn.setHandshakeSoTimeout(handshakeSoTimeout);
                     conn.setConnectionSoTimeout(connectionSoTimeout, pingEnabled);
@@ -156,11 +156,11 @@ public class WsListener extends Thread {
                     conn.setSubprotocol(subprotocols);
                     socket.setSoTimeout(handshakeSoTimeout);
                     conn.start();
-                }
-            } catch (Exception e) { // InterruptedException
-                if (this.isRunning) {
-                    handler.onError(null, e);
-                    this.close();
+                } catch (Exception e) { 
+                    if (this.isRunning) {
+                        handler.onError(null, e);
+                        this.close();
+                    }
                 }
             }
         }

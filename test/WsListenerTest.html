@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  WsListener test, MIT (c) 2020 miktim@mail.ru
+  WsListener test, MIT (c) 2020-2021 miktim@mail.ru
 -->
 <html>
     <head>
@@ -14,7 +14,7 @@
         <script src="http://localhost:8080/this_request_must_fail.js"></script>
         <script>
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-            var erruri = 'ws://localhost:8080/echo';
+            var erruri = 'ws://localhost:8080/echo?alpha=фыва';
             var testuri = 'ws://localhost:8080/test/';
             var msg = 'Hello Listener!';
             var maxMsgLength = 0;

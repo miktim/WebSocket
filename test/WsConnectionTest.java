@@ -1,5 +1,5 @@
 /*
- * Secure WsConnection test. MIT (c) 2020 miktim@mail.ru
+ * Secure WsConnection test. MIT (c) 2020-2021 miktim@mail.ru
  */
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -17,7 +17,7 @@ public class WsConnectionTest {
     static final String REMOTE_HOST = "localhost";//"192.168.1.106";
 
     public static void main(String[] args) throws Exception {
-        String path = (new File(".")).getAbsolutePath();
+        String path = ".";
         if (args.length > 0) {
             path = args[0];
         }
@@ -43,7 +43,7 @@ public class WsConnectionTest {
             @Override
             public void onClose(WsConnection con) {
                 System.out.println("Listener: handle CLOSE: " + con.getPath()
-                        + " Closure status:" + con.getCloseCode());
+                        + " Close code:" + con.getCloseCode());
             }
 
             @Override
@@ -51,7 +51,7 @@ public class WsConnectionTest {
                 System.out.println("Listener: handle ERROR: "
                         + (con != null ? con.getPath() : null)
                         + " " + e.toString()
-                        + " Closure status:"
+                        + " Close code:"
                         + (con != null ? con.getCloseCode() : null));
                 e.printStackTrace();
             }
@@ -81,6 +81,7 @@ public class WsConnectionTest {
                 }
             }
         };
+        
         WsHandler clientHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
@@ -98,15 +99,15 @@ public class WsConnectionTest {
             @Override
             public void onClose(WsConnection con) {
                 System.out.println("Client: handle CLOSE: " + con.getPath()
-                        + " Closure status:" + con.getCloseCode());
+                        + " Close code:" + con.getCloseCode());
             }
 
             @Override
             public void onError(WsConnection con, Exception e) {
                 System.out.println("Client: handle ERROR: " + con.getPath()
                         + " " + e.toString()
-                        + " Closure status:" + con.getCloseCode());
-//                e.printStackTrace();
+                        + " Close code:" + con.getCloseCode());
+                e.printStackTrace();
             }
 
             @Override
@@ -144,11 +145,11 @@ public class WsConnectionTest {
         webSocket.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
 // !both sides must use the same self-signed certificate
         /* Android
-        WebSocket.setKeystore(new File(getCacheDir(),"testkeys"), "passphrase");
+        WebSocket.setTrustStore(new File(getCacheDir(),"testkeys"), "passphrase");
          */
 // /* Desktop
-//        WebSocket.setKeystore(new File(path, "localhost.jks"), "password"); // java 1.8+
-        WebSocket.setKeystore(new File(path, "testkeys"), "passphrase");
+//        WebSocket.setTrustStore(new File(path, "localhost.jks"), "password"); // java 1.8+
+        WebSocket.setTrustStore((new File(path, "testkeys")).getCanonicalPath(), "passphrase");
 // */
         webSocket.listenSafely(port, listenerHandler);
 

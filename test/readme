@@ -6,6 +6,6 @@ Testing:
 
 Certificates (localhost self-signed):
   From https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/index.html
-    - testkeys: Java 1.7+;
+    - testkeys: Java 7+;
   Self-made:
-    - localhost.jks: Java 1.8+
+    - localhost.jks: Java 8+

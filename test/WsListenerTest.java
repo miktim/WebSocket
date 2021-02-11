@@ -1,5 +1,5 @@
 /*
- * WebSocket WsListener test. MIT (c) 2020 miktim@mail.ru
+ * WebSocket WsListener test. MIT (c) 2020-2021 miktim@mail.ru
  * Created: 2020-03-09
  */
 
@@ -21,7 +21,7 @@ public class WsListenerTest {
     public static final String WEBSOCKET_SUBPROTOCOL = "chat,superChat";
 
     public static void main(String[] args) throws Exception {
-        String path = (new File(".")).getAbsolutePath();
+        String path = ".";
         if (args.length > 0) {
             path = args[0];
         }
@@ -29,6 +29,7 @@ public class WsListenerTest {
             @Override
             public void onOpen(WsConnection con) {
                 System.out.println("Handle OPEN: " + con.getPath()
+                        + (con.getQuery() == null ? "" : "?" + con.getQuery())
                         + " Peer: " + con.getPeerHost()
                         + " Subprotocol:" + con.getAgreedSubprotocol());
                 if (!con.getPath().startsWith("/test")) {
@@ -47,7 +48,7 @@ public class WsListenerTest {
             @Override
             public void onClose(WsConnection con) {
                 System.out.println("Handle CLOSE: " + con.getPath()
-                        + " Closure status:" + con.getCloseCode());
+                        + " Close code:" + con.getCloseCode());
             }
 
             @Override
@@ -55,7 +56,7 @@ public class WsListenerTest {
                 System.out.println("Handle ERROR: "
                         + (con != null ? con.getPath() : null)
                         + " " + e.toString()
-                        + " Closure status:"
+                        + " Close code:"
                         + (con != null ? con.getCloseCode() : null));
 //                e.printStackTrace();
             }
@@ -106,8 +107,8 @@ public class WsListenerTest {
         webSocket.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
         webSocket.setSubprotocol(WEBSOCKET_SUBPROTOCOL);
         final WsListener listener = webSocket.listen(8080, listenerHandler);
-//        WebSocket.setKeystore(new File(path, "localhost.jks"), "password");// java 1.8
-//        WebSocket.setKeystore(new File(path, "testkeys"), "passphrase");// java 1.7
+//        WebSocket.setTrustStore((new File(path, "localhost.jks")).getCanonicalPath(), "password");// java 1.8
+//        WebSocket.setTrustStore((new File(path, "testkeys")).getCanonicalPath(), "passphrase");// java 1.7
 
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {

@@ -1,12 +1,12 @@
-# Java SE WebSocket listener/connector,  MIT (c) 2020 miktim@mail.ru
+# Java SE WebSocket listener/connector,  MIT (c) 2020-2021 miktim@mail.ru
 
 Release notes:
-  - Java SE 1.7+, Android compatible;
+  - Java SE 7+, Android compatible;
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - supported WebSocket version: 13;
   - WebSocket extensions not supported;
   - client authentication not supported;
-  - incoming message length is limited to 2GB (Integer.MAX_VALUE).
+  - incoming message/payload  length is limited to 2GB (Integer.MAX_VALUE).
 
 Overview:
   Constructors:
@@ -14,7 +14,7 @@ Overview:
     WebSocket(InetAddress bindAddr) throws Exception;
 
     Methods:
-      static void setKeystore(File keyFile, String passphrase); // set jvm trusted keystore
+*      static void setTrustStore(String keyFilePath, String passphrase); // set jvm trustStore
       void setSubprotocol(String protocols); // comma delimited subprotocols or null
       void setHandshakeSoTimeout(int millis); // open/close handshake timeout
       void setConnectionSoTimeout(int millis, boolean enablePing); // enable ping by timeout or close connection
@@ -39,7 +39,7 @@ Overview:
 
   WsConnection (extends Thread, is created with current WebSocket/WsListener options):
     Constants (may vary):
-      String VERSION = "2.2.2";
+      String VERSION = "2.2.3";
       int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;  // milliseconds, open/close handshake
       int DEFAULT_CONNECTION_SO_TIMEOUT = 20000;// milliseconds, ping enabled
       int DEFAULT_MAX_MESSAGE_SIZE = 8192; // bytes, streaming disabled
@@ -55,9 +55,10 @@ Overview:
          https://www.iana.org/assignments/websocket/websocket.xml#close-code-number
 
     Methods:
-      boolean isOpen(); // close status code == 0
+      boolean isOpen(); 
       boolean isSecure();
-      String getPath();
+      String getPath();  // get request path
+      String getQuery(); // get request query
       String getPeerHost();
       void setHandler(WsHandler handler) throws NullPointerException;
       int getHandshakeSoTimeout();
