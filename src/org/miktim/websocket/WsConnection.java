@@ -30,12 +30,13 @@ import java.nio.charset.StandardCharsets;
 import java.security.InvalidParameterException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Random;
 //import java.security.SecureRandom;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
-//import java.util.Base64; // java 1.8+
+//import java.util.Base64; // java 8+
 
 public class WsConnection extends Thread {
 
@@ -206,7 +207,7 @@ public class WsConnection extends Thread {
         }
         return null;
     }
-    
+
     public String getQuery() {
         if (requestURI != null) {
             return this.requestURI.getQuery();
@@ -385,11 +386,11 @@ public class WsConnection extends Thread {
         if (!isClientSide || this.socket.isConnected()) {
             throw new SocketException();
         }
-        connect();
+        connectSocket();
         this.start();
     }
      */
-    void connect() throws IOException {
+    void connectSocket() throws IOException {
         try {
             int port = requestURI.getPort();
             if (port < 0) {
@@ -417,8 +418,8 @@ public class WsConnection extends Thread {
         host = (new URI(host)).toASCIIString();
         String requestLine = "GET " + path + " HTTP/1.1";
         Headers headers = new Headers();
-        headers.add("Host", host); 
-//        headers.add("Origin", requestURI.getScheme() + "://" + host);
+        headers.add("Host", host);
+        headers.add("Origin", requestURI.getScheme() + "://" + host);
         headers.add("Upgrade", "websocket");
         headers.add("Connection", "Upgrade,keep-alive");
         headers.add("Sec-WebSocket-Key", key);
@@ -522,7 +523,7 @@ public class WsConnection extends Thread {
             this.listenInputStream();
         } catch (Exception e) {
             this.handler.onError(this, e);
-            e.printStackTrace();
+//            e.printStackTrace();
             this.closeSocket();
         }
     }
@@ -549,6 +550,8 @@ public class WsConnection extends Thread {
         int opData = 0;
         byte[] message = EMPTY_PAYLOAD;
         long messageLen = 0;
+ 
+        ArrayDeque<byte[]> payloadQueue = new ArrayDeque<byte[]>();
 
         byte[] service = new byte[8]; //buffer for frame header elements
         boolean done = false;
@@ -658,12 +661,22 @@ public class WsConnection extends Thread {
                 switch (b1) {
                     case OP_CONTINUATION:
                         if (this.closeCode == 0) {
-                            message = combine(message, framePayload);
+                            payloadQueue.addLast(framePayload);
+//                            message = combine(message, framePayload);
                         }
                         break;
                     case OP_FINAL: {
                         if (this.closeCode == 0) {
-                            message = combine(message, framePayload);
+                            payloadQueue.addLast(framePayload);
+                            message = new byte[(int) messageLen];
+                            framePayloadLen = 0;
+                            while (!payloadQueue.isEmpty()) {
+                                framePayload = payloadQueue.pollFirst();
+                                System.arraycopy(
+                                        framePayload, 0, message, (int) framePayloadLen, framePayload.length);
+                                framePayloadLen += framePayload.length;
+                            }
+//                            message = combine(message, framePayload);
                             if (opData == OP_BINARY) {
                                 handler.onMessage(this, message);
                             } else {
@@ -674,6 +687,7 @@ public class WsConnection extends Thread {
                         opData = 0;
                         message = EMPTY_PAYLOAD;
                         messageLen = 0;
+                        payloadQueue.clear();
                         break;
                     }
                     case OP_PONG: {

@@ -121,7 +121,7 @@ public class WebSocket {
         connection.setConnectionSoTimeout(connectionSoTimeout, pingPong);
         connection.setMaxMessageLength(maxMessageLength, streamingEnabled);
         connection.setSubprotocol(subprotocols);
-        connection.connect();
+        connection.connectSocket();
         connection.start();
         return connection;
     }
