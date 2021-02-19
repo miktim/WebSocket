@@ -13,10 +13,12 @@ import org.miktim.websocket.WsConnection;
 import org.miktim.websocket.WsHandler;
 import org.miktim.websocket.WsListener;
 import org.miktim.websocket.WebSocket;
+import org.miktim.websocket.WsParameters;
+import org.miktim.websocket.WsStatus;
 
 public class WsListenerTest {
 
-    public static final int MAX_MESSAGE_LENGTH = 1000000;//~1MB
+    public static final int MAX_MESSAGE_LENGTH = 1000000;//1MB
     public static final int LISTENER_SHUTDOWN_TIMEOUT = 30000;//30sec
     public static final String WEBSOCKET_SUBPROTOCOL = "chat,superChat";
 
@@ -31,9 +33,9 @@ public class WsListenerTest {
                 System.out.println("Handle OPEN: " + con.getPath()
                         + (con.getQuery() == null ? "" : "?" + con.getQuery())
                         + " Peer: " + con.getPeerHost()
-                        + " Subprotocol:" + con.getAgreedSubprotocol());
+                        + " Subprotocol:" + con.getSubProtocol());
                 if (!con.getPath().startsWith("/test")) {
-                    con.close(WsConnection.POLICY_VIOLATION, "path not found");
+                    con.close(WsStatus.POLICY_VIOLATION, "path not found");
                     return;
                 }
                 try {
@@ -48,7 +50,7 @@ public class WsListenerTest {
             @Override
             public void onClose(WsConnection con) {
                 System.out.println("Handle CLOSE: " + con.getPath()
-                        + " Close code:" + con.getCloseCode());
+                        + " " + con.getStatus());
             }
 
             @Override
@@ -56,8 +58,7 @@ public class WsListenerTest {
                 System.out.println("Handle ERROR: "
                         + (con != null ? con.getPath() : null)
                         + " " + e.toString()
-                        + " Close code:"
-                        + (con != null ? con.getCloseCode() : null));
+                        + " " + (con != null ? con.getStatus() : null));
 //                e.printStackTrace();
             }
 
@@ -67,7 +68,8 @@ public class WsListenerTest {
                     String testPath = con.getPath();
                     if (testPath.endsWith("2")) { // check handler closure
                         if (s.length() > 128) {
-                            con.close(WsConnection.NORMAL_CLOSURE, "");
+                            con.close(WsStatus.NORMAL_CLOSURE, 
+                                    "trim close reason longer than 123 bytes: lo-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-ng lo-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-ong");
                         } else {
                             con.send(s + s);
                         }
@@ -103,9 +105,11 @@ public class WsListenerTest {
 
         final WebSocket webSocket
                 = new WebSocket(InetAddress.getByName("localhost"));
-        webSocket.setConnectionSoTimeout(1000, true); // ping
-        webSocket.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
-        webSocket.setSubprotocol(WEBSOCKET_SUBPROTOCOL);
+        WsParameters wsp = webSocket.getWsParameters();
+        wsp.setConnectionSoTimeout(1000, true); // ping
+        wsp.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
+        wsp.setSubProtocols(WEBSOCKET_SUBPROTOCOL.split(","));
+        webSocket.setWsParameters(wsp);
         final WsListener listener = webSocket.listen(8080, listenerHandler);
 //        WebSocket.setTrustStore((new File(path, "localhost.jks")).getCanonicalPath(), "password");// java 1.8
 //        WebSocket.setTrustStore((new File(path, "testkeys")).getCanonicalPath(), "passphrase");// java 1.7

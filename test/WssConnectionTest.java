@@ -9,8 +9,9 @@ import java.util.TimerTask;
 import org.miktim.websocket.WsConnection;
 import org.miktim.websocket.WsHandler;
 import org.miktim.websocket.WebSocket;
+import org.miktim.websocket.WsParameters;
 
-public class WsConnectionTest {
+public class WssConnectionTest {
 
     static final int MAX_MESSAGE_LENGTH = 1000000; //~1MB
     static final int LISTENER_SHUTDOWN_TIMEOUT = 10000; //10sec 
@@ -43,7 +44,7 @@ public class WsConnectionTest {
             @Override
             public void onClose(WsConnection con) {
                 System.out.println("Listener: handle CLOSE: " + con.getPath()
-                        + " Close code:" + con.getCloseCode());
+                        + " " + con.getStatus());
             }
 
             @Override
@@ -51,8 +52,7 @@ public class WsConnectionTest {
                 System.out.println("Listener: handle ERROR: "
                         + (con != null ? con.getPath() : null)
                         + " " + e.toString()
-                        + " Close code:"
-                        + (con != null ? con.getCloseCode() : null));
+                        + " " + (con != null ? con.getStatus() : null));
                 e.printStackTrace();
             }
 
@@ -81,7 +81,7 @@ public class WsConnectionTest {
                 }
             }
         };
-        
+
         WsHandler clientHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
@@ -99,14 +99,14 @@ public class WsConnectionTest {
             @Override
             public void onClose(WsConnection con) {
                 System.out.println("Client: handle CLOSE: " + con.getPath()
-                        + " Close code:" + con.getCloseCode());
+                        + " " + con.getStatus());
             }
 
             @Override
             public void onError(WsConnection con, Exception e) {
                 System.out.println("Client: handle ERROR: " + con.getPath()
                         + " " + e.toString()
-                        + " Close code:" + con.getCloseCode());
+                        + " " + con.getStatus());
                 e.printStackTrace();
             }
 
@@ -141,8 +141,10 @@ public class WsConnectionTest {
         };
 
         final WebSocket webSocket = new WebSocket();
-        webSocket.setConnectionSoTimeout(1000, true); // ping
-        webSocket.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
+        WsParameters wsp = new WsParameters();
+        wsp.setConnectionSoTimeout(1000, true); // ping
+        wsp.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
+        webSocket.setWsParameters(wsp);
 // !both sides must use the same self-signed certificate
         /* Android
         WebSocket.setTrustStore(new File(getCacheDir(),"testkeys"), "passphrase");

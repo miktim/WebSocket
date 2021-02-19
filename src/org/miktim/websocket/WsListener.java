@@ -2,7 +2,7 @@
  * WsListener. WebSocket listener, MIT (c) 2020-2021 miktim@mail.ru
  *
  * Release notes:
- * - Java SE 1.7+, Android compatible;
+ * - Java SE 7+, Android compatible;
  * - RFC-6455: https://tools.ietf.org/html/rfc6455;
  * - WebSocket protocol version: 13;
  * - WebSocket extensions not supported.
@@ -32,9 +32,7 @@ public class WsListener extends Thread {
 
     private boolean isRunning;
     private boolean isSecure;
-    private int handshakeSoTimeout = WsConnection.DEFAULT_HANDSHAKE_SO_TIMEOUT;
-    private int connectionSoTimeout = WsConnection.DEFAULT_CONNECTION_SO_TIMEOUT;
-    private boolean pingEnabled = true;
+    private WsParameters wsp = new WsParameters();
     private String connectionPrefix; // connection thread name
     private InetSocketAddress socketAddress;
     private ServerSocket serverSocket;
@@ -49,69 +47,33 @@ public class WsListener extends Thread {
         this.socketAddress = isa;
         this.handler = handler;
         serverSocket = getServerSocketFactory().createServerSocket();
-        if (this.isSecure) {
-            ((SSLServerSocket) this.serverSocket).setNeedClientAuth(false);
-        }
-        serverSocket.bind(socketAddress); // query
+//        if (this.isSecure) {
+//            ((SSLServerSocket) this.serverSocket).setNeedClientAuth(false);
+//        }
+        serverSocket.bind(socketAddress);
     }
 
     public boolean isSecure() {
         return isSecure;
     }
 
-    void setHandshakeSoTimeout(int millis) {
-        handshakeSoTimeout = millis;
+    public boolean isOpen() {
+        return isRunning;
     }
 
-    public int getHandshakeSoTimeout() {
-        return handshakeSoTimeout;
+    void setWsParameters(WsParameters parm) throws CloneNotSupportedException {
+        this.wsp = parm.clone();
     }
 
-    void setConnectionSoTimeout(int millis, boolean ping) {
-        connectionSoTimeout = millis;
-        pingEnabled = ping;
-    }
-
-    public int getConnectionSoTimeout() {
-        return connectionSoTimeout;
-    }
-
-    public boolean isPingEnabled() {
-        return pingEnabled && connectionSoTimeout > 0;
-    }
-
-    private int maxMessageLength = WsConnection.DEFAULT_MAX_MESSAGE_LENGTH; //in bytes
-    private boolean streamingEnabled = false;
-
-    void setMaxMessageLength(int maxLen, boolean enableStreaming) {
-        maxMessageLength = maxLen;
-        streamingEnabled = enableStreaming;
-    }
-
-    public int getMaxMessageLength() {
-        return maxMessageLength;
-    }
-
-    public boolean isStreamingEnabled() {
-        return streamingEnabled;
-    }
-
-    private String subprotocols = null;
-
-    public void setSubprotocol(String sub) {
-        subprotocols = sub;
-    }
-
-    public String getSubprotocol() {
-        return subprotocols;
+    public WsParameters getWsParameters() {
+        if (isSecure) {
+            wsp.sslParameters = ((SSLServerSocket) serverSocket).getSSLParameters();
+        }
+        return this.wsp;
     }
 
     public WsHandler getHandler() {
         return handler;
-    }
-
-    public boolean isOpen() {
-        return isRunning;
     }
 
     @SuppressWarnings("unchecked")
@@ -144,19 +106,19 @@ public class WsListener extends Thread {
     public void run() {
         if (!this.isRunning) {
             this.isRunning = true;
+            if (isSecure && wsp.sslParameters != null) {
+                ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
+            }
             connectionPrefix = "WsConnection-" + this.getId() + "-";
             while (this.isRunning) {
                 try {
                     Socket socket = serverSocket.accept();
                     WsConnection conn = new WsConnection(socket, handler, isSecure);
                     conn.setName(connectionPrefix + conn.getId());
-                    conn.setHandshakeSoTimeout(handshakeSoTimeout);
-                    conn.setConnectionSoTimeout(connectionSoTimeout, pingEnabled);
-                    conn.setMaxMessageLength(maxMessageLength, streamingEnabled);
-                    conn.setSubprotocol(subprotocols);
-                    socket.setSoTimeout(handshakeSoTimeout);
+                    conn.setWsParameters(wsp);
+                    socket.setSoTimeout(wsp.handshakeSoTimeout);
                     conn.start();
-                } catch (Exception e) { 
+                } catch (Exception e) {
                     if (this.isRunning) {
                         handler.onError(null, e);
                         this.close();
@@ -166,7 +128,7 @@ public class WsListener extends Thread {
         }
 // close listener connections            
         for (WsConnection connection : listConnections()) {
-            connection.close(WsConnection.GOING_AWAY, "");
+            connection.close(WsStatus.GOING_AWAY, "");
         }
     }
 

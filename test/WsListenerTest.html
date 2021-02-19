@@ -80,8 +80,8 @@
                         show((maxMsgLength * 2) + " chars sent:   ..." + maxMsgEnd);
                     }
                     show('onclose: ' + event.code
-                            + ':' + event.reason
-                            + ':' + event.wasClean
+                            + ':"' + event.reason
+                            + '":' + event.wasClean
                             + ':' + event.target.url + '<br>');
                     
                     subProtocols = subProtocols.concat(["chat", "superChat"]);

@@ -14,11 +14,9 @@ Overview:
     WebSocket(InetAddress bindAddr) throws Exception;
 
     Methods:
-*      static void setTrustStore(String keyFilePath, String passphrase); // set jvm trustStore
-      void setSubprotocol(String protocols); // comma delimited subprotocols or null
-      void setHandshakeSoTimeout(int millis); // open/close handshake timeout
-      void setConnectionSoTimeout(int millis, boolean enablePing); // enable ping by timeout or close connection
-      void setMaxMessageLength(int maxlen, boolean enableStreaming); // !incoming streaming not yet implemented
+      static void setTrustStore(String keyFilePath, String passphrase); // set jvm trustStore
+      WsParameters getWsParameters();
+      void setWsParameters(WsParameters wsp);
       WsListener listen(int port, WsHandler handler) throws Exception; 
       WsListener listenSafely(int port, WsHandler handler) throws Exception;
       WsConnection connect(String uri, WsHahdler handler) throws Exception;
@@ -26,33 +24,22 @@ Overview:
       WsConnection[] listConnections();
       void closeAll();
 
-  Interface:
-    WsHandler  see: https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsHandler.java
+  WsParameters:  see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsParameters.java
 
-  WsListener (extends Thread, is created with current WebSocket options):
+  WsHandler:  see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsHandler.java
+
+  WsListener (extends Thread, is created with current WebSocket parameters):
     Methods:
       String getSubprotocol(); // null or comma delimited list
       boolean isOpen();
       boolean isSecure();
+      WsParameters getWsParameters();
       WsConnection[] listConnections(); 
       void close(); // also closes all associated connections
 
-  WsConnection (extends Thread, is created with current WebSocket/WsListener options):
-    Constants (may vary):
-      String VERSION = "2.2.3";
-      int DEFAULT_HANDSHAKE_SO_TIMEOUT = 5000;  // milliseconds, open/close handshake
-      int DEFAULT_CONNECTION_SO_TIMEOUT = 20000;// milliseconds, ping enabled
-      int DEFAULT_MAX_MESSAGE_SIZE = 8192; // bytes, streaming disabled
-      int STREAM_PAYLOAD_LENGTH = 8192; // bytes
-
-      Connection closing status codes (1000-4999; is 0 for open connection):
-         NORMAL_CLOSURE, GOING_AWAY, PROTOCOL_ERROR, UNSUPPORTED_DATA, NO_STATUS,
-         ABNORMAL_CLOSURE, INVALID_DATA, POLICY_VIOLATION, MESSAGE_TOO_BIG,
-         UNSUPPORTED_EXTENSION, INTERNAL_ERROR, TRY_AGAIN_LATER
-      See:
-         https://tools.ietf.org/html/rfc6455#section-7.4
-         https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
-         https://www.iana.org/assignments/websocket/websocket.xml#close-code-number
+  WsConnection (extends Thread, is created with current WebSocket/WsListener parameters):
+    Constants:
+      String VERSION = "2.3.0";
 
     Methods:
       boolean isOpen(); 
@@ -60,22 +47,17 @@ Overview:
       String getPath();  // get request path
       String getQuery(); // get request query
       String getPeerHost();
-      void setHandler(WsHandler handler) throws NullPointerException;
-      int getHandshakeSoTimeout();
-      int getConnectionSoTimeout();
-      boolean isPingEnabled();
-      int getMaxMessageLength();
-      boolean isStreamingEnabled(); // !incoming streaming not yet implemented
-      String getSubprotocol(); // returns null or comma delimited subprotocols
-      String getAgreedSubprotocol(); // returns null or agreed subprotocol
+      String getSubProtocol(); // returns null or handshaked subprotocol
+      WsParameters getWsParameters();
       void send(String message) throws IOException; // send as single frame
       void send(byte[] message) throws IOException; // send as single frame
       void send(InputStream is, boolean isText) throws IOException;
       void close(); // close without status code (NO_STATUS)
       void close(int statusCode, String reason); // a reason longer than 123 bytes is truncated
-      int getCloseCode(); // returns: 0 for an open connection; negative value - closed by other side
-      String getCloseReason();
+      WsStatus getStatus();
+
+  WsStatus:  see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsStatus.java
 
 Usage example see in:
-  https://github.com/miktim/WebSocket/blob/new/test/WsConnectionTest.java
+  https://github.com/miktim/WebSocket/blob/new/test/WssConnectionTest.java
   https://github.com/miktim/WebSocket/blob/new/test/WsListenerTest.java

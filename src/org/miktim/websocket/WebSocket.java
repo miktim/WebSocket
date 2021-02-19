@@ -2,7 +2,7 @@
  * WebSocket. WebSocket factory, MIT (c) 2020-2021 miktim@mail.ru
  *
  * Release notes:
- * - Java SE 1.7+, Android compatible;
+ * - Java SE 7+, Android compatible;
  * - RFC-6455: https://tools.ietf.org/html/rfc6455;
  * - WebSocket protocol version: 13;
  * - WebSocket extensions not supported.
@@ -11,8 +11,6 @@
  */
 package org.miktim.websocket;
 
-//import com.sun.net.httpserver.Headers;
-import java.io.File;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -24,9 +22,11 @@ import java.security.NoSuchAlgorithmException;
 
 public class WebSocket {
 
-    private int handshakeSoTimeout = WsConnection.DEFAULT_HANDSHAKE_SO_TIMEOUT; // open/close handshake
-    private int connectionSoTimeout = WsConnection.DEFAULT_CONNECTION_SO_TIMEOUT;
-    private boolean pingPong = true;
+//    private int handshakeSoTimeout = WsConnection.DEFAULT_HANDSHAKE_SO_TIMEOUT; // open/close handshake
+//    private int connectionSoTimeout = WsConnection.DEFAULT_CONNECTION_SO_TIMEOUT;
+//    private boolean pingPong = true;
+
+    private WsParameters wsp = new WsParameters();
     private InetAddress bindAddress;
     private final long wsId = (new Thread()).getId();
     private final String listenerPrefix = "WsListener-" + wsId + "-";
@@ -47,43 +47,19 @@ public class WebSocket {
     public static void setTrustStore(String jksFile, String passphrase) {
         System.setProperty("javax.net.ssl.trustStore", jksFile);
         System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
-//        System.setProperty("javax.net.ssl.keyStore", jksFile.getAbsolutePath());
-//        System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
 
-    public void setHanshakeSoTimeout(int millis) {
-        handshakeSoTimeout = millis;
+    public static void setKeyStore(String jksFile, String passphrase) {
+        System.setProperty("javax.net.ssl.keyStore", jksFile);
+        System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
 
-    public void setConnectionSoTimeout(int millis, boolean ping) {
-        connectionSoTimeout = millis;
-        pingPong = ping;
+    public void setWsParameters(WsParameters parm) throws CloneNotSupportedException {
+        this.wsp = parm.clone();
     }
 
-    private int maxMessageLength = WsConnection.DEFAULT_MAX_MESSAGE_LENGTH; //in bytes
-    private boolean streamingEnabled = false;
-
-    public void setMaxMessageLength(int maxLen, boolean enableStreaming) {
-        maxMessageLength = maxLen;
-        streamingEnabled = enableStreaming;
-    }
-
-    public int getMaxMessageLength() {
-        return maxMessageLength;
-    }
-
-    public boolean isStreamingEnabled() {
-        return streamingEnabled;
-    }
-
-    private String subprotocols = null;
-
-    public void setSubprotocol(String sub) {
-        subprotocols = sub ;
-    }
-
-    public String getSubprotocol() {
-        return subprotocols;
+    public WsParameters getWsParameters() {
+        return this.wsp;
     }
 
     public WsListener listen(int port, WsHandler handler) throws Exception {
@@ -99,10 +75,7 @@ public class WebSocket {
         WsListener listener
                 = new WsListener(makeSocketAddress(port), handler, secure);
         listener.setName(listenerPrefix + listener.getId());
-        listener.setHandshakeSoTimeout(handshakeSoTimeout);
-        listener.setConnectionSoTimeout(connectionSoTimeout, pingPong);
-        listener.setMaxMessageLength(maxMessageLength, streamingEnabled);
-        listener.setSubprotocol(subprotocols);
+        listener.setWsParameters(wsp);
         listener.start();
         return listener;
     }
@@ -115,15 +88,12 @@ public class WebSocket {
     }
 
     public WsConnection connect(String uri, WsHandler handler) throws Exception {
-        WsConnection connection = new WsConnection(uri, handler);
-        connection.setName(connectionPrefix + connection.getId());
-        connection.setHandshakeSoTimeout(handshakeSoTimeout);
-        connection.setConnectionSoTimeout(connectionSoTimeout, pingPong);
-        connection.setMaxMessageLength(maxMessageLength, streamingEnabled);
-        connection.setSubprotocol(subprotocols);
-        connection.connectSocket();
-        connection.start();
-        return connection;
+        WsConnection conn = new WsConnection(uri, handler);
+        conn.setName(connectionPrefix + conn.getId());
+        conn.setWsParameters(wsp);
+        conn.connectSocket();
+        conn.start();
+        return conn;
     }
 
     public WsConnection[] listConnections() {
@@ -140,7 +110,7 @@ public class WebSocket {
             listener.close();
         }
         for (WsConnection conn : listConnections()) {
-            conn.close(WsConnection.GOING_AWAY, "");
+            conn.close(WsStatus.GOING_AWAY, "");
         }
     }
 

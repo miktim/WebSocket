@@ -11,9 +11,9 @@ public interface WsHandler {
     public void onMessage(WsConnection conn, String s );
     public void onMessage(WsConnection conn, byte[] b);
 // onFrame: 
-//   - if the specified maximum message length is exceeded and framing enabled;
+//   - when the specified maximum message length is exceeded and framing is enabled;
 //   - eom (end of message): 1 - for text; 2 - for binary; 0 - continued;
-//  public void onFrame(WsConnection conn, byte[] payload, boolean eom);
+//  public void onFrame(WsConnection conn, byte[] payload, int eom);
 // onError:
 //   - conn can be null in the listener handler;
 //   - check connection is open.
