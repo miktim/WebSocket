@@ -12,12 +12,11 @@ public class WsParameters implements Cloneable {
 
     int handshakeSoTimeout = 30000; // millis TLS/SSL, WebSocket open/close handshake
     int connectionSoTimeout = 60000;// millis
-    boolean pingEnabled = true; // 
+    boolean pingEnabled = true; // if false, connection terminate by timeout
     int maxMessageLength = 1048576; // bytes, incoming
-    boolean framingEnabled = false;
-    int payloadLength = 65536; // bytes, outgoing
+    boolean framingEnabled = false; // ignored until implemented
     String subProtocols[] = null;
-    SSLParameters sslParameters = null;
+    SSLParameters sslParameters;
 
     public WsParameters() {
         sslParameters = new SSLParameters();
@@ -98,6 +97,7 @@ public class WsParameters implements Cloneable {
         return clone;
     }
 
-    String keyFile = null;
-    String keyFilePassword = null;
+//    int payloadLength = 65536; // bytes, outgoing
+//    String keyFile = null; // listener keyFile
+//    String keyFilePassword = null;
 }

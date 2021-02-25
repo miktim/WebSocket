@@ -30,7 +30,6 @@ Overview:
 
   WsListener (extends Thread, is created with current WebSocket parameters):
     Methods:
-      String getSubprotocol(); // null or comma delimited list
       boolean isOpen();
       boolean isSecure();
       WsParameters getWsParameters();
@@ -44,8 +43,8 @@ Overview:
     Methods:
       boolean isOpen(); 
       boolean isSecure();
-      String getPath();  // get request path
-      String getQuery(); // get request query
+      String getPath();  // get request path or null
+      String getQuery(); // get request query or null
       String getPeerHost();
       String getSubProtocol(); // returns null or handshaked subprotocol
       WsParameters getWsParameters();
