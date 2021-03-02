@@ -5,7 +5,9 @@ echo $(java -version)
 if [ -f ./WebSocket.jar ]; then
   javac -cp ./WebSocket.jar WsListenerTest.java
   javac -cp ./WebSocket.jar WssConnectionTest.java
+  javac -cp ./WebSocket.jar WssClientTest.java
   java -cp ./WebSocket.jar:. WssConnectionTest
+  java -cp ./WebSocket.jar:. WssClientTest
   java -cp ./WebSocket.jar:. WsListenerTest
   rm -f *.class
 else

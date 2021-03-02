@@ -106,6 +106,9 @@ public class WsConnection extends Thread {
 
     public String getPeerHost() {
         try {
+            if (isClientSide) {
+                return requestURI.getHost();
+            }
             if (isSecure) {
                 return ((SSLSocket) socket).getSession().getPeerHost();
             } else {
@@ -319,15 +322,15 @@ public class WsConnection extends Thread {
         connectSocket();
         this.start();
     }
-    */
+     */
     void connectSocket() throws IOException {
         try {
             int port = requestURI.getPort();
             if (port < 0) {
                 port = isSecure ? 443 : 80;
             }
-            if(isSecure && wsp.sslParameters != null) {
-                ((SSLSocket)this.socket).setSSLParameters(wsp.sslParameters);
+            if (isSecure && wsp.sslParameters != null) {
+                ((SSLSocket) this.socket).setSSLParameters(wsp.sslParameters);
             }
             this.socket.connect(
                     new InetSocketAddress(requestURI.getHost(), port), wsp.handshakeSoTimeout);
@@ -368,21 +371,22 @@ public class WsConnection extends Thread {
         if (!(peerHeaders.get(REQUEST_LINE_HEADER).split(" ")[1].equals("101")
                 && peerHeaders.get("Sec-WebSocket-Accept").equals(sha1Hash(key))
                 && checkSubprotocol())) {
-            throw new ProtocolException("client_handshake");
+            throw new ProtocolException("WebSocket_handshake_failed");
         }
         this.closeCode = 0;
     }
 
     private boolean checkSubprotocol() {
-// close the connection if the negotiated subProtocol is not in the client's subProtocol list
-// (rfc 6455 4.1 server response 6.)       
+// rfc 6455 4.1 server response 6.:       
+// 'close the connection if the negotiated subProtocol is not in the client's 
+// subProtocol list'.  What about returned null???
         if (this.subProtocol == null) {
-            return true; // and what about returned null???
+            return true; // 
         } else if (wsp.subProtocols == null) {
             return false;
         }
         for (String sub : wsp.subProtocols) {
-            if (sub.equals(subProtocol)) {
+            if (String.valueOf(sub).equals(subProtocol)) { // sub can be null
                 return true;
             }
         }
@@ -464,6 +468,7 @@ public class WsConnection extends Thread {
     public void run() {
         try {
             if (isClientSide) {
+                connectSocket();
                 handshakeServer();
             } else {
                 handshakeClient();
@@ -499,10 +504,9 @@ public class WsConnection extends Thread {
         boolean pingSent = false;
         boolean maskedData;
         int opData = 0;
-        byte[] message = EMPTY_PAYLOAD;
         long messageLen = 0;
 
-        ArrayDeque<byte[]> payloadQueue = new ArrayDeque<byte[]>();
+        ArrayDeque<byte[]> payloadQueue = new ArrayDeque<>();
 
         byte[] service = new byte[8]; //buffer for frame header elements
         boolean done = false;
@@ -579,10 +583,9 @@ public class WsConnection extends Thread {
                         messageLen += framePayloadLen;
                         if (closeCode == 0) {
                             if (messageLen <= (long) this.wsp.maxMessageLength) {
-//                                    || streamingEnabled) {
+//                                    || this.wsp.framingEnabled) {
                                 break;
                             }
-                            message = EMPTY_PAYLOAD;
                             closeDueTo(WsStatus.MESSAGE_TOO_BIG, new BufferUnderflowException());
                         }
                     }
@@ -614,13 +617,12 @@ public class WsConnection extends Thread {
                     case OP_CONTINUATION:
                         if (this.closeCode == 0) {
                             payloadQueue.addLast(framePayload);
-//                            message = combine(message, framePayload);
                         }
                         break;
                     case OP_FINAL: {
                         if (this.closeCode == 0) {
                             payloadQueue.addLast(framePayload);
-                            message = new byte[(int) messageLen];
+                            byte[] message = new byte[(int) messageLen];
                             framePayloadLen = 0;
                             while (!payloadQueue.isEmpty()) {
                                 framePayload = payloadQueue.pollFirst();
@@ -628,7 +630,6 @@ public class WsConnection extends Thread {
                                         framePayload, 0, message, (int) framePayloadLen, framePayload.length);
                                 framePayloadLen += framePayload.length;
                             }
-//                            message = combine(message, framePayload);
                             if (opData == OP_BINARY) {
                                 handler.onMessage(this, message);
                             } else {
@@ -637,7 +638,6 @@ public class WsConnection extends Thread {
                             }
                         }
                         opData = 0;
-                        message = EMPTY_PAYLOAD;
                         messageLen = 0;
                         payloadQueue.clear();
                         break;
@@ -667,7 +667,8 @@ public class WsConnection extends Thread {
                                         Arrays.copyOfRange(framePayload, 2, framePayload.length - 2),
                                         StandardCharsets.UTF_8
                                 );
-                            } else {
+                            }
+                            if (closeCode == 0) {
                                 closeCode = -WsStatus.NO_STATUS;
                             }
                         }

@@ -91,7 +91,6 @@ public class WebSocket {
         WsConnection conn = new WsConnection(uri, handler);
         conn.setName(connectionPrefix + conn.getId());
         conn.setWsParameters(wsp);
-        conn.connectSocket();
         conn.start();
         return conn;
     }

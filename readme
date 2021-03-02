@@ -6,7 +6,7 @@ Release notes:
   - supported WebSocket version: 13;
   - WebSocket extensions not supported;
   - client authentication not supported;
-  - incoming message/payload  length is limited to 2GB (Integer.MAX_VALUE).
+  - incoming message/payload length is limited to 2GB (Integer.MAX_VALUE).
 
 Overview:
   Constructors:
@@ -24,9 +24,11 @@ Overview:
       WsConnection[] listConnections();
       void closeAll();
 
-  WsParameters:  see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsParameters.java
+  WsParameters:
+    see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsParameters.java
 
-  WsHandler:  see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsHandler.java
+  WsHandler:
+    see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsHandler.java
 
   WsListener (extends Thread, is created with current WebSocket parameters):
     Methods:
@@ -55,7 +57,8 @@ Overview:
       void close(int statusCode, String reason); // a reason longer than 123 bytes is truncated
       WsStatus getStatus();
 
-  WsStatus:  see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsStatus.java
+  WsStatus:
+    see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsStatus.java
 
 Usage example see in:
   https://github.com/miktim/WebSocket/blob/new/test/WssConnectionTest.java

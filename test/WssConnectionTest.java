@@ -14,7 +14,7 @@ import org.miktim.websocket.WsParameters;
 public class WssConnectionTest {
 
     static final int MAX_MESSAGE_LENGTH = 1000000; //~1MB
-    static final int LISTENER_SHUTDOWN_TIMEOUT = 10000; //10sec 
+    static final int WEBSOCKET_SHUTDOWN_TIMEOUT = 10000; //10sec 
     static final String REMOTE_HOST = "localhost";//"192.168.1.106";
 
     public static void main(String[] args) throws Exception {
@@ -53,7 +53,7 @@ public class WssConnectionTest {
                         + (con != null ? con.getPath() : null)
                         + " " + e.toString()
                         + " " + (con != null ? con.getStatus() : null));
-                e.printStackTrace();
+//                e.printStackTrace();
             }
 
             @Override
@@ -107,7 +107,7 @@ public class WssConnectionTest {
                 System.out.println("Client: handle ERROR: " + con.getPath()
                         + " " + e.toString()
                         + " " + con.getStatus());
-                e.printStackTrace();
+//                e.printStackTrace();
             }
 
             @Override
@@ -145,7 +145,7 @@ public class WssConnectionTest {
         wsp.setConnectionSoTimeout(1000, true); // ping
         wsp.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
         webSocket.setWsParameters(wsp);
-// !both sides must use the same self-signed certificate
+// Both sides must use the same self-signed certificate
         /* Android
         WebSocket.setTrustStore(new File(getCacheDir(),"testkeys"), "passphrase");
          */
@@ -162,14 +162,18 @@ public class WssConnectionTest {
                 webSocket.closeAll();
                 timer.cancel();
             }
-        }, LISTENER_SHUTDOWN_TIMEOUT);
-        System.out.println("\r\nSecure WsConnection (v"
+        }, WEBSOCKET_SHUTDOWN_TIMEOUT);
+        System.out.println("\r\nWssConnection (v"
                 + WsConnection.VERSION + ") test"
-                + "\r\nClient connects to " + remoteAddr
-                + "\r\nListener will be closed after "
-                + (LISTENER_SHUTDOWN_TIMEOUT / 1000) + " seconds"
+                + "\r\nClient try to connect to " + remoteAddr
+                + "\r\nWebSocket will be closed after "
+                + (WEBSOCKET_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
-        webSocket.connect("wss://" + remoteAddr + "/test", clientHandler);
+        webSocket.connect("wss://" + remoteAddr + "/test", clientHandler);        
+        webSocket.connect("wss://" + remoteAddr + "/test", clientHandler);        
+        webSocket.connect("wss://" + remoteAddr + "/test", clientHandler); 
+// Connection below must fail (unsrcure connection to secure listener)
+        webSocket.connect("ws://" + remoteAddr + "/must_fail", clientHandler);        
     }
 
 }
