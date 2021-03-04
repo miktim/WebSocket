@@ -47,9 +47,9 @@ public class WsListener extends Thread {
         this.socketAddress = isa;
         this.handler = handler;
         serverSocket = getServerSocketFactory().createServerSocket();
-//        if (this.isSecure) {
-//            ((SSLServerSocket) this.serverSocket).setNeedClientAuth(false);
-//        }
+        if (isSecure && wsp.sslParameters != null) {
+            ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
+        }
         serverSocket.bind(socketAddress);
     }
 
@@ -76,6 +76,19 @@ public class WsListener extends Thread {
         return handler;
     }
 
+    public void close() {
+        this.isRunning = false;
+        try {
+            serverSocket.close();
+        } catch (Exception e) {
+//            e.printStackTrace();
+        }
+    }
+
+    public WsConnection[] listConnections() {
+        return listByPrefix(WsConnection.class, connectionPrefix);
+    }
+
     @SuppressWarnings("unchecked")
     static <T> T[] listByPrefix(Class<T> c, String prefix) {
         Vector<T> vector = new Vector<>();
@@ -89,26 +102,13 @@ public class WsListener extends Thread {
         return vector.toArray((T[]) Array.newInstance(c, vector.size()));
     }
 
-    public WsConnection[] listConnections() {
-        return listByPrefix(WsConnection.class, connectionPrefix);
-    }
-
-    public void close() {
-        this.isRunning = false;
-        try {
-            serverSocket.close();
-        } catch (Exception e) {
-//            e.printStackTrace();
-        }
-    }
-
     @Override
     public void run() {
         if (!this.isRunning) {
             this.isRunning = true;
-            if (isSecure && wsp.sslParameters != null) {
-                ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
-            }
+//            if (isSecure && wsp.sslParameters != null) {
+//                ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
+//            }
             connectionPrefix = "WsConnection-" + this.getId() + "-";
             while (this.isRunning) {
                 try {
@@ -139,13 +139,13 @@ public class WsListener extends Thread {
             SSLContext ctx;
             KeyManagerFactory kmf;
             KeyStore ks;
-            String ksPassphrase = System.getProperty("javax.net.ssl.trustStorePassword");
+            String ksPassphrase = System.getProperty("javax.net.ssl.keyStorePassword");
             char[] passphrase = ksPassphrase.toCharArray();
 
             ctx = SSLContext.getInstance("TLS");
             kmf = KeyManagerFactory.getInstance("SunX509");
             ks = KeyStore.getInstance("JKS"); //
-            File ksFile = new File(System.getProperty("javax.net.ssl.trustStore"));
+            File ksFile = new File(System.getProperty("javax.net.ssl.keyStore"));
             ks.load(new FileInputStream(ksFile), passphrase);
             kmf.init(ks, passphrase);
 //        TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");

@@ -13,6 +13,7 @@ package org.miktim.websocket;
 
 //import com.sun.net.httpserver.Headers;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -99,10 +100,10 @@ public class WsConnection extends Thread {
             this.handler.onOpen(this);
         }
     }
-     */
     public WsHandler getHandler() {
         return handler;
     }
+     */
 
     public String getPeerHost() {
         try {
@@ -117,6 +118,10 @@ public class WsConnection extends Thread {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    public int getPort() {
+        return socket.getLocalPort();
     }
 
     public String getPath() {
@@ -155,8 +160,6 @@ public class WsConnection extends Thread {
         syncSend(is, isText);
     }
 
-    public static final int STREAM_PAYLOAD_LENGTH = 8192;
-
     private synchronized void syncSend(Object obj, boolean isText) throws IOException {
         if (obj == null) {
             throw new NullPointerException();
@@ -167,7 +170,7 @@ public class WsConnection extends Thread {
                 sendPayload(op | OP_FINAL, (byte[]) obj);
             } else if (obj instanceof InputStream) {
 // BufferedInputStream is not good for large payloads?
-                byte[] buf = new byte[STREAM_PAYLOAD_LENGTH];
+                byte[] buf = new byte[wsp.payloadLength];
                 InputStream is = (InputStream) obj;
                 int len = 0;
                 while (true) {
@@ -261,7 +264,7 @@ public class WsConnection extends Thread {
             writeHeaders(this.socket, responseHeaders, "HTTP/1.1 101 Upgrade");
         } else {
             writeHeaders(this.socket, null, "HTTP/1.1 400 Bad Request");
-            throw new ProtocolException("bad_request");
+            throw new ProtocolException("WebSocket handshake failed");
         }
         closeCode = 0;
     }
@@ -297,10 +300,10 @@ public class WsConnection extends Thread {
         String scheme = requestURI.getScheme();
         String host = requestURI.getHost();
         if (host == null || scheme == null) {
-            throw new URISyntaxException(uri, "scheme_and_host_required");
+            throw new URISyntaxException(uri, "Scheme and host required");
         }
         if (!(scheme.equals("ws") || scheme.equals("wss"))) {
-            throw new URISyntaxException(uri, "unsupported_scheme");
+            throw new URISyntaxException(uri, "Unsupported scheme");
         }
         if (scheme.equals("wss")) {
             this.isSecure = true;
@@ -371,7 +374,7 @@ public class WsConnection extends Thread {
         if (!(peerHeaders.get(REQUEST_LINE_HEADER).split(" ")[1].equals("101")
                 && peerHeaders.get("Sec-WebSocket-Accept").equals(sha1Hash(key))
                 && checkSubprotocol())) {
-            throw new ProtocolException("WebSocket_handshake_failed");
+            throw new ProtocolException("WebSocket handshake failed");
         }
         this.closeCode = 0;
     }
@@ -399,7 +402,7 @@ public class WsConnection extends Thread {
                 new InputStreamReader(socket.getInputStream()));
         String line = br.readLine();
         if (line.startsWith("\u0016\u0003\u0003")) {
-            throw new javax.net.ssl.SSLHandshakeException("plain_text_socket");
+            throw new javax.net.ssl.SSLHandshakeException("Plain socket");
         }
         headers.set(REQUEST_LINE_HEADER,
                 line.replaceAll("  ", " ").trim());
@@ -516,7 +519,7 @@ public class WsConnection extends Thread {
                 int b1 = is.read();
                 int b2 = is.read();
                 if ((b1 | b2) == -1) {
-                    throw new EOFException("frame_op");
+                    throw new EOFException("Unexpected EOF (frame op)");
                 }
 // check op    
                 switch (b1) {
@@ -542,8 +545,8 @@ public class WsConnection extends Thread {
                         break;
                     }
                     default: {
-                        closeDueTo(WsStatus.UNSUPPORTED_DATA,
-                                new ProtocolException("unsupported_op"));
+                        closeDueTo(WsStatus.PROTOCOL_ERROR,
+                                new ProtocolException("Unsupported op"));
                     }
                 }
 // get frame payload length
@@ -556,7 +559,7 @@ public class WsConnection extends Thread {
                 }
                 if (serviceLen > 0) {
                     if (this.readFully(is, service, 0, serviceLen) != serviceLen) {
-                        throw new EOFException("frame_length");
+                        throw new EOFException("Unexpected EOF (frame length)");
                     }
                     framePayloadLen = 0;
                     for (int i = 0; i < serviceLen; i++) {
@@ -569,12 +572,13 @@ public class WsConnection extends Thread {
                 if (maskedData) {
                     serviceLen = 4;
                     if (this.readFully(is, service, 0, serviceLen) != serviceLen) {
-                        throw new EOFException("frame_mask");
+                        throw new EOFException("Unexpected EOF (mask)");
                     }
                 }
 // client MUST mask the data, server MUST NOT
                 if (Boolean.compare(this.isClientSide, maskedData) == 0) {
-                    closeDueTo(WsStatus.PROTOCOL_ERROR, new ProtocolException("mask_mismatch"));
+                    closeDueTo(WsStatus.PROTOCOL_ERROR,
+                            new ProtocolException("Mask mismatch"));
                 }
 // check frame payload length
                 switch (b1) {
@@ -595,7 +599,8 @@ public class WsConnection extends Thread {
                         if (framePayloadLen <= 125L) {
                             break;
                         }
-                        closeDueTo(WsStatus.PROTOCOL_ERROR, new ProtocolException());
+                        closeDueTo(WsStatus.PROTOCOL_ERROR,
+                                new ProtocolException("Control frame length exceeded"));
                     }
                     default: {
                         is.skip(framePayloadLen);
@@ -606,7 +611,7 @@ public class WsConnection extends Thread {
                 byte[] framePayload = new byte[(int) framePayloadLen];
                 if (this.readFully(is, framePayload, 0, (int) framePayloadLen)
                         != framePayload.length) {
-                    throw new EOFException("frame_payload");
+                    throw new EOFException("Unexpected EOF (payload)");
                 }
 // unmask frame payload                
                 if (maskedData) {
@@ -647,7 +652,7 @@ public class WsConnection extends Thread {
                                 && Arrays.equals(framePayload, PING_PAYLOAD)) {
                         } else {
                             closeDueTo(WsStatus.PROTOCOL_ERROR,
-                                    new ProtocolException("unexpected_pong"));
+                                    new ProtocolException("Unexpected pong"));
                         }
                         pingSent = false;
                         break;
@@ -675,8 +680,8 @@ public class WsConnection extends Thread {
                         break;
                     }
                     default: {
-                        closeDueTo(WsStatus.UNSUPPORTED_DATA,
-                                new ProtocolException("unsupported_op"));
+                        closeDueTo(WsStatus.PROTOCOL_ERROR,
+                                new ProtocolException("Unsupported op"));
                     }
                 }
             } catch (SocketTimeoutException e) {
@@ -762,7 +767,7 @@ public class WsConnection extends Thread {
             throws IOException {
         if (closeCode != 0) { // || !isSocketOpen()) {
 // close handshake in progress            
-            throw new SocketException("close_handshake");
+            throw new SocketException("WebSocket closed");
         }
         boolean masked = this.isClientSide;
         OutputStream os = this.socket.getOutputStream();

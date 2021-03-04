@@ -14,7 +14,9 @@ Overview:
     WebSocket(InetAddress bindAddr) throws Exception;
 
     Methods:
-      static void setTrustStore(String keyFilePath, String passphrase); // set jvm trustStore
+      static void setKeyStore(String keyFilePath, String passphrase); // set jvm keyStore (listener)
+      static void setTrustStore(String keyFilePath, String passphrase); // set jvm trustStore (client)
+
       WsParameters getWsParameters();
       void setWsParameters(WsParameters wsp);
       WsListener listen(int port, WsHandler handler) throws Exception; 

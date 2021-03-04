@@ -15,6 +15,7 @@ public class WsParameters implements Cloneable {
     boolean pingEnabled = true; // if false, connection terminate by socket timeout
     int maxMessageLength = 1048576; // bytes, incoming messages only
     boolean framingEnabled = false; // ignored until implemented
+    int payloadLength = 16384; // bytes, outgoing 
     String subProtocols[] = null; // WebSocket subprotocol[s] in preferred order
     SSLParameters sslParameters;  // TLS parameters
 
@@ -57,6 +58,17 @@ public class WsParameters implements Cloneable {
         return framingEnabled;
     }
 
+    public void setPayloadLength(int len) throws IllegalArgumentException {
+        if (len <= 0) {
+            throw new IllegalArgumentException("Payload length");
+        }
+        payloadLength = len;
+    }
+
+    public int getPayloadLength() {
+        return payloadLength;
+    }
+
     public void setSubProtocols(String[] subps) {
         if (subps == null || subps.length == 0) {
             subProtocols = null;
@@ -97,7 +109,6 @@ public class WsParameters implements Cloneable {
         return clone;
     }
 
-//    int payloadLength = 65536; // bytes, outgoing
 //    String keyFile = null; // listener keyFile
 //    String keyFilePassword = null;
 }

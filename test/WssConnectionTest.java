@@ -147,10 +147,11 @@ public class WssConnectionTest {
         webSocket.setWsParameters(wsp);
 // Both sides must use the same self-signed certificate
         /* Android
-        WebSocket.setTrustStore(new File(getCacheDir(),"testkeys"), "passphrase");
+        WebSocket.setKeyStore(getCacheDir() + "/testkeys"), "passphrase");
+        WebSocket.setTrustStore(getCacheDir() + "/testkeys"), "passphrase");
          */
 // /* Desktop
-//        WebSocket.setTrustStore(new File(path, "localhost.jks"), "password"); // java 1.8+
+        WebSocket.setKeyStore((new File(path, "testkeys")).getCanonicalPath(), "passphrase");
         WebSocket.setTrustStore((new File(path, "testkeys")).getCanonicalPath(), "passphrase");
 // */
         webSocket.listenSafely(port, listenerHandler);
