@@ -15,7 +15,7 @@ import org.miktim.websocket.WsStatus;
 public class WssClientTest {
 
     static final int MAX_MESSAGE_LENGTH = 1000000; //~1MB
-    static final int WEBSOCKET_SHUTDOWN_TIMEOUT = 30000; //10sec 
+    static final int WEBSOCKET_SHUTDOWN_TIMEOUT = 15000; //10sec 
     static final String REMOTE_CONNECTION = "wss://websocketstest.com:443/service";//
 
     static String fragmentTest = randomString(512);

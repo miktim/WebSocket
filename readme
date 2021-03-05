@@ -47,13 +47,14 @@ Overview:
     Methods:
       boolean isOpen(); 
       boolean isSecure();
-      String getPath();  // get request path or null
-      String getQuery(); // get request query or null
       String getPeerHost();
-      String getSubProtocol(); // returns null or handshaked subprotocol
+      int getPort() // 
+      String getPath();  // returns request path or null
+      String getQuery(); // returns request query or null
+      String getSubProtocol(); // returns null or handshaked WebSocket subprotocol
       WsParameters getWsParameters();
-      void send(String message) throws IOException; // send as single frame
-      void send(byte[] message) throws IOException; // send as single frame
+      void send(String message) throws IOException; //
+      void send(byte[] message) throws IOException; //
       void send(InputStream is, boolean isText) throws IOException;
       void close(); // close without status code (NO_STATUS)
       void close(int statusCode, String reason); // a reason longer than 123 bytes is truncated
