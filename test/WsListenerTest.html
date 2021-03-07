@@ -14,25 +14,22 @@
         <script src="http://localhost:8080/this_request_must_fail.js"></script>
         <script>
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-            var erruri = 'ws://localhost:8080/echo?alpha=фыва';
             var testuri = 'ws://localhost:8080/test/';
             var msg = 'Hello Listener!';
             var maxMsgLength = 0;
             var maxMsgEnd;
             var testNo = 0;
             var tests = [
-                'listener "did not find" the request path (1008 FireFox, 1006 others expected)',
+                'unknown subprotocol (1003 FireFox, 1006 others expected)',
                 'closing websocket by browser (1005 expected)',
                 'closing websocket by the listener (1000 expected)',
                 'waiting message too big (1009 expected)',
-                'ping, waiting for listener closure (1001 expected)'
+                'ping, waiting for listener shutdown (1001 expected)'
             ];
             var webSocket;
             var subProtocols = ["superPooperChat"];//["superChat", "chat"];
             try {
-                connectWs(erruri);
-//            testNo = 3;
-//            connectWs(testuri + testNo);
+                connectWs(testuri+"0");
             } catch (e) {
                 show('Exception: ' + e.code + ' ' + e.message);
             }

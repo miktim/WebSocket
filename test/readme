@@ -1,13 +1,14 @@
 Testing:
-  - tested with Java 7,8,11;
-  - WsListener has been tested with desktop browsers:
-      Firefox 68.8, Chrome 83.0, Chromium 81.0, Opera 68.0, Yandex 20.4, MS Edge 85.0.564.41;
-  - Safe listener was tested by Chromium with “chrome://flags/#allow-insecure-localhost” enabled
-      and with own secure connection (both sides must have the same key file);
+  - this package has been tested with desktop jdk/jre 7,8,11.
+    Compiled with AndroidStudio, but not tested;
+  - listener has been tested with desktop browsers:
+    Firefox 68.8, Chrome 83.0, Chromium 81.0, Opera 68.0, Yandex 20.4, MS Edge 85.0.564.41;
+  - safe listener was tested by Chromium with “chrome://flags/#allow-insecure-localhost” enabled
+    and with own secure connection (listener and client must have the same key file);
   - TLS client connection was tested with site  https://websocketstest.com/
 
 Certificates (localhost self-signed):
   From https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/index.html
-    - testkeys: Java 7+;
+    - testkeys ("passphrase"), Java 7+
   Self-made:
-    - localhost.jks: Java 8+
+    - localhost.jks ("password"), Java 8+

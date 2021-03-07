@@ -11,7 +11,7 @@ public class WsStatus {
 //  https://www.iana.org/assignments/websocket/websocket.xml#close-code-number 
 //  https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
 
-    public static final int IS_OPEN = 0; 
+    public static final int IS_OPEN = 0;
     public static final int NORMAL_CLOSURE = 1000; //*
     public static final int GOING_AWAY = 1001; //* 
     public static final int PROTOCOL_ERROR = 1002; //* 
@@ -25,20 +25,22 @@ public class WsStatus {
     public static final int INTERNAL_ERROR = 1011; //* 
     public static final int TRY_AGAIN_LATER = 1013; //*
 
-    public int code = 0;           // close code (1000-4999)
+    public int code;               // close code (1000-4999)
     public String reason = "";     // close reason
+    public boolean clean = false;  // closed cleanly
     public boolean remote = false; // closed remotely
 
-    WsStatus(int closeCode, String closeReason, boolean closedRemotely) {
+    WsStatus(int closeCode, String closeReason, boolean clean, boolean remote) {
         code = closeCode;
         reason = closeReason;
-        remote = closedRemotely;
+        this.clean = clean;
+        this.remote = remote;
     }
 
     @Override
     public String toString() {
-        return String.format("WsStatus: %d:\"%s\"%s",
-                code, reason, (remote ? ":remotely" : ""));
+        return String.format("WsStatus:%d:\"%s\":%s%s",
+                code, reason, clean, (remote ? ":remotely" : ""));
     }
 
 }

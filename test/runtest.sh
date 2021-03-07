@@ -14,5 +14,5 @@ else
   echo First make the ./WebSocket.jar file.
 fi
 echo
-echo Completed. Press any key...
+echo Completed. Press Enter to exit...
 read

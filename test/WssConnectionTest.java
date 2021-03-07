@@ -9,6 +9,7 @@ import java.util.TimerTask;
 import org.miktim.websocket.WsConnection;
 import org.miktim.websocket.WsHandler;
 import org.miktim.websocket.WebSocket;
+import org.miktim.websocket.WsListener;
 import org.miktim.websocket.WsParameters;
 
 public class WssConnectionTest {
@@ -16,6 +17,15 @@ public class WssConnectionTest {
     static final int MAX_MESSAGE_LENGTH = 1000000; //~1MB
     static final int WEBSOCKET_SHUTDOWN_TIMEOUT = 10000; //10sec 
     static final String REMOTE_HOST = "localhost";//"192.168.1.106";
+
+    static void ws_log(String msg) {
+        System.out.println(msg);
+    }
+
+    static String makePath(WsConnection con) {
+        return con.getPath()
+                + (con.getQuery() == null ? "" : "?" + con.getQuery());
+    }
 
     public static void main(String[] args) throws Exception {
         String path = ".";
@@ -29,29 +39,29 @@ public class WssConnectionTest {
         WsHandler listenerHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
-                System.out.println("Listener: handle OPEN: " + con.getPath()
+                ws_log("Listener onOPEN: " + makePath(con)
                         + " Peer: " + con.getPeerHost()
                         + " SecureProtocol: " + con.getSSLSessionProtocol());
                 try {
                     con.send("Hello Client!");
                 } catch (IOException e) {
-                    System.out.println("Listener: handle OPEN: " + con.getPath()
-                            + " send error: " + e.toString());
+                    ws_log("Listener onOPEN: " + makePath(con)
+                            + " send error: " + e + " " + con.getStatus());
 //                    e.printStackTrace();
                 }
             }
 
             @Override
             public void onClose(WsConnection con) {
-                System.out.println("Listener: handle CLOSE: " + con.getPath()
+                ws_log("Listener onCLOSE: " + makePath(con)
                         + " " + con.getStatus());
             }
 
             @Override
             public void onError(WsConnection con, Exception e) {
-                System.out.println("Listener: handle ERROR: "
-                        + (con != null ? con.getPath() : null)
-                        + " " + e.toString()
+                ws_log("Listener onERROR: "
+                        + (con != null ? makePath(con) : null)
+                        + " " + e
                         + " " + (con != null ? con.getStatus() : null));
 //                e.printStackTrace();
             }
@@ -61,13 +71,13 @@ public class WssConnectionTest {
                 try {
                     if (s.length() < 128) {
                         con.send(s + s);
-                        System.out.println("Listener: handle TEXT: " + s);
+                        ws_log("Listener onTEXT: " + s);
                     } else {
                         con.send(s);
                     }
                 } catch (IOException e) {
-                    System.out.println("Listener: handle TEXT: " + con.getPath()
-                            + " send error: " + e.toString());
+                    ws_log("Listener onTEXT: send error: "
+                            + e + " " + con.getStatus());
                 }
             }
 
@@ -76,8 +86,8 @@ public class WssConnectionTest {
                 try {
                     con.send(b);
                 } catch (IOException e) {
-                    System.out.println("Listener: handle BINARY: " + con.getPath()
-                            + " send error: " + e.toString());
+                    ws_log("Listener onBINARY: send error: "
+                            + e + " " + con.getStatus());
                 }
             }
         };
@@ -85,28 +95,27 @@ public class WssConnectionTest {
         WsHandler clientHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
-                System.out.println("Client: handle OPEN: " + con.getPath()
+                ws_log("Client" + con.getId()
+                        + " onOPEN: " + makePath(con)
                         + " Peer: " + con.getPeerHost());
                 try {
                     con.send("Hello Listener!");
                 } catch (IOException e) {
-                    System.out.println("Client: handle OPEN: " + con.getPath()
-                            + " send error: " + e.toString());
+                    ws_log("Client" + con.getId() + " onOPEN: send error: "
+                            + e + " " + con.getStatus());
 //                    e.printStackTrace();
                 }
             }
 
             @Override
             public void onClose(WsConnection con) {
-                System.out.println("Client: handle CLOSE: " + con.getPath()
-                        + " " + con.getStatus());
+                ws_log("Client" + con.getId() + " onCLOSE: " + con.getStatus());
             }
 
             @Override
             public void onError(WsConnection con, Exception e) {
-                System.out.println("Client: handle ERROR: " + con.getPath()
-                        + " " + e.toString()
-                        + " " + con.getStatus());
+                ws_log("Client" + con.getId() + " onERROR: "
+                        + e + " " + con.getStatus());
 //                e.printStackTrace();
             }
 
@@ -115,7 +124,7 @@ public class WssConnectionTest {
                 try {
                     if (s.length() < 128) {
                         con.send(s + s);
-                        System.out.println("Client: handle TEXT: " + s);
+                        ws_log("Client" + con.getId() + " onTEXT: " + s);
                     } else {
                         if (s.getBytes("utf-8").length < (MAX_MESSAGE_LENGTH / 2)) {
                             con.send(s + s);
@@ -124,8 +133,8 @@ public class WssConnectionTest {
                         }
                     }
                 } catch (IOException e) {
-                    System.out.println("Client: handle TEXT: " + con.getPath()
-                            + " send error: " + e.toString());
+                    ws_log("Client" + con.getId() + " onTEXT: send error: "
+                            + e + " " + con.getStatus());
                 }
             }
 
@@ -134,8 +143,8 @@ public class WssConnectionTest {
                 try {
                     con.send(b);
                 } catch (IOException e) {
-                    System.out.println("Client: handle BINARY: " + con.getPath()
-                            + " send error: " + e.toString());
+                    ws_log("Client" + con.getId() + " onBINARY: send error: "
+                            + e.toString());
                 }
             }
         };
@@ -147,34 +156,35 @@ public class WssConnectionTest {
         webSocket.setWsParameters(wsp);
 // Both sides must use the same self-signed certificate
         /* Android
-        WebSocket.setKeyStore(getCacheDir() + "/testkeys"), "passphrase");
-        WebSocket.setTrustStore(getCacheDir() + "/testkeys"), "passphrase");
+        String keyFile = getCacheDir() + "/testkeys";
          */
 // /* Desktop
-        WebSocket.setKeyStore((new File(path, "testkeys")).getCanonicalPath(), "passphrase");
-        WebSocket.setTrustStore((new File(path, "testkeys")).getCanonicalPath(), "passphrase");
+        String keyFile = (new File(path, "testkeys")).getCanonicalPath();
 // */
-        webSocket.listenSafely(port, listenerHandler);
+        WebSocket.setKeyStore(keyFile, "passphrase"); // for listener
+        WebSocket.setTrustStore(keyFile, "passphrase"); // for client
+        final WsListener wsListener = webSocket.listenSafely(port, listenerHandler);
 
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                webSocket.closeAll();
+                wsListener.close();
                 timer.cancel();
             }
         }, WEBSOCKET_SHUTDOWN_TIMEOUT);
-        System.out.println("\r\nWssConnection (v"
+        ws_log("\r\nWssConnection (v"
                 + WsConnection.VERSION + ") test"
                 + "\r\nClient try to connect to " + remoteAddr
                 + "\r\nWebSocket will be closed after "
                 + (WEBSOCKET_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
-        webSocket.connect("wss://" + remoteAddr + "/test", clientHandler);        
-        webSocket.connect("wss://" + remoteAddr + "/test", clientHandler);        
-        webSocket.connect("wss://" + remoteAddr + "/test", clientHandler); 
-// Connection below must fail (unsrcure connection to secure listener)
-        webSocket.connect("ws://" + remoteAddr + "/must_fail", clientHandler);        
+        webSocket.connect("wss://" + remoteAddr + "", clientHandler);
+        webSocket.connect("wss://" + remoteAddr + "/", clientHandler);
+        webSocket.connect("wss://" + remoteAddr + "/test", clientHandler);
+        webSocket.connect("wss://" + remoteAddr + "?alpa=фыва", clientHandler);
+// Connection below must fail (unsercure connect to secure listener)
+        webSocket.connect("ws://" + remoteAddr + "/must_fail", clientHandler);
     }
 
 }

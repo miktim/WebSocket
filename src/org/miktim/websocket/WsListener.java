@@ -14,11 +14,17 @@ package org.miktim.websocket;
 //import com.sun.net.httpserver.Headers;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 import java.util.Vector;
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.KeyManagerFactory;
@@ -34,23 +40,21 @@ public class WsListener extends Thread {
     private boolean isSecure;
     private WsParameters wsp = new WsParameters();
     private String connectionPrefix; // connection thread name
-    private InetSocketAddress socketAddress;
     private ServerSocket serverSocket;
     private WsHandler handler;
 
     WsListener(InetSocketAddress isa, WsHandler handler, boolean secure)
             throws Exception {
-        if (isa == null || handler == null) {
+        if (handler == null) {
             throw new NullPointerException();
         }
         this.isSecure = secure;
-        this.socketAddress = isa;
         this.handler = handler;
-        serverSocket = getServerSocketFactory().createServerSocket();
+        serverSocket = getServerSocketFactory().createServerSocket(); 
         if (isSecure && wsp.sslParameters != null) {
             ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
         }
-        serverSocket.bind(socketAddress);
+        serverSocket.bind(isa);
     }
 
     public boolean isSecure() {
@@ -134,6 +138,9 @@ public class WsListener extends Thread {
 
 // https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/sockets/server/ClassFileServer.java
     private ServerSocketFactory getServerSocketFactory() throws Exception {
+//            throws NoSuchAlgorithmException, KeyStoreException,
+//            FileNotFoundException, IOException, CertificateException,
+//            UnrecoverableKeyException {
         if (isSecure) {
             SSLServerSocketFactory ssf;
             SSLContext ctx;

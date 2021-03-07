@@ -52,6 +52,7 @@ public class WsConnection extends Thread {
     private URI requestURI;
     private int closeCode = WsStatus.GOING_AWAY;
     private String closeReason = "";
+    private boolean closeClean = false;
     private Exception closeException;
     private String subProtocol = null;
     private WsParameters wsp = new WsParameters();
@@ -118,19 +119,19 @@ public class WsConnection extends Thread {
     }
 
     public int getPort() {
-        return socket.getLocalPort();
+        return socket.getPort();
     }
 
     public String getPath() {
-        if (requestURI != null) {
-            return this.requestURI.getPath();
+        if (this.requestURI != null) {
+            return requestURI.getPath();
         }
         return null;
     }
 
     public String getQuery() {
-        if (requestURI != null) {
-            return this.requestURI.getQuery();
+        if (this.requestURI != null) {
+            return requestURI.getQuery();
         }
         return null;
     }
@@ -177,7 +178,7 @@ public class WsConnection extends Thread {
     }
 
     public WsStatus getStatus() {
-        return new WsStatus(Math.abs(closeCode), closeReason, closeCode < 0);
+        return new WsStatus(Math.abs(closeCode), closeReason, closeClean, closeCode < 0);
     }
 
     public void close() {
@@ -199,13 +200,14 @@ public class WsConnection extends Thread {
             }
             try {
                 this.socket.setSoTimeout(wsp.handshakeSoTimeout);
-//                pingEnabled = false;
                 sendFrame(OP_CLOSE, payload);
+                this.closeCode = code; // disable sending data
+                this.closeReason = new String(byteReason, StandardCharsets.UTF_8);
             } catch (IOException e) {
-//                handler.onError(this, new IOException("closure_error", e));
+                this.closeCode = WsStatus.ABNORMAL_CLOSURE;
+                this.closeReason = "WebSocket close error";
+                handler.onError(this, e);
             }
-            this.closeCode = code; // disable sending data
-            this.closeReason = new String(byteReason, StandardCharsets.UTF_8);
         }
     }
 
@@ -243,7 +245,7 @@ public class WsConnection extends Thread {
             writeHeaders(this.socket, null, "HTTP/1.1 400 Bad Request");
             throw new ProtocolException("WebSocket handshake failed");
         }
-        closeCode = 0;
+        closeCode = WsStatus.IS_OPEN;
     }
 
     private void setSubprotocol(String requestedSubps, Headers rs) {
@@ -263,7 +265,7 @@ public class WsConnection extends Thread {
     }
 
 //  WebSocket client connection
-    WsConnection(String uri, WsHandler handler) throws // ??? bindAddr
+    WsConnection(String uri, WsHandler handler) throws // ??? bind
             URISyntaxException, NullPointerException, IOException {
         this.isClientSide = true;
         if (uri == null || handler == null) {
@@ -322,16 +324,19 @@ public class WsConnection extends Thread {
         this.closeCode = WsStatus.PROTOCOL_ERROR;
 
         byte[] byteKey = new byte[16];
-        this.random.nextBytes(byteKey);
+        random.nextBytes(byteKey);
         String key = base64Encode(byteKey);
 
-        String path = (requestURI.getPath() == null ? "" : requestURI.getPath())
+        String requestPath = (requestURI.getPath() == null ? "/" : requestURI.getPath())
                 + (requestURI.getQuery() == null ? "" : "?" + requestURI.getQuery());
-        path = (new URI(path)).toASCIIString();
+        requestPath = (new URI(requestPath)).toASCIIString();
+        if (!requestPath.startsWith("/")) {
+            requestPath = "/" + requestPath;
+        }
         String host = requestURI.getHost()
                 + (requestURI.getPort() > 0 ? ":" + requestURI.getPort() : "");
-        host = (new URI(host)).toASCIIString();
-        String requestLine = "GET " + path + " HTTP/1.1";
+//        host = (new URI(host)).toASCIIString(); // URISyntaxException on IP addr
+        String requestLine = "GET " + requestPath + " HTTP/1.1";
         Headers headers = new Headers();
         headers.add("Host", host);
         headers.add("Origin", requestURI.getScheme() + "://" + host);
@@ -352,13 +357,13 @@ public class WsConnection extends Thread {
                 && checkSubprotocol())) {
             throw new ProtocolException("WebSocket handshake failed");
         }
-        this.closeCode = 0;
+        this.closeCode = WsStatus.IS_OPEN;
     }
 
     private boolean checkSubprotocol() {
 // rfc 6455 4.1 server response 6.:       
 // 'close the connection if the negotiated subProtocol is not in the client's 
-// subProtocol list'.  What about returned null???
+// subProtocol list'.  What about returned null??? FireFox accepts null.
         if (this.subProtocol == null) {
             return true; // 
         } else if (wsp.subProtocols == null) {
@@ -380,8 +385,12 @@ public class WsConnection extends Thread {
         if (line.startsWith("\u0016\u0003\u0003")) {
             throw new javax.net.ssl.SSLHandshakeException("Plain socket");
         }
-        headers.set(REQUEST_LINE_HEADER,
-                line.replaceAll("  ", " ").trim());
+        String[] parts = line.split(" ");
+        if (!(parts.length > 2
+                && (parts[0].equals("HTTP/1.1") || parts[2].equals("HTTP/1.1")))) {
+            throw new ProtocolException("Bad HTTP request");
+        }
+        headers.set(REQUEST_LINE_HEADER, line);
         String key = null;
         while (true) {
             line = br.readLine();
@@ -398,9 +407,9 @@ public class WsConnection extends Thread {
         return headers;
     }
 
-    private void writeHeaders(Socket socket, Headers hs, String line)
+    private void writeHeaders(Socket socket, Headers hs, String statusLine)
             throws IOException {
-        StringBuilder sb = new StringBuilder(line);
+        StringBuilder sb = new StringBuilder(statusLine);
         sb.append("\r\n");
         if (hs != null) {
             for (String hn : hs.keySet()) {
@@ -488,6 +497,8 @@ public class WsConnection extends Thread {
         ArrayDeque<byte[]> payloadQueue = new ArrayDeque<>();
 
         byte[] service = new byte[8]; //buffer for frame header elements
+        // align buffer to mask length
+//        byte[] payloadBuffer = new byte[(wsp.payloadBufferLength + 3) & 0xFFFFFFFC];
         boolean done = false;
 
         while (!done) {
@@ -580,6 +591,7 @@ public class WsConnection extends Thread {
                     }
                     default: {
                         is.skip(framePayloadLen);
+//                        if (b1 != OP_CLOSE) continue;
                         framePayloadLen = 0;
                     }
                 }
@@ -634,7 +646,9 @@ public class WsConnection extends Thread {
                         break;
                     }
                     case OP_PING: {
-                        sendFrame(OP_PONG, framePayload);
+                        if (closeCode == 0) {
+                            sendFrame(OP_PONG, framePayload);
+                        }
                         break;
                     }
                     case OP_CLOSE: { // close handshake
@@ -645,7 +659,7 @@ public class WsConnection extends Thread {
                                 closeCode = -(((framePayload[0] & 0xFF) << 8)
                                         + (framePayload[1] & 0xFF));
                                 closeReason = new String(
-                                        Arrays.copyOfRange(framePayload, 2, framePayload.length - 2),
+                                        Arrays.copyOfRange(framePayload, 2, framePayload.length),
                                         StandardCharsets.UTF_8
                                 );
                             }
@@ -653,6 +667,7 @@ public class WsConnection extends Thread {
                                 closeCode = -WsStatus.NO_STATUS;
                             }
                         }
+                        this.closeClean = true;
                         break;
                     }
                     default: {
@@ -661,17 +676,18 @@ public class WsConnection extends Thread {
                     }
                 }
             } catch (SocketTimeoutException e) {
-                if (this.wsp.pingEnabled && !pingSent && this.closeCode == 0) {
+                if (this.closeCode == 0 && this.wsp.pingEnabled && !pingSent) {
                     pingSent = true;
                     sendFrame(OP_PING, PING_PAYLOAD);
                 } else {
                     done = true;
-                    closeDueTo(WsStatus.GOING_AWAY, e);
+                    closeDueTo(WsStatus.GOING_AWAY, e); // ???ABNORMAL_CLOSURE
                 }
             } catch (EOFException e) {
                 done = true;
                 closeDueTo(WsStatus.ABNORMAL_CLOSURE, e);
             } catch (Exception e) {
+//e.printStackTrace();
                 done = true;
                 closeDueTo(WsStatus.INTERNAL_ERROR, e);
             } catch (Error e) {// large messages can throw java.lang.OutOfMemoryError
@@ -769,21 +785,24 @@ public class WsConnection extends Thread {
             }
             headerLen += 4;
         }
-
-        if (masked) {
-            header[1] |= MASKED_DATA;
-            this.random.nextBytes(mask); //
-            System.arraycopy(header, headerLen, mask, 0, 4);
-            headerLen += 4;
-            byte[] maskedPayload = payload.clone();
-            umaskPayload(mask, maskedPayload);
-            os.write(header, 0, headerLen);
-            os.write(maskedPayload, 0, payload.length);
-        } else {
-            os.write(header, 0, headerLen);
-            os.write(payload, 0, payload.length);
+        try {
+            if (masked) {
+                header[1] |= MASKED_DATA;
+                random.nextBytes(mask); //
+                System.arraycopy(header, headerLen, mask, 0, 4);
+                headerLen += 4;
+                byte[] maskedPayload = payload.clone();
+                umaskPayload(mask, maskedPayload);
+                os.write(header, 0, headerLen);
+                os.write(maskedPayload, 0, payload.length);
+            } else {
+                os.write(header, 0, headerLen);
+                os.write(payload, 0, payload.length);
+            }
+            os.flush();
+        } catch (IOException e) {
+            this.closeCode = WsStatus.ABNORMAL_CLOSURE;
+            throw e;
         }
-        os.flush();
     }
-
 }

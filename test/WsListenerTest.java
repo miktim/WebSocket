@@ -30,18 +30,19 @@ public class WsListenerTest {
         WsHandler listenerHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
-                System.out.println("Handle OPEN: " + con.getPath()
+                System.out.println("Listener onOPEN: " + con.getPath()
                         + (con.getQuery() == null ? "" : "?" + con.getQuery())
                         + " Peer: " + con.getPeerHost()
                         + " Subprotocol:" + con.getSubProtocol());
-                if (!con.getPath().startsWith("/test")) {
-                    con.close(WsStatus.POLICY_VIOLATION, "path not found");
+                if (con.getPath().startsWith("/test/0")
+                        && con.getSubProtocol() == null) {
+                    con.close(WsStatus.UNSUPPORTED_DATA, "unknown subprotocol");
                     return;
                 }
                 try {
                     con.send("Hello Browser!");
                 } catch (IOException e) {
-                    System.out.println("Handle OPEN: " + con.getPath()
+                    System.out.println("Listener: onOPEN: " + con.getPath()
                             + " send error: " + e.toString());
 //                    e.printStackTrace();
                 }
@@ -49,13 +50,13 @@ public class WsListenerTest {
 
             @Override
             public void onClose(WsConnection con) {
-                System.out.println("Handle CLOSE: " + con.getPath()
+                System.out.println("Listener onCLOSE: " + con.getPath()
                         + " " + con.getStatus());
             }
 
             @Override
             public void onError(WsConnection con, Exception e) {
-                System.out.println("Handle ERROR: "
+                System.out.println("Listener onERROR: "
                         + (con != null ? con.getPath() : null)
                         + " " + e.toString()
                         + " " + (con != null ? con.getStatus() : null));
@@ -87,7 +88,7 @@ public class WsListenerTest {
                         con.send(s);
                     }
                 } catch (IOException e) {
-                    System.out.println("Handle TEXT: " + con.getPath()
+                    System.out.println("Listener onTEXT: " + con.getPath()
                             + " send error: " + e.toString());
                 }
             }
@@ -97,7 +98,7 @@ public class WsListenerTest {
                 try {
                     con.send(b);
                 } catch (IOException e) {
-                    System.out.println("Handle BINARY: " + con.getPath()
+                    System.out.println("Listener onBINARY: " + con.getPath()
                             + " send error: " + e.toString());
                 }
             }

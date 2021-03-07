@@ -66,3 +66,4 @@ Overview:
 Usage example see in:
   https://github.com/miktim/WebSocket/blob/new/test/WssConnectionTest.java
   https://github.com/miktim/WebSocket/blob/new/test/WsListenerTest.java
+  https://github.com/miktim/WebSocket/blob/new/test/WssClientTest.java

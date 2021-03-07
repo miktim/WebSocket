@@ -3,6 +3,7 @@
  * Adapted by miktim@mail.ru, march 2021
  */
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -41,6 +42,10 @@ public class WssClientTest {
     }
 
     public static void main(String[] args) throws Exception {
+        String path = ".";
+        if (args.length > 0) {
+            path = args[0];
+        }
 
         WsHandler clientHandler = new WsHandler() {
             @Override

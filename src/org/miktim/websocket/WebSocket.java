@@ -25,7 +25,6 @@ public class WebSocket {
 //    private int handshakeSoTimeout = WsConnection.DEFAULT_HANDSHAKE_SO_TIMEOUT; // open/close handshake
 //    private int connectionSoTimeout = WsConnection.DEFAULT_CONNECTION_SO_TIMEOUT;
 //    private boolean pingPong = true;
-
     private WsParameters wsp = new WsParameters();
     private InetAddress bindAddress;
     private final long wsId = (new Thread()).getId();
@@ -72,8 +71,8 @@ public class WebSocket {
 
     WsListener startListener(int port, WsHandler handler, boolean secure)
             throws Exception {
-        WsListener listener
-                = new WsListener(makeSocketAddress(port), handler, secure);
+        WsListener listener = new WsListener(
+                makeSocketAddress(port), handler, secure);
         listener.setName(listenerPrefix + listener.getId());
         listener.setWsParameters(wsp);
         listener.start();
