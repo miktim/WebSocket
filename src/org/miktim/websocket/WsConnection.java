@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ProtocolException;
 import java.net.Socket;
@@ -265,7 +266,7 @@ public class WsConnection extends Thread {
     }
 
 //  WebSocket client connection
-    WsConnection(String uri, WsHandler handler) throws // ??? bind
+    WsConnection(String uri, WsHandler handler, InetAddress bindAddr) throws // ??? bind
             URISyntaxException, NullPointerException, IOException {
         this.isClientSide = true;
         if (uri == null || handler == null) {
@@ -291,6 +292,7 @@ public class WsConnection extends Thread {
             this.isSecure = false;
             socket = new Socket();
         }
+        socket.bind(new InetSocketAddress(bindAddr,0));
     }
 
     /* v1.x.x backward compatibility
@@ -388,7 +390,7 @@ public class WsConnection extends Thread {
         String[] parts = line.split(" ");
         if (!(parts.length > 2
                 && (parts[0].equals("HTTP/1.1") || parts[2].equals("HTTP/1.1")))) {
-            throw new ProtocolException("Bad HTTP request");
+            throw new ProtocolException("TLS required or invalid HTTP request");
         }
         headers.set(REQUEST_LINE_HEADER, line);
         String key = null;

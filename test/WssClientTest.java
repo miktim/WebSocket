@@ -3,7 +3,6 @@
  * Adapted by miktim@mail.ru, march 2021
  */
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Timer;
 import java.util.TimerTask;

@@ -6,7 +6,7 @@
 package org.miktim.websocket;
 
 public class WsStatus {
-// Closure status codes see:
+// Predefined WebSocket closure codes:
 //  https://tools.ietf.org/html/rfc6455#section-7.4
 //  https://www.iana.org/assignments/websocket/websocket.xml#close-code-number 
 //  https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
@@ -25,9 +25,9 @@ public class WsStatus {
     public static final int INTERNAL_ERROR = 1011; //* 
     public static final int TRY_AGAIN_LATER = 1013; //*
 
-    public int code;               // close code (1000-4999)
-    public String reason = "";     // close reason
-    public boolean clean = false;  // closed cleanly
+    public int code;               // closing code (1000-4999)
+    public String reason = "";     // closing reason
+    public boolean clean = false;  // WebSocket closing handshake completed
     public boolean remote = false; // closed remotely
 
     WsStatus(int closeCode, String closeReason, boolean clean, boolean remote) {
@@ -39,8 +39,8 @@ public class WsStatus {
 
     @Override
     public String toString() {
-        return String.format("WsStatus:%d:\"%s\":%s%s",
-                code, reason, clean, (remote ? ":remotely" : ""));
+        return String.format("WsStatus(%d,\"%s\",%s%s)",
+                code, reason, clean, (remote ? ",remotely" : ""));
     }
 
 }

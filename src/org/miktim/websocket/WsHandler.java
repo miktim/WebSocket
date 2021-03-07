@@ -15,7 +15,6 @@ public interface WsHandler {
 //   - eom (end of message): 1 - end of text; 2 - end of binary; 0 - continued;
 //  public void onMessage(WsConnection conn, byte[] data, int eom);
 // onError:
-//   - conn can be null in the listener handler;
-//   - check connection is open.
+//   - conn can be null in the listener handler.
     public void onError(WsConnection conn, Exception e);
 }

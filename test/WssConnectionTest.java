@@ -59,11 +59,14 @@ public class WssConnectionTest {
 
             @Override
             public void onError(WsConnection con, Exception e) {
-                ws_log("Listener onERROR: "
-                        + (con != null ? makePath(con) : null)
-                        + " " + e
-                        + " " + (con != null ? con.getStatus() : null));
+                if (con == null) {
+                    ws_log("Listener CRASHED! " + e);
+                    e.printStackTrace();
+                } else {
+                    ws_log("Listener onERROR: "
+                            + makePath(con) + " " + e + " " + con.getStatus());
 //                e.printStackTrace();
+                }
             }
 
             @Override
@@ -143,8 +146,7 @@ public class WssConnectionTest {
                 try {
                     con.send(b);
                 } catch (IOException e) {
-                    ws_log("Client" + con.getId() + " onBINARY: send error: "
-                            + e.toString());
+                    ws_log("Client" + con.getId() + " onBINARY: send error: " + e);
                 }
             }
         };
@@ -154,9 +156,9 @@ public class WssConnectionTest {
         wsp.setConnectionSoTimeout(1000, true); // ping
         wsp.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
         webSocket.setWsParameters(wsp);
-// Both sides must use the same self-signed certificate
+// Listener and client must use the same self-signed certificate
         /* Android
-        String keyFile = getCacheDir() + "/testkeys";
+        String keyFile = (new File(getCacheDir(),"testkeys")).getCanonicalPath();
          */
 // /* Desktop
         String keyFile = (new File(path, "testkeys")).getCanonicalPath();
@@ -179,6 +181,7 @@ public class WssConnectionTest {
                 + "\r\nWebSocket will be closed after "
                 + (WEBSOCKET_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
+
         webSocket.connect("wss://" + remoteAddr + "", clientHandler);
         webSocket.connect("wss://" + remoteAddr + "/", clientHandler);
         webSocket.connect("wss://" + remoteAddr + "/test", clientHandler);

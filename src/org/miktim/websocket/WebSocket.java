@@ -87,7 +87,7 @@ public class WebSocket {
     }
 
     public WsConnection connect(String uri, WsHandler handler) throws Exception {
-        WsConnection conn = new WsConnection(uri, handler);
+        WsConnection conn = new WsConnection(uri, handler, bindAddress);
         conn.setName(connectionPrefix + conn.getId());
         conn.setWsParameters(wsp);
         conn.start();

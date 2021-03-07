@@ -22,6 +22,10 @@ public class WsListenerTest {
     public static final int LISTENER_SHUTDOWN_TIMEOUT = 30000;//30sec
     public static final String WEBSOCKET_SUBPROTOCOLS = "chat,superChat";
 
+    static void ws_log(String msg) {
+        System.out.println(msg);
+    }
+
     public static void main(String[] args) throws Exception {
         String path = ".";
         if (args.length > 0) {
@@ -30,7 +34,7 @@ public class WsListenerTest {
         WsHandler listenerHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con) {
-                System.out.println("Listener onOPEN: " + con.getPath()
+                ws_log("Listener onOPEN: " + con.getPath()
                         + (con.getQuery() == null ? "" : "?" + con.getQuery())
                         + " Peer: " + con.getPeerHost()
                         + " Subprotocol:" + con.getSubProtocol());
@@ -42,25 +46,28 @@ public class WsListenerTest {
                 try {
                     con.send("Hello Browser!");
                 } catch (IOException e) {
-                    System.out.println("Listener: onOPEN: " + con.getPath()
-                            + " send error: " + e.toString());
+                    ws_log("Listener: onOPEN: " + con.getPath()
+                            + " send error: " + e);
 //                    e.printStackTrace();
                 }
             }
 
             @Override
             public void onClose(WsConnection con) {
-                System.out.println("Listener onCLOSE: " + con.getPath()
+                ws_log("Listener onCLOSE: " + con.getPath()
                         + " " + con.getStatus());
             }
 
             @Override
             public void onError(WsConnection con, Exception e) {
-                System.out.println("Listener onERROR: "
-                        + (con != null ? con.getPath() : null)
-                        + " " + e.toString()
-                        + " " + (con != null ? con.getStatus() : null));
+                if (con == null) {
+                    ws_log("Listener CRASHED! " + e);
+                    e.printStackTrace();
+                } else {
+                    ws_log("Listener onERROR: "
+                            + con.getPath() + " " + e + " " + con.getStatus());
 //                e.printStackTrace();
+                }
             }
 
             @Override
@@ -69,14 +76,14 @@ public class WsListenerTest {
                     String testPath = con.getPath();
                     if (testPath.endsWith("2")) { // check handler closure
                         if (s.length() > 128) {
-                            con.close(WsStatus.NORMAL_CLOSURE, 
+                            con.close(WsStatus.NORMAL_CLOSURE,
                                     "trim close reason longer than 123 bytes: lo-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-ng lo-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-o-ong");
                         } else {
                             con.send(s + s);
                         }
 
                     } else if (testPath.endsWith("3")) { // check message too big
-//                        System.out.println("MsgLen:" + s.getBytes("utf-8").length);
+//                        ws_log("Listener onTEXT: MsgLen=" + s.getBytes("utf-8").length);
                         if (s.length() > 0xFFFF) {
                             con.send(new ByteArrayInputStream(
                                     (s + s).getBytes("utf-8")), true);
@@ -88,8 +95,8 @@ public class WsListenerTest {
                         con.send(s);
                     }
                 } catch (IOException e) {
-                    System.out.println("Listener onTEXT: " + con.getPath()
-                            + " send error: " + e.toString());
+                    ws_log("Listener onTEXT: " + con.getPath()
+                            + " send error: " + e);
                 }
             }
 
@@ -98,8 +105,8 @@ public class WsListenerTest {
                 try {
                     con.send(b);
                 } catch (IOException e) {
-                    System.out.println("Listener onBINARY: " + con.getPath()
-                            + " send error: " + e.toString());
+                    ws_log("Listener onBINARY: " + con.getPath()
+                            + " send error: " + e);
                 }
             }
         };
@@ -112,8 +119,6 @@ public class WsListenerTest {
         wsp.setSubProtocols(WEBSOCKET_SUBPROTOCOLS.split(","));
         webSocket.setWsParameters(wsp);
         final WsListener listener = webSocket.listen(8080, listenerHandler);
-//        WebSocket.setTrustStore((new File(path, "localhost.jks")).getCanonicalPath(), "password");// java 1.8
-//        WebSocket.setTrustStore((new File(path, "testkeys")).getCanonicalPath(), "passphrase");// java 1.7
 
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
@@ -123,7 +128,8 @@ public class WsListenerTest {
                 timer.cancel();
             }
         }, LISTENER_SHUTDOWN_TIMEOUT);
-        System.out.println("\r\nWsListener test"
+
+        ws_log("\r\nWsListener test"
                 + "\r\nIncoming maxMessageLength: " + MAX_MESSAGE_LENGTH
                 + "\r\nWebSocket subProtocols: " + WEBSOCKET_SUBPROTOCOLS
                 + "\r\nListener will be closed after "
