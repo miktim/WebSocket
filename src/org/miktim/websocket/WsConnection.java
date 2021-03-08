@@ -390,7 +390,7 @@ public class WsConnection extends Thread {
         String[] parts = line.split(" ");
         if (!(parts.length > 2
                 && (parts[0].equals("HTTP/1.1") || parts[2].equals("HTTP/1.1")))) {
-            throw new ProtocolException("TLS required or invalid HTTP request");
+            throw new ProtocolException("SSL required or invalid HTTP request");
         }
         headers.set(REQUEST_LINE_HEADER, line);
         String key = null;
