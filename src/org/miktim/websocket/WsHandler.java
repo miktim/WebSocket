@@ -5,16 +5,22 @@
  */
 package org.miktim.websocket;
 
+import java.io.InputStream;
+
 public interface WsHandler {
-    public void onOpen(WsConnection conn);
-    public void onClose(WsConnection conn);
-    public void onMessage(WsConnection conn, String message);
-    public void onMessage(WsConnection conn, byte[] message);
-// onMessage: 
-//   - called when the specified maximum message length is exceeded and framing is enabled;
-//   - eom (end of message): 1 - end of text; 2 - end of binary; 0 - continued;
-//  public void onMessage(WsConnection conn, byte[] data, int eom);
+// onOpen:
+//   - the second argument is the negotiated WebSocket subprotocol or null.    
+    public void onOpen(WsConnection conn, String subProtocol);
+
+// onMessage:
+//   - WebSocket message presented by input stream;    
+//   - exiting the handler closes the stream.
+    public void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text);
+
+    public void onClose(WsConnection conn, WsStatus status);
+
 // onError:
-//   - conn can be null in the listener handler.
+//   - for diagnostics and logging;    
+//   - conn can be null in the listener handler on ServerSocket failure.
     public void onError(WsConnection conn, Exception e);
 }

@@ -4,6 +4,8 @@
  */
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.miktim.websocket.WsConnection;
@@ -14,8 +16,8 @@ import org.miktim.websocket.WsStatus;
 
 public class WssClientTest {
 
-    static final int MAX_MESSAGE_LENGTH = 1000000; //~1MB
-    static final int WEBSOCKET_SHUTDOWN_TIMEOUT = 15000; //10sec 
+    static final int MAX_MESSAGE_LENGTH = 10000; //
+    static final int WEBSOCKET_SHUTDOWN_TIMEOUT = 10000; //10sec 
     static final String REMOTE_CONNECTION = "wss://websocketstest.com:443/service";//
 
     static String fragmentTest = randomString(512);
@@ -48,13 +50,13 @@ public class WssClientTest {
 
         WsHandler clientHandler = new WsHandler() {
             @Override
-            public void onOpen(WsConnection con) {
+            public void onOpen(WsConnection con, String subp) {
                 ws_log("Connected. " + con.getSSLSessionProtocol());
             }
 
             @Override
-            public void onClose(WsConnection con) {
-                ws_log("Connection closed. " + con.getStatus());
+            public void onClose(WsConnection con, WsStatus status) {
+                ws_log("Connection closed. " + status);
             }
 
             @Override
@@ -63,7 +65,28 @@ public class WssClientTest {
 //                e.printStackTrace();
             }
 
+            byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+
             @Override
+            public void onMessage(WsConnection con, InputStream is, boolean isText) {
+                int messageLen = 0;
+                try {
+                    messageLen = is.read(messageBuffer, 0, messageBuffer.length);
+                    if (is.read() != -1) {
+                        con.close(WsStatus.MESSAGE_TOO_BIG, "Message too big");
+                    } else if (isText) {
+                        onMessage(con, new String(messageBuffer, 0, messageLen, "UTF-8"));
+                    } else {
+                        onMessage(con, Arrays.copyOfRange(messageBuffer, 0, messageLen));
+                    }
+                } catch (Exception e) {
+                    ws_log("Listener onMESSAGE: " + con.getPath()
+                            + " read error: " + e);
+//                    e.printStackTrace();
+                }
+            }
+
+//            @Override
             public void onMessage(WsConnection con, String s) {
                 try {
                     String packet = s;
@@ -108,7 +131,7 @@ public class WssClientTest {
                 }
             }
 
-            @Override
+//            @Override
             public void onMessage(WsConnection con, byte[] b) {
                 ws_log("rcv: unexpected binary");
             }
@@ -117,8 +140,7 @@ public class WssClientTest {
         final WebSocket webSocket = new WebSocket();
         WsParameters wsp = new WsParameters();
         wsp.setConnectionSoTimeout(1000, true); // ping 
-        wsp.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
-//        wsp.setPayloadLength(fragmentTest.length()/2); //
+//        wsp.setPayloadLength(fragmentTest.length()/2); // not work!
         webSocket.setWsParameters(wsp);
         ws_log("\r\nWssClient (v"
                 + WsConnection.VERSION + ") test"

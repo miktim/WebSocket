@@ -8,7 +8,9 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
+import java.util.Arrays;
 import org.miktim.websocket.WsConnection;
 import org.miktim.websocket.WsHandler;
 import org.miktim.websocket.WsListener;
@@ -33,11 +35,11 @@ public class WsListenerTest {
         }
         WsHandler listenerHandler = new WsHandler() {
             @Override
-            public void onOpen(WsConnection con) {
+            public void onOpen(WsConnection con, String subp) {
                 ws_log("Listener onOPEN: " + con.getPath()
                         + (con.getQuery() == null ? "" : "?" + con.getQuery())
                         + " Peer: " + con.getPeerHost()
-                        + " Subprotocol:" + con.getSubProtocol());
+                        + " Subprotocol:" + subp);
                 if (con.getPath().startsWith("/test/0")
                         && con.getSubProtocol() == null) {
                     con.close(WsStatus.UNSUPPORTED_DATA, "unknown subprotocol");
@@ -53,9 +55,9 @@ public class WsListenerTest {
             }
 
             @Override
-            public void onClose(WsConnection con) {
+            public void onClose(WsConnection con, WsStatus status) {
                 ws_log("Listener onCLOSE: " + con.getPath()
-                        + " " + con.getStatus());
+                        + " " + status);
             }
 
             @Override
@@ -70,7 +72,28 @@ public class WsListenerTest {
                 }
             }
 
+            byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+
             @Override
+            public void onMessage(WsConnection con, InputStream is, boolean isText) {
+                int messageLen;
+                try {
+                    messageLen = is.read(messageBuffer, 0, messageBuffer.length);
+                    if (is.read() != -1) {
+                        con.close(WsStatus.MESSAGE_TOO_BIG,
+                                "Message limit in bytes: " + MAX_MESSAGE_LENGTH);
+                    } else if (isText) {
+                        onMessage(con, new String(messageBuffer, 0, messageLen, "UTF-8"));
+                    } else {
+                        onMessage(con, Arrays.copyOfRange(messageBuffer, 0, messageLen));
+                    }
+                } catch (Exception e) {
+                    ws_log("Listener onMESSAGE: " + con.getPath()
+                            + " read error: " + e);
+                }
+            }
+
+//            @Override
             public void onMessage(WsConnection con, String s) {
                 try {
                     String testPath = con.getPath();
@@ -100,7 +123,7 @@ public class WsListenerTest {
                 }
             }
 
-            @Override
+//            @Override
             public void onMessage(WsConnection con, byte[] b) {
                 try {
                     con.send(b);
@@ -114,8 +137,7 @@ public class WsListenerTest {
         final WebSocket webSocket
                 = new WebSocket(InetAddress.getByName("localhost"));
         WsParameters wsp = webSocket.getWsParameters();
-        wsp.setConnectionSoTimeout(1000, true); // ping
-        wsp.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
+        wsp.setConnectionSoTimeout(1000, true); // ping on timeout
         wsp.setSubProtocols(WEBSOCKET_SUBPROTOCOLS.split(","));
         webSocket.setWsParameters(wsp);
         final WsListener listener = webSocket.listen(8080, listenerHandler);

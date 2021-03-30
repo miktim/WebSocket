@@ -5,8 +5,8 @@ Release notes:
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - supported WebSocket version: 13;
   - WebSocket extensions not supported;
-  - client authentication not supported;
-  - incoming message/payload length is limited to 2GB (Integer.MAX_VALUE).
+  - supports TLS connections (without client auth and tunneling);
+  - stream-based messaging.
 
 Overview:
   Constructors:
@@ -42,23 +42,23 @@ Overview:
 
   WsConnection (extends Thread, is created with current WebSocket/WsListener parameters):
     Constants:
-      String VERSION = "2.3.0";
+      String VERSION = "2.4.0";
 
     Methods:
+      void send(InputStream is, boolean isText) throws IOException;
+      void send(String message) throws IOException; //
+      void send(byte[] message) throws IOException; //
+      void close(); // close without status code (NO_STATUS)
+      void close(int statusCode, String reason); // a reason longer than 123 bytes is truncated
+      WsStatus getStatus();
+      String getSubProtocol(); // returns null or handshaked WebSocket subprotocol
       boolean isOpen(); 
       boolean isSecure();
       String getPeerHost();
       int getPort() // 
       String getPath();  // returns request path or null
       String getQuery(); // returns request query or null
-      String getSubProtocol(); // returns null or handshaked WebSocket subprotocol
       WsParameters getWsParameters();
-      void send(String message) throws IOException; //
-      void send(byte[] message) throws IOException; //
-      void send(InputStream is, boolean isText) throws IOException;
-      void close(); // close without status code (NO_STATUS)
-      void close(int statusCode, String reason); // a reason longer than 123 bytes is truncated
-      WsStatus getStatus();
 
   WsStatus:
     see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsStatus.java

@@ -5,7 +5,7 @@
  */
 package org.miktim.websocket;
 
-import java.util.Arrays;
+//import java.util.Arrays;
 import javax.net.ssl.SSLParameters;
 
 public class WsParameters implements Cloneable {
@@ -13,8 +13,7 @@ public class WsParameters implements Cloneable {
     int handshakeSoTimeout = 30000; // millis, TLS and WebSocket open/close handshake
     int connectionSoTimeout = 60000;// millis
     boolean pingEnabled = true; // if false, connection terminate by socket timeout
-    int maxMessageLength = 1048576; // bytes, incoming messages
-    boolean framingEnabled = false; // ignored until implemented
+    public static final int MIN_PAYLOAD_BUFFER_LENGTH = 512;
     int payloadBufferLength = 16384; // bytes 
     String subProtocols[] = null; // WebSocket subprotocol[s] in preferred order
     SSLParameters sslParameters;  // TLS parameters
@@ -45,24 +44,9 @@ public class WsParameters implements Cloneable {
         return pingEnabled;
     }
 
-    public void setMaxMessageLength(int maxLen, boolean enableFraming) {
-        maxMessageLength = maxLen;
-        framingEnabled = enableFraming;
-    }
-
-    public int getMaxMessageLength() {
-        return maxMessageLength;
-    }
-
-    public boolean isFramingEnabled() {
-        return framingEnabled;
-    }
-
-    public void setPayloadBufferLength(int len) throws IllegalArgumentException {
-        if (len < 125) { // control frame max payload length
-            throw new IllegalArgumentException("Buffer length too short");
-        }
-        payloadBufferLength = len;
+    public int setPayloadBufferLength(int len) {
+        payloadBufferLength = Math.max(len, MIN_PAYLOAD_BUFFER_LENGTH);
+        return payloadBufferLength;
     }
 
     public int getPayloadBufferLength() {

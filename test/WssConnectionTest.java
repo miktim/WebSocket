@@ -4,6 +4,8 @@
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.miktim.websocket.WsConnection;
@@ -11,6 +13,7 @@ import org.miktim.websocket.WsHandler;
 import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsListener;
 import org.miktim.websocket.WsParameters;
+import org.miktim.websocket.WsStatus;
 
 public class WssConnectionTest {
 
@@ -38,8 +41,8 @@ public class WssConnectionTest {
 
         WsHandler listenerHandler = new WsHandler() {
             @Override
-            public void onOpen(WsConnection con) {
-                ws_log("Listener onOPEN: " + makePath(con)
+            public void onOpen(WsConnection con, String subp) {
+                ws_log("Listener" + con.getId() + " onOPEN: " + makePath(con)
                         + " Peer: " + con.getPeerHost()
                         + " SecureProtocol: " + con.getSSLSessionProtocol());
                 try {
@@ -52,8 +55,8 @@ public class WssConnectionTest {
             }
 
             @Override
-            public void onClose(WsConnection con) {
-                ws_log("Listener onCLOSE: " + makePath(con)
+            public void onClose(WsConnection con, WsStatus status) {
+                ws_log("Listener" + con.getId() + " onCLOSE: " + makePath(con)
                         + " " + con.getStatus());
             }
 
@@ -63,33 +66,53 @@ public class WssConnectionTest {
                     ws_log("Listener CRASHED! " + e);
                     e.printStackTrace();
                 } else {
-                    ws_log("Listener onERROR: "
+                    ws_log("Listener" + con.getId() + " onERROR: "
                             + makePath(con) + " " + e + " " + con.getStatus());
 //                e.printStackTrace();
                 }
             }
 
+            byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+
             @Override
+            public void onMessage(WsConnection con, InputStream is, boolean isText) {
+                int messageLen;
+                try {
+                    messageLen = is.read(messageBuffer, 0, messageBuffer.length);
+                    if (is.read() != -1) {
+                        con.close(WsStatus.MESSAGE_TOO_BIG, "Message too big");
+                    } else if (isText) {
+                        onMessage(con, new String(messageBuffer, 0, messageLen, "UTF-8"));
+                    } else {
+                        onMessage(con, Arrays.copyOfRange(messageBuffer, 0, messageLen));
+                    }
+                } catch (Exception e) {
+                    ws_log("Listener" + con.getId() + " onMESSAGE: " + con.getPath()
+                            + " read error: " + e);
+                }
+            }
+
+//            @Override
             public void onMessage(WsConnection con, String s) {
                 try {
                     if (s.length() < 128) {
                         con.send(s + s);
-                        ws_log("Listener onTEXT: " + s);
+                        ws_log("Listener" + con.getId() + " onTEXT: " + s);
                     } else {
                         con.send(s);
                     }
                 } catch (IOException e) {
-                    ws_log("Listener onTEXT: send error: "
+                    ws_log("Listener" + con.getId() + " onTEXT: send error: "
                             + e + " " + con.getStatus());
                 }
             }
 
-            @Override
+//            @Override
             public void onMessage(WsConnection con, byte[] b) {
                 try {
                     con.send(b);
                 } catch (IOException e) {
-                    ws_log("Listener onBINARY: send error: "
+                    ws_log("Listener" + con.getId() + " onBINARY: send error: "
                             + e + " " + con.getStatus());
                 }
             }
@@ -97,7 +120,7 @@ public class WssConnectionTest {
 
         WsHandler clientHandler = new WsHandler() {
             @Override
-            public void onOpen(WsConnection con) {
+            public void onOpen(WsConnection con, String subp) {
                 ws_log("Client" + con.getId()
                         + " onOPEN: " + makePath(con)
                         + " Peer: " + con.getPeerHost());
@@ -111,8 +134,8 @@ public class WssConnectionTest {
             }
 
             @Override
-            public void onClose(WsConnection con) {
-                ws_log("Client" + con.getId() + " onCLOSE: " + con.getStatus());
+            public void onClose(WsConnection con, WsStatus status) {
+                ws_log("Client" + con.getId() + " onCLOSE: " + status);
             }
 
             @Override
@@ -122,7 +145,27 @@ public class WssConnectionTest {
 //                e.printStackTrace();
             }
 
+            byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+
             @Override
+            public void onMessage(WsConnection con, InputStream is, boolean isText) {
+                int messageLen;
+                try {
+                    messageLen = is.read(messageBuffer, 0, messageBuffer.length);
+                    if (is.read() != -1) {
+                        con.close(WsStatus.MESSAGE_TOO_BIG, "Message too big");
+                    } else if (isText) {
+                        onMessage(con, new String(messageBuffer, 0, messageLen, "UTF-8"));
+                    } else {
+                        onMessage(con, Arrays.copyOfRange(messageBuffer, 0, messageLen));
+                    }
+                } catch (Exception e) {
+                    ws_log("Listener onMESSAGE: " + con.getPath()
+                            + " read error: " + e);
+                }
+            }
+
+//            @Override
             public void onMessage(WsConnection con, String s) {
                 try {
                     if (s.length() < 128) {
@@ -141,7 +184,7 @@ public class WssConnectionTest {
                 }
             }
 
-            @Override
+//            @Override
             public void onMessage(WsConnection con, byte[] b) {
                 try {
                     con.send(b);
@@ -154,7 +197,6 @@ public class WssConnectionTest {
         final WebSocket webSocket = new WebSocket();
         WsParameters wsp = new WsParameters();
         wsp.setConnectionSoTimeout(1000, true); // ping
-        wsp.setMaxMessageLength(MAX_MESSAGE_LENGTH, false);
         webSocket.setWsParameters(wsp);
 // Listener and client must use the same self-signed certificate
         /* Android
@@ -172,6 +214,7 @@ public class WssConnectionTest {
             @Override
             public void run() {
                 wsListener.close();
+//                webSocket.closeAll();
                 timer.cancel();
             }
         }, WEBSOCKET_SHUTDOWN_TIMEOUT);
@@ -185,7 +228,7 @@ public class WssConnectionTest {
         webSocket.connect("wss://" + remoteAddr + "", clientHandler);
         webSocket.connect("wss://" + remoteAddr + "/", clientHandler);
         webSocket.connect("wss://" + remoteAddr + "/test", clientHandler);
-        webSocket.connect("wss://" + remoteAddr + "?alpa=фыва", clientHandler);
+        webSocket.connect("wss://" + remoteAddr + "?query=фыва", clientHandler);
 // Connection below must fail (unsercure connect to secure listener)
         webSocket.connect("ws://" + remoteAddr + "/must_fail", clientHandler);
     }

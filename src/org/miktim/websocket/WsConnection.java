@@ -26,20 +26,17 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.BufferUnderflowException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Random;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 //import java.util.Base64; // java 8+
 
 public class WsConnection extends Thread {
 
-    public static final String VERSION = "2.3.0";
+    public static final String VERSION = "2.4.0";
     private static final String CONNECTION_NAME = "WsLite/" + VERSION; // Server/UserAgent
 
 // request line header name
@@ -57,8 +54,6 @@ public class WsConnection extends Thread {
     private Exception closeException;
     private String subProtocol = null;
     private WsParameters wsp = new WsParameters();
-
-    private static final Random random = new Random();
 
     public boolean isOpen() {
         return closeCode == 0;
@@ -89,21 +84,6 @@ public class WsConnection extends Thread {
         return subProtocol;
     }
 
-    /*
-    public synchronized void setHandler(WsHandler handler)
-            throws NullPointerException {
-        if (handler == null) {
-            throw new NullPointerException();
-        }
-        this.handler = handler;
-        if (this.isOpen()) {
-            this.handler.onOpen(this);
-        }
-    }
-    public WsHandler getHandler() {
-        return handler;
-    }
-     */
     public String getPeerHost() {
         try {
             if (isClientSide) {
@@ -167,11 +147,11 @@ public class WsConnection extends Thread {
             byte[] buf = new byte[wsp.payloadBufferLength];
             int len = 0;
             while ((len = this.readFully(is, buf, 0, buf.length)) == buf.length) {
-                sendFrame(op, buf);
+                sendFrame(op, buf, buf.length);
                 op = OP_CONTINUATION;
             }
 // be sure to send the final frame even if eof is detected!            
-            sendFrame(op | OP_FINAL, Arrays.copyOf(buf, len >= 0 ? len : 0));
+            sendFrame(op | OP_FINAL, buf, len >= 0 ? len : 0);
         } catch (IOException e) {
             this.close(WsStatus.INTERNAL_ERROR, "");
             throw e;
@@ -189,19 +169,20 @@ public class WsConnection extends Thread {
     public synchronized void close(int code, String reason) {
         if (this.closeCode == 0) {
             code = (code < 1000 || code > 4999) ? WsStatus.NO_STATUS : code;
-            byte[] payload = new byte[0];
+            byte[] payload = new byte[125];
             byte[] byteReason
                     = (reason == null ? "" : reason).getBytes(StandardCharsets.UTF_8);
+            int payloadLen = 0;
             if (code != WsStatus.NO_STATUS) {
-                payload = new byte[2];
                 payload[0] = (byte) (code >>> 8);
                 payload[1] = (byte) (code & 0xFF);
                 byteReason = Arrays.copyOf(byteReason, Math.min(byteReason.length, 123));
-                payload = combine(payload, byteReason);
+                System.arraycopy(byteReason, 0, payload, 2, byteReason.length);
+                payloadLen = 2 + byteReason.length;
             }
             try {
                 this.socket.setSoTimeout(wsp.handshakeSoTimeout);
-                sendFrame(OP_CLOSE, payload);
+                sendFrame(OP_CLOSE, payload, payloadLen);
                 this.closeCode = code; // disable sending data
                 this.closeReason = new String(byteReason, StandardCharsets.UTF_8);
             } catch (IOException e) {
@@ -292,7 +273,7 @@ public class WsConnection extends Thread {
             this.isSecure = false;
             socket = new Socket();
         }
-        socket.bind(new InetSocketAddress(bindAddr,0));
+        socket.bind(new InetSocketAddress(bindAddr, 0));
     }
 
     /* v1.x.x backward compatibility
@@ -325,9 +306,7 @@ public class WsConnection extends Thread {
             throws IOException, URISyntaxException, NoSuchAlgorithmException {
         this.closeCode = WsStatus.PROTOCOL_ERROR;
 
-        byte[] byteKey = new byte[16];
-        random.nextBytes(byteKey);
-        String key = base64Encode(byteKey);
+        String key = base64Encode(nextBytes(16));
 
         String requestPath = (requestURI.getPath() == null ? "/" : requestURI.getPath())
                 + (requestURI.getQuery() == null ? "" : "?" + requestURI.getQuery());
@@ -425,6 +404,17 @@ public class WsConnection extends Thread {
         socket.getOutputStream().flush();
     }
 
+// generate "random" mask/key
+    private byte[] nextBytes(int len) {
+        byte[] b = new byte[len];
+        long l = Double.doubleToRawLongBits(Math.random());
+        while (--len >= 0) {
+            b[len] = (byte) l;
+            l >>= 1;
+        }
+        return b;
+    }
+
     private String sha1Hash(String key) throws NoSuchAlgorithmException {
         return base64Encode(MessageDigest.getInstance("SHA-1").digest(
                 (key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").getBytes()));
@@ -451,7 +441,6 @@ public class WsConnection extends Thread {
             }
         }
         return new String(b64);
-//        return Base64.getEncoder().encodeToString(b);
     }
 
     @Override
@@ -464,9 +453,7 @@ public class WsConnection extends Thread {
                 handshakeClient();
             }
             this.socket.setSoTimeout(wsp.connectionSoTimeout);
-            this.closeCode = 0;
-            this.handler.onOpen(this);
-            this.listenInputStream();
+            this.startMessaging();
         } catch (Exception e) {
             this.handler.onError(this, e);
 //            e.printStackTrace();
@@ -483,32 +470,51 @@ public class WsConnection extends Thread {
     static final int OP_CLOSE = 0x88;
     static final int OP_PING = 0x89;
     static final int OP_PONG = 0x8A;
+    static final int OP_EXTENSIONS = 0x70;
     static final int MASKED_DATA = 0x80;
     static final byte[] PING_PAYLOAD = "PingPong".getBytes();
     static final byte[] EMPTY_PAYLOAD = new byte[0];
 
-    private void listenInputStream() throws IOException {
+    private int opData;
+    private final byte[] payloadMask = new byte[8]; //buffer for frame length and mask
+    private long payloadLength = 0;
+    private boolean pingFrameSent = false;
+    private InputStream is;
+
+    private void startMessaging() throws IOException {
 // BufferedInputStream is not good for large payloads?
 //        BufferedInputStream is = new BufferedInputStream(socket.getInputStream());
-        InputStream is = socket.getInputStream();
-        boolean pingSent = false;
-        boolean maskedData;
-        int opData = 0;
-        long messageLen = 0;
+        this.closeCode = WsStatus.INTERNAL_ERROR; // getInputStream() exception
+        is = socket.getInputStream();
+        this.closeCode = 0;
+        this.handler.onOpen(this, getSubProtocol());
+        while (waitDataFrame()) {
+            InputStream wis = new WsInputStream(this);
+            handler.onMessage(this, wis, (opData & 0x7F) == OP_TEXT);
+            wis.close();
+        }
+        closeSocket();
+        if (closeException != null) {
+            handler.onError(this, closeException);
+        }
+        handler.onClose(this, getStatus());
+    }
 
-        ArrayDeque<byte[]> payloadQueue = new ArrayDeque<>();
-
-        byte[] service = new byte[8]; //buffer for frame header elements
-        // align buffer to mask length
-//        byte[] payloadBuffer = new byte[(wsp.payloadBufferLength + 3) & 0xFFFFFFFC];
-        boolean done = false;
-
-        while (!done) {
+    private boolean waitDataFrame() {
+        boolean maskedPayload;
+        while (!closeClean) {
             try {
                 int b1 = is.read();
                 int b2 = is.read();
                 if ((b1 | b2) == -1) {
                     throw new EOFException("Unexpected EOF (header)");
+                }
+                if ((b1 & OP_EXTENSIONS) != 0) {
+                    closeDueTo(WsStatus.UNSUPPORTED_EXTENSION,
+                            new ProtocolException("Unsupported extension"));
+                }
+                if ((opData & OP_FINAL) != 0) {
+                    opData = 0; // reset prev opData
                 }
 // check op    
                 switch (b1) {
@@ -517,14 +523,17 @@ public class WsConnection extends Thread {
                     case OP_BINARY_FINAL:
                     case OP_BINARY: {
                         if (opData == 0) {
-                            opData = b1 & 0xF;
-                            b1 &= OP_FINAL;
+                            opData = b1;
                             break;
                         }
                     }
                     case OP_CONTINUATION:
+                        if (opData != 0) {
+                            break;
+                        }
                     case OP_FINAL: {
                         if (opData != 0) {
+                            opData |= OP_FINAL;
                             break;
                         }
                     }
@@ -535,133 +544,108 @@ public class WsConnection extends Thread {
                     }
                     default: {
                         closeDueTo(WsStatus.PROTOCOL_ERROR,
-                                new ProtocolException("Unsupported opcode"));
+                                new ProtocolException("Unexpected opcode"));
                     }
                 }
 // get frame payload length
-                long framePayloadLen = b2 & 0x7F;
+                payloadLength = b2 & 0x7F;
                 int serviceLen = 0;
-                if (framePayloadLen == 126L) {
+                if (payloadLength == 126L) {
                     serviceLen = 2;
-                } else if (framePayloadLen == 127L) {
+                } else if (payloadLength == 127L) {
                     serviceLen = 8;
                 }
                 if (serviceLen > 0) {
-                    if (this.readFully(is, service, 0, serviceLen) != serviceLen) {
+                    if (this.readFully(is, payloadMask, 0, serviceLen) != serviceLen) {
                         throw new EOFException("Unexpected EOF (frame length)");
                     }
-                    framePayloadLen = 0;
+                    payloadLength = 0;
                     for (int i = 0; i < serviceLen; i++) {
-                        framePayloadLen <<= 8;
-                        framePayloadLen += (service[i] & 0xFF);
+                        payloadLength <<= 8;
+                        payloadLength += (payloadMask[i] & 0xFF);
                     }
                 }
 // get mask 
-                maskedData = (b2 & MASKED_DATA) != 0;
-                if (maskedData) {
+                maskedPayload = (b2 & MASKED_DATA) != 0;
+                if (maskedPayload) {
                     serviceLen = 4;
-                    if (this.readFully(is, service, 0, serviceLen) != serviceLen) {
+                    if (this.readFully(is, payloadMask, 0, serviceLen) != serviceLen) {
                         throw new EOFException("Unexpected EOF (mask)");
                     }
                 }
 // client MUST mask the data, server MUST NOT
-                if (Boolean.compare(this.isClientSide, maskedData) == 0) {
+                if (Boolean.compare(this.isClientSide, maskedPayload) == 0) {
                     closeDueTo(WsStatus.PROTOCOL_ERROR,
                             new ProtocolException("Mask mismatch"));
                 }
 // check frame payload length
                 switch (b1) {
+                    case OP_TEXT:
+                    case OP_BINARY:
+                    case OP_TEXT_FINAL:
+                    case OP_BINARY_FINAL:
                     case OP_CONTINUATION:
                     case OP_FINAL: {
-                        messageLen += framePayloadLen;
-                        if (closeCode == 0) {
-                            if (messageLen <= (long) this.wsp.maxMessageLength) {
-//                                    || this.wsp.framingEnabled) {
-                                break;
-                            }
-                            closeDueTo(WsStatus.MESSAGE_TOO_BIG, new BufferUnderflowException());
+                        if (payloadLength >= 0L) {
+                            return true;
+                        } else {
+                            closeDueTo(WsStatus.PROTOCOL_ERROR,
+                                    new ProtocolException("Payload length exceeded"));
                         }
                     }
                     case OP_PING:
                     case OP_PONG:
                     case OP_CLOSE: {
-                        if (framePayloadLen <= 125L) {
+                        if (payloadLength <= 125L) {
                             break;
                         }
                         closeDueTo(WsStatus.PROTOCOL_ERROR,
-                                new ProtocolException("Control frame length exceeded"));
+                                new ProtocolException("Control frame payload length exceeded"));
                     }
                     default: {
-                        is.skip(framePayloadLen);
-//                        if (b1 != OP_CLOSE) continue;
-                        framePayloadLen = 0;
+                        is.skip(payloadLength);
+                        payloadLength = 0;
+                        if (b1 != OP_CLOSE) {
+                            continue;
+                        }
                     }
                 }
-// read frame payload                
-                byte[] framePayload = new byte[(int) framePayloadLen];
-                if (this.readFully(is, framePayload, 0, (int) framePayloadLen)
+// read control frame payload                
+                byte[] framePayload = new byte[(int) payloadLength];
+                if (this.readFully(is, framePayload, 0, (int) payloadLength)
                         != framePayload.length) {
                     throw new EOFException("Unexpected EOF (payload)");
                 }
 // unmask frame payload                
-                if (maskedData) {
-                    umaskPayload(service, framePayload);
+                if (maskedPayload) {
+                    umaskPayload(payloadMask, framePayload, framePayload.length);
                 }
-// perform frame op
+// perform control frame op
                 switch (b1) {
-                    case OP_CONTINUATION:
-                        if (this.closeCode == 0) {
-                            payloadQueue.addLast(framePayload);
-                        }
-                        break;
-                    case OP_FINAL: {
-                        if (this.closeCode == 0) {
-                            payloadQueue.addLast(framePayload);
-                            byte[] message = new byte[(int) messageLen];
-                            framePayloadLen = 0;
-                            while (!payloadQueue.isEmpty()) {
-                                framePayload = payloadQueue.pollFirst();
-                                System.arraycopy(
-                                        framePayload, 0, message, (int) framePayloadLen, framePayload.length);
-                                framePayloadLen += framePayload.length;
-                            }
-                            if (opData == OP_BINARY) {
-                                handler.onMessage(this, message);
-                            } else {
-                                handler.onMessage(this,
-                                        new String(message, StandardCharsets.UTF_8));
-                            }
-                        }
-                        opData = 0;
-                        messageLen = 0;
-                        payloadQueue.clear();
-                        break;
-                    }
                     case OP_PONG: {
-                        if (pingSent
+                        if (pingFrameSent
                                 && Arrays.equals(framePayload, PING_PAYLOAD)) {
                         } else {
                             closeDueTo(WsStatus.PROTOCOL_ERROR,
                                     new ProtocolException("Unexpected pong"));
                         }
-                        pingSent = false;
+                        pingFrameSent = false;
                         break;
                     }
                     case OP_PING: {
                         if (closeCode == 0) {
-                            sendFrame(OP_PONG, framePayload);
+                            sendFrame(OP_PONG, framePayload, framePayload.length);
                         }
                         break;
                     }
                     case OP_CLOSE: { // close handshake
-                        done = true;
                         if (closeCode == 0) {
-                            sendFrame(OP_CLOSE, framePayload);
+                            sendFrame(OP_CLOSE, framePayload, framePayload.length);
                             if (framePayload.length > 1) {
                                 closeCode = -(((framePayload[0] & 0xFF) << 8)
                                         + (framePayload[1] & 0xFF));
-                                closeReason = new String(
-                                        Arrays.copyOfRange(framePayload, 2, framePayload.length),
+                                closeReason = new String(framePayload,
+                                        2, framePayload.length - 2,
                                         StandardCharsets.UTF_8
                                 );
                             }
@@ -670,7 +654,7 @@ public class WsConnection extends Thread {
                             }
                         }
                         this.closeClean = true;
-                        break;
+                        return false;
                     }
                     default: {
                         closeDueTo(WsStatus.PROTOCOL_ERROR,
@@ -678,30 +662,112 @@ public class WsConnection extends Thread {
                     }
                 }
             } catch (SocketTimeoutException e) {
-                if (this.closeCode == 0 && this.wsp.pingEnabled && !pingSent) {
-                    pingSent = true;
-                    sendFrame(OP_PING, PING_PAYLOAD);
+                if (this.closeCode == 0 && this.wsp.pingEnabled && !pingFrameSent) {
+                    pingFrameSent = true;
+                    try {
+                        sendFrame(OP_PING, PING_PAYLOAD, PING_PAYLOAD.length);
+                    } catch (IOException ep) {
+                        break;
+                    }
                 } else {
-                    done = true;
-                    closeDueTo(WsStatus.GOING_AWAY, e); // ???ABNORMAL_CLOSURE
+                    closeDueTo(WsStatus.ABNORMAL_CLOSURE, e);
+                    break;
                 }
             } catch (EOFException e) {
-                done = true;
                 closeDueTo(WsStatus.ABNORMAL_CLOSURE, e);
+                break;
             } catch (Exception e) {
 //e.printStackTrace();
-                done = true;
                 closeDueTo(WsStatus.INTERNAL_ERROR, e);
+                break;
             } catch (Error e) {// large messages can throw java.lang.OutOfMemoryError
-                done = true;
                 closeDueTo(WsStatus.INTERNAL_ERROR, new Exception(e.toString(), e));
+                break;
             }
         }
-        closeSocket();
-        if (closeException != null) {
-            handler.onError(this, closeException);
+        return false;
+    }
+
+    private static final int IS_READY = 0;
+    private static final int IS_EOF = 1;
+    private static final int IS_CLOSED = 2;
+    private static final int IS_ERROR = 3;
+
+    private class WsInputStream extends InputStream {
+
+        private final WsConnection conn;
+        private int state = IS_READY;
+        private int len = 0;
+        private int pos = 0;
+        private final byte[] buf;
+
+        WsInputStream(WsConnection conn) {
+            super();
+            this.conn = conn;
+// align buffer to mask length, prevent zero length buffer         
+            this.buf = new byte[(Math.max(WsParameters.MIN_PAYLOAD_BUFFER_LENGTH,
+                    (int) Math.min(payloadLength,
+                            (long) conn.wsp.payloadBufferLength)) + 3 & 0xFFFFFFFC)];
         }
-        handler.onClose(this);
+
+        private void waitMessageFrame() throws IOException {
+            while (payloadLength > 0
+                    || ((opData & OP_FINAL) == 0 && waitDataFrame())) {
+                this.len = conn.readFully(conn.is, this.buf, 0,
+                        (int) Math.min(payloadLength, (long) this.buf.length));
+                payloadLength -= this.len;
+                this.pos = 0;
+                if (!isClientSide) { //maskedPayload) {
+                    umaskPayload(payloadMask, this.buf, this.len);
+                }
+                return;
+            }
+            if ((opData & OP_FINAL) != 0) {
+                this.state = IS_EOF;
+            } else {
+                this.state = IS_ERROR;
+            }
+        }
+
+        @Override
+        public int read() throws IOException {
+            try {
+                while (this.state == IS_READY) {
+                    while (this.pos < this.len) {
+                        return this.buf[this.pos++] & 0xFF;
+                    }
+                    waitMessageFrame();
+                }
+//            } catch (SocketTimeoutException e) {
+            } catch (IOException e) {
+                conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e);
+                this.state = IS_ERROR;
+            }
+            switch (this.state) {
+                case IS_CLOSED:
+                    throw new IOException("Stream closed");
+                case IS_ERROR:
+                    throw new SocketException("WebSocket closed");
+            }
+            return -1; // eof
+        }
+
+        @Override
+        public boolean markSupported() {
+            return false;
+        }
+
+        @Override
+        public void close() {
+            try {
+                while (this.state == IS_READY) {
+                    waitMessageFrame();
+                }
+                this.state = IS_CLOSED;
+            } catch (IOException e) {
+                this.state = IS_ERROR;
+            }
+        }
     }
 
     boolean isSocketOpen() {
@@ -724,14 +790,14 @@ public class WsConnection extends Thread {
         }
     }
 
-    private int readFully(InputStream is, byte[] buf, int off, int len)
+    public int readFully(InputStream is, byte[] buf, int off, int len)
             throws IOException {
-        int bytesRead = 0;
-        for (int n = is.read(buf, off, len); n > 0 && bytesRead < len;) {
-            bytesRead += n;
-            n = is.read(buf, off + bytesRead, len - bytesRead);
+        int bytesCnt = 0;
+        for (int n = is.read(buf, off, len); n > 0 && bytesCnt < len;) {
+            bytesCnt += n;
+            n = is.read(buf, off + bytesCnt, len - bytesCnt);
         }
-        return bytesRead;
+        return bytesCnt;
     }
 
     private void closeDueTo(int status, Exception e) {
@@ -742,20 +808,20 @@ public class WsConnection extends Thread {
     }
 
 // unmask/mask payload
-    private void umaskPayload(byte[] mask, byte[] payload) {
-        for (int i = 0; i < payload.length; i++) {
+    private void umaskPayload(byte[] mask, byte[] payload, int len) {
+        for (int i = 0; i < len; i++) {
             payload[i] ^= mask[i % 4];
         }
     }
-
+/*
     public static byte[] combine(byte[] a, byte[] b) {
         byte[] result = new byte[a.length + b.length];
         System.arraycopy(a, 0, result, 0, a.length);
         System.arraycopy(b, 0, result, a.length, b.length);
         return result;
     }
-
-    private synchronized void sendFrame(int opData, byte[] payload)
+*/
+    private synchronized void sendFrame(int opData, byte[] payload, int len)
             throws IOException {
         if (closeCode != 0) { // || !isSocketOpen()) {
 // socket closed or close handshake in progress            
@@ -766,11 +832,11 @@ public class WsConnection extends Thread {
 //        BufferedOutputStream os
 //                = new BufferedOutputStream(this.socket.getOutputStream());
         byte[] header = new byte[14]; //hopefully initialized with zeros
-        byte[] mask = new byte[4];
+//        byte[] mask = new byte[4];
         header[0] = (byte) opData;
         int headerLen = 2;
 
-        int payloadLen = payload.length;
+        int payloadLen = len;
         if (payloadLen < 126) {
             header[1] = (byte) (payloadLen);
         } else if (payloadLen < 0x10000) {
@@ -790,16 +856,16 @@ public class WsConnection extends Thread {
         try {
             if (masked) {
                 header[1] |= MASKED_DATA;
-                random.nextBytes(mask); //
-                System.arraycopy(header, headerLen, mask, 0, 4);
+                byte[] mask = nextBytes(4);
+                System.arraycopy(mask, 0, header, headerLen, 4);
                 headerLen += 4;
                 byte[] maskedPayload = payload.clone();
-                umaskPayload(mask, maskedPayload);
+                umaskPayload(mask, maskedPayload, len);
                 os.write(header, 0, headerLen);
-                os.write(maskedPayload, 0, payload.length);
+                os.write(maskedPayload, 0, len);
             } else {
                 os.write(header, 0, headerLen);
-                os.write(payload, 0, payload.length);
+                os.write(payload, 0, len);
             }
             os.flush();
         } catch (IOException e) {

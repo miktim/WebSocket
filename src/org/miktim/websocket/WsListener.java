@@ -10,29 +10,20 @@
  * Created: 2020-03-09
  */
 package org.miktim.websocket;
-
-//import com.sun.net.httpserver.Headers;
+ 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.lang.reflect.Array;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
 import java.util.Vector;
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
-//import javax.net.ssl.SSLSocket;
-//import javax.net.ssl.TrustManagerFactory;
 
 public class WsListener extends Thread {
 
@@ -55,6 +46,7 @@ public class WsListener extends Thread {
             ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
         }
         serverSocket.bind(isa);
+        serverSocket.setSoTimeout(0);
     }
 
     public boolean isSecure() {
@@ -74,10 +66,6 @@ public class WsListener extends Thread {
             wsp.sslParameters = ((SSLServerSocket) serverSocket).getSSLParameters();
         }
         return this.wsp;
-    }
-
-    public WsHandler getHandler() {
-        return handler;
     }
 
     public void close() {
@@ -110,9 +98,6 @@ public class WsListener extends Thread {
     public void run() {
         if (!this.isRunning) {
             this.isRunning = true;
-//            if (isSecure && wsp.sslParameters != null) {
-//                ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
-//            }
             connectionPrefix = "WsConnection-" + this.getId() + "-";
             while (this.isRunning) {
                 try {
@@ -127,12 +112,13 @@ public class WsListener extends Thread {
                         handler.onError(null, e);
                         this.close();
                     }
+                    break;
                 }
             }
         }
 // close listener connections            
         for (WsConnection connection : listConnections()) {
-            connection.close(WsStatus.GOING_AWAY, "");
+            connection.close(WsStatus.GOING_AWAY, "Shutdown");
         }
     }
 
