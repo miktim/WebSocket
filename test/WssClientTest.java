@@ -65,11 +65,11 @@ public class WssClientTest {
 //                e.printStackTrace();
             }
 
-            byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
-
             @Override
             public void onMessage(WsConnection con, InputStream is, boolean isText) {
+                byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
                 int messageLen = 0;
+
                 try {
                     messageLen = is.read(messageBuffer, 0, messageBuffer.length);
                     if (is.read() != -1) {

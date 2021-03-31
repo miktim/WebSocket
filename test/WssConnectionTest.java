@@ -72,10 +72,9 @@ public class WssConnectionTest {
                 }
             }
 
-            byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
-
             @Override
             public void onMessage(WsConnection con, InputStream is, boolean isText) {
+                byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
                 int messageLen;
                 try {
                     messageLen = is.read(messageBuffer, 0, messageBuffer.length);
@@ -145,10 +144,9 @@ public class WssConnectionTest {
 //                e.printStackTrace();
             }
 
-            byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
-
             @Override
             public void onMessage(WsConnection con, InputStream is, boolean isText) {
+                byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
                 int messageLen;
                 try {
                     messageLen = is.read(messageBuffer, 0, messageBuffer.length);

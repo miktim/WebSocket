@@ -16,8 +16,8 @@
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
             var testuri = 'ws://localhost:8080/test/';
             var msg = 'Hello Listener!';
-            var maxMsgLength = 0;
-            var maxMsgEnd;
+            var lastMsgLength = 0;
+            var lastMsgStartEnd = '';
             var testNo = 0;
             var tests = [
                 'unknown subprotocol (1003 FireFox, 1006 others expected)',
@@ -29,7 +29,7 @@
             var webSocket;
             var subProtocols = ["superPooperChat"];//["superChat", "chat"];
             try {
-                connectWs(testuri+"0");
+                connectWs(testuri + "0");
             } catch (e) {
                 show('Exception: ' + e.code + ' ' + e.message);
             }
@@ -56,10 +56,13 @@
                         if (event.data.length < 80)
                             event.target.send(event.data + event.data);
                         else
-                            event.target.close();
+                            event.target.close(1000,"Closed by browser");
                     } else if (url.endsWith('3')) { //message too big
-                        maxMsgLength = event.data.length;
-                        maxMsgEnd = event.data.substring(event.data.length - 80);
+                        lastMsgLength = event.data.length;
+                        lastMsgStartEnd =
+                                event.data.substring(0, 40) +
+                                ' ... ' +
+                                event.data.substring(event.data.length - 40);
                         event.target.send(event.data + event.data);
 //                        event.data = null; //force free memory 
                     } else {
@@ -74,13 +77,13 @@
 // event: .code .reason .wasClean
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
                     if (event.target.url.endsWith("3")) {
-                        show((maxMsgLength * 2) + " chars sent:   ..." + maxMsgEnd);
+                        show((lastMsgLength * 2) + " chars sent: " + lastMsgStartEnd);
                     }
                     show('onclose: ' + event.code
                             + ':"' + event.reason
                             + '":' + event.wasClean
                             + ':' + event.target.url + '<br>');
-                    
+
                     subProtocols = subProtocols.concat(["chat", "superChat"]);
                     subProtocols.unshift(subProtocols[2]); // rotate
                     subProtocols.splice(3);

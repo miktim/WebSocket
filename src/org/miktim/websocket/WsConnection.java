@@ -707,20 +707,28 @@ public class WsConnection extends Thread {
 // align buffer to mask length, prevent zero length buffer         
             this.buf = new byte[(Math.max(WsParameters.MIN_PAYLOAD_BUFFER_LENGTH,
                     (int) Math.min(payloadLength,
-                            (long) conn.wsp.payloadBufferLength)) + 3 & 0xFFFFFFFC)];
+                            (long) conn.wsp.payloadBufferLength))
+                    + 3 & 0xFFFFFFFC)];
         }
 
-        private void waitMessageFrame() throws IOException {
-            while (payloadLength > 0
-                    || ((opData & OP_FINAL) == 0 && waitDataFrame())) {
-                this.len = conn.readFully(conn.is, this.buf, 0,
-                        (int) Math.min(payloadLength, (long) this.buf.length));
-                payloadLength -= this.len;
-                this.pos = 0;
-                if (!isClientSide) { //maskedPayload) {
-                    umaskPayload(payloadMask, this.buf, this.len);
+        private void waitMessageFrame() {
+            try {
+                while (payloadLength > 0
+                        || ((opData & OP_FINAL) == 0 && waitDataFrame())) {
+                    this.len = conn.readFully(is, this.buf, 0,
+                            (int) Math.min(payloadLength, (long) this.buf.length));
+                    payloadLength -= this.len;
+                    this.pos = 0;
+                    if (!isClientSide) { //maskedPayload) {
+                        umaskPayload(payloadMask, this.buf, this.len);
+                    }
+                    return;
                 }
-                return;
+            } catch (Error e) {// large messages can throw java.lang.OutOfMemoryError
+                closeDueTo(WsStatus.INTERNAL_ERROR, new Exception(e.toString(), e));
+//            } catch (SocketTimeoutException e) {
+            } catch (Exception e) {
+                closeDueTo(WsStatus.ABNORMAL_CLOSURE, e);
             }
             if ((opData & OP_FINAL) != 0) {
                 this.state = IS_EOF;
@@ -731,17 +739,11 @@ public class WsConnection extends Thread {
 
         @Override
         public int read() throws IOException {
-            try {
-                while (this.state == IS_READY) {
-                    while (this.pos < this.len) {
-                        return this.buf[this.pos++] & 0xFF;
-                    }
-                    waitMessageFrame();
+            while (this.state == IS_READY) {
+                while (this.pos < this.len) {
+                    return this.buf[this.pos++] & 0xFF;
                 }
-//            } catch (SocketTimeoutException e) {
-            } catch (IOException e) {
-                conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e);
-                this.state = IS_ERROR;
+                waitMessageFrame();
             }
             switch (this.state) {
                 case IS_CLOSED:
@@ -759,13 +761,11 @@ public class WsConnection extends Thread {
 
         @Override
         public void close() {
-            try {
-                while (this.state == IS_READY) {
-                    waitMessageFrame();
-                }
+            while (this.state == IS_READY) {
+                waitMessageFrame();
+            }
+            if (this.state == IS_EOF) {
                 this.state = IS_CLOSED;
-            } catch (IOException e) {
-                this.state = IS_ERROR;
             }
         }
     }
@@ -813,14 +813,7 @@ public class WsConnection extends Thread {
             payload[i] ^= mask[i % 4];
         }
     }
-/*
-    public static byte[] combine(byte[] a, byte[] b) {
-        byte[] result = new byte[a.length + b.length];
-        System.arraycopy(a, 0, result, 0, a.length);
-        System.arraycopy(b, 0, result, a.length, b.length);
-        return result;
-    }
-*/
+
     private synchronized void sendFrame(int opData, byte[] payload, int len)
             throws IOException {
         if (closeCode != 0) { // || !isSocketOpen()) {
@@ -832,7 +825,7 @@ public class WsConnection extends Thread {
 //        BufferedOutputStream os
 //                = new BufferedOutputStream(this.socket.getOutputStream());
         byte[] header = new byte[14]; //hopefully initialized with zeros
-//        byte[] mask = new byte[4];
+
         header[0] = (byte) opData;
         int headerLen = 2;
 
