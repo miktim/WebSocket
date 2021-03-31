@@ -711,11 +711,16 @@ public class WsConnection extends Thread {
                     + 3 & 0xFFFFFFFC)];
         }
 
-        private void waitMessageFrame() {
+        private void waitMessageFrame(boolean closing) {
             try {
                 while (payloadLength > 0
                         || ((opData & OP_FINAL) == 0 && waitDataFrame())) {
-                    this.len = conn.readFully(is, this.buf, 0,
+                    if (closing) {
+                        is.skip(payloadLength);
+                        payloadLength = 0;
+                        continue;
+                    }
+                    this.len = readFully(is, this.buf, 0,
                             (int) Math.min(payloadLength, (long) this.buf.length));
                     payloadLength -= this.len;
                     this.pos = 0;
@@ -724,10 +729,8 @@ public class WsConnection extends Thread {
                     }
                     return;
                 }
-            } catch (Error e) {// large messages can throw java.lang.OutOfMemoryError
-                closeDueTo(WsStatus.INTERNAL_ERROR, new Exception(e.toString(), e));
 //            } catch (SocketTimeoutException e) {
-            } catch (Exception e) {
+            } catch (IOException e) {
                 closeDueTo(WsStatus.ABNORMAL_CLOSURE, e);
             }
             if ((opData & OP_FINAL) != 0) {
@@ -743,7 +746,7 @@ public class WsConnection extends Thread {
                 while (this.pos < this.len) {
                     return this.buf[this.pos++] & 0xFF;
                 }
-                waitMessageFrame();
+                waitMessageFrame(false);
             }
             switch (this.state) {
                 case IS_CLOSED:
@@ -760,9 +763,9 @@ public class WsConnection extends Thread {
         }
 
         @Override
-        public void close() {
-            while (this.state == IS_READY) {
-                waitMessageFrame();
+        public void close() throws IOException {
+            if (this.state == IS_READY) {
+                waitMessageFrame(true);
             }
             if (this.state == IS_EOF) {
                 this.state = IS_CLOSED;
@@ -781,7 +784,7 @@ public class WsConnection extends Thread {
                 if (this.isSecure) {
                     ((SSLSocket) this.socket).close();
                 } else {
-                    this.socket.shutdownInput();
+//                    this.socket.shutdownInput();
                     this.socket.close();
                 }
             } catch (IOException e) {
@@ -793,7 +796,7 @@ public class WsConnection extends Thread {
     public int readFully(InputStream is, byte[] buf, int off, int len)
             throws IOException {
         int bytesCnt = 0;
-        for (int n = is.read(buf, off, len); n > 0 && bytesCnt < len;) {
+        for (int n = is.read(buf, off, len); n >= 0 && bytesCnt < len;) {
             bytesCnt += n;
             n = is.read(buf, off + bytesCnt, len - bytesCnt);
         }

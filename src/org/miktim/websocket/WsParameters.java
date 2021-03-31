@@ -14,7 +14,7 @@ public class WsParameters implements Cloneable {
     int connectionSoTimeout = 60000;// millis
     boolean pingEnabled = true; // if false, connection terminate by socket timeout
     public static final int MIN_PAYLOAD_BUFFER_LENGTH = 512;
-    int payloadBufferLength = 16384; // bytes 
+    int payloadBufferLength = 32768; // bytes 
     String subProtocols[] = null; // WebSocket subprotocol[s] in preferred order
     SSLParameters sslParameters;  // TLS parameters
 
