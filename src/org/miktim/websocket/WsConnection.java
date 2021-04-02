@@ -27,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 
 public class WsConnection extends Thread {
@@ -56,17 +57,19 @@ public class WsConnection extends Thread {
     }
 
     public WsParameters getWsParameters() {
+        SSLParameters sslp = null;
         if (isSecure) {
             try {
-                wsp.sslParameters = ((SSLSocket) socket).getSSLParameters();
-                wsp.sslParameters.setProtocols(new String[]{
+                sslp = ((SSLSocket) socket).getSSLParameters();
+                sslp.setProtocols(new String[]{
                     ((SSLSocket) socket).getSession().getProtocol()});
-                wsp.sslParameters.setCipherSuites(new String[]{
+                sslp.setCipherSuites(new String[]{
                     ((SSLSocket) socket).getSession().getCipherSuite()});
             } catch (Exception e) {
             }
         }
-        return this.wsp;
+        wsp.sslParameters = sslp;
+        return wsp;
     }
 
     public String getSubProtocol() { // get handshaked subprotocol
