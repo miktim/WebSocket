@@ -26,7 +26,7 @@ public class WsStatus {
     public static final int SERVICE_RESTART = 1012; //  
     public static final int TRY_AGAIN_LATER = 1013; //
 
-    public int code;               // closing code (1000-4999)
+    public int code = GOING_AWAY;  // closing code (1000-4999)
     public String reason = "";     // closing reason
     public boolean clean = false;  // WebSocket closing handshake completed
     public boolean remote = false; // closed remotely

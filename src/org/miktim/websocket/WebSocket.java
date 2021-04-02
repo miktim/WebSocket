@@ -11,12 +11,26 @@
  */
 package org.miktim.websocket;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import javax.net.ServerSocketFactory;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 //import javax.net.ssl.SSLSocket;
 //import javax.net.ssl.TrustManagerFactory;
 
@@ -71,12 +85,53 @@ public class WebSocket {
 
     WsListener startListener(int port, WsHandler handler, boolean secure)
             throws Exception {
-        WsListener listener = new WsListener(
-                makeSocketAddress(port), handler, secure);
+        if (handler == null) {
+            throw new NullPointerException();
+        }
+
+        ServerSocket serverSocket = getServerSocketFactory(secure)
+                .createServerSocket();
+        if (secure && wsp.sslParameters != null) {
+            ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
+        }
+        serverSocket.bind(makeSocketAddress(port));
+        serverSocket.setSoTimeout(0);
+
+        WsListener listener = new WsListener(serverSocket, handler, secure, wsp);
         listener.setName(listenerPrefix + listener.getId());
-        listener.setWsParameters(wsp);
         listener.start();
         return listener;
+    }
+
+// https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/sockets/server/ClassFileServer.java
+    private ServerSocketFactory getServerSocketFactory(boolean isSecure) throws Exception {
+//            throws NoSuchAlgorithmException, KeyStoreException,
+//            FileNotFoundException, IOException, CertificateException,
+//            UnrecoverableKeyException {
+        if (isSecure) {
+            SSLServerSocketFactory ssf;
+            SSLContext ctx;
+            KeyManagerFactory kmf;
+            KeyStore ks;
+            String ksPassphrase = System.getProperty("javax.net.ssl.keyStorePassword");
+            char[] passphrase = ksPassphrase.toCharArray();
+
+            ctx = SSLContext.getInstance("TLS");
+            kmf = KeyManagerFactory.getInstance("SunX509");
+            ks = KeyStore.getInstance("JKS"); //
+            File ksFile = new File(System.getProperty("javax.net.ssl.keyStore"));
+            ks.load(new FileInputStream(ksFile), passphrase);
+            kmf.init(ks, passphrase);
+//        TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+//        tmf.init(ks);
+//        ctx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+            ctx.init(kmf.getKeyManagers(), null, null);
+
+            ssf = ctx.getServerSocketFactory();
+            return ssf;
+        } else {
+            return ServerSocketFactory.getDefault();
+        }
     }
 
     private InetSocketAddress makeSocketAddress(int port) {
@@ -87,9 +142,42 @@ public class WebSocket {
     }
 
     public WsConnection connect(String uri, WsHandler handler) throws Exception {
-        WsConnection conn = new WsConnection(uri, handler, bindAddress);
+        if (handler == null || uri == null) {
+            throw new NullPointerException();
+        }
+        URI requestURI = new URI(uri);
+        String scheme = requestURI.getScheme();
+        String host = requestURI.getHost();
+        if (host == null || scheme == null) {
+            throw new URISyntaxException(uri, "Scheme and host required");
+        }
+        if (!(scheme.equals("ws") || scheme.equals("wss"))) {
+            throw new URISyntaxException(uri, "Unsupported scheme");
+        }
+        Socket socket;
+        boolean isSecure;
+        if (scheme.equals("wss")) {
+            isSecure = true;
+            SSLSocketFactory factory
+                    = (SSLSocketFactory) SSLSocketFactory.getDefault();
+            socket = (SSLSocket) factory.createSocket();
+            if (wsp.sslParameters != null) {
+                ((SSLSocket) socket).setSSLParameters(wsp.sslParameters);
+            }
+        } else {
+            isSecure = false;
+            socket = new Socket();
+        }
+        socket.bind(new InetSocketAddress(bindAddress, 0));
+        int port = requestURI.getPort();
+        if (port < 0) {
+            port = isSecure ? 443 : 80;
+        }
+        socket.connect(
+                new InetSocketAddress(requestURI.getHost(), port), wsp.handshakeSoTimeout);
+
+        WsConnection conn = new WsConnection(socket, handler, requestURI, wsp);
         conn.setName(connectionPrefix + conn.getId());
-        conn.setWsParameters(wsp);
         conn.start();
         return conn;
     }
@@ -102,14 +190,18 @@ public class WebSocket {
         return WsListener.listByPrefix(WsListener.class, listenerPrefix);
     }
 
-    public void closeAll() {
+    public void closeAll(String closeReason) {
 // close WebSocket listeners/connections 
         for (WsListener listener : listListeners()) {
-            listener.close();
+            listener.close(closeReason);
         }
         for (WsConnection conn : listConnections()) {
-            conn.close(WsStatus.GOING_AWAY, "");
+            conn.close(WsStatus.GOING_AWAY, closeReason);
         }
+    }
+
+    public void closeAll() {
+        closeAll("");
     }
 
 }

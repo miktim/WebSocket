@@ -24,7 +24,8 @@ Overview:
       WsConnection connect(String uri, WsHahdler handler) throws Exception;
       WsListener[] listListeners();
       WsConnection[] listConnections();
-      void closeAll();
+      void closeAll(); // close code 1001 (GOING_AWAY)
+      void closeAll(String closeReason);
 
   WsParameters:
     see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsParameters.java
@@ -38,7 +39,8 @@ Overview:
       boolean isSecure();
       WsParameters getWsParameters();
       WsConnection[] listConnections(); 
-      void close(); // also closes all associated connections
+      void close(); // also closes all associated connections (close code 1001)
+      void close(String closeReason);
 
   WsConnection (extends Thread, is created with current WebSocket/WsListener parameters):
     Constants:

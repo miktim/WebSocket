@@ -14,7 +14,7 @@ import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsListener;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsStatus;
-
+ 
 public class WssConnectionTest {
 
     static final int MAX_MESSAGE_LENGTH = 1000000; //~1MB
@@ -102,7 +102,8 @@ public class WssConnectionTest {
                     }
                 } catch (IOException e) {
                     ws_log("Listener" + con.getId() + " onTEXT: send error: "
-                            + e + " " + con.getStatus());
+                            + e + " " + con.getStatus()
+                            + " Msg: \"" + s.substring(0, 12) + "...");
                 }
             }
 
@@ -211,8 +212,8 @@ public class WssConnectionTest {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                wsListener.close();
-//                webSocket.closeAll();
+                wsListener.close("Shutdown");
+//                webSocket.closeAll("Time is over");
                 timer.cancel();
             }
         }, WEBSOCKET_SHUTDOWN_TIMEOUT);

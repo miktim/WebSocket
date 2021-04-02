@@ -10,43 +10,28 @@
  * Created: 2020-03-09
  */
 package org.miktim.websocket;
- 
-import java.io.File;
-import java.io.FileInputStream;
+
 import java.lang.reflect.Array;
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.security.KeyStore;
 import java.util.Vector;
-import javax.net.ServerSocketFactory;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
-import javax.net.ssl.SSLServerSocketFactory;
 
 public class WsListener extends Thread {
 
     private boolean isRunning;
-    private boolean isSecure;
-    private WsParameters wsp = new WsParameters();
+    private final boolean isSecure;
+    private WsParameters wsp;
     private String connectionPrefix; // connection thread name
-    private ServerSocket serverSocket;
-    private WsHandler handler;
+    private final ServerSocket serverSocket;
+    private final WsHandler handler;
 
-    WsListener(InetSocketAddress isa, WsHandler handler, boolean secure)
+    WsListener(ServerSocket ss, WsHandler h, boolean secure, WsParameters wsp)
             throws Exception {
-        if (handler == null) {
-            throw new NullPointerException();
-        }
+        this.serverSocket = ss;
+        this.handler = h;
         this.isSecure = secure;
-        this.handler = handler;
-        serverSocket = getServerSocketFactory().createServerSocket(); 
-        if (isSecure && wsp.sslParameters != null) {
-            ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
-        }
-        serverSocket.bind(isa);
-        serverSocket.setSoTimeout(0);
+        this.wsp = wsp.clone();
     }
 
     public boolean isSecure() {
@@ -57,24 +42,27 @@ public class WsListener extends Thread {
         return isRunning;
     }
 
-    void setWsParameters(WsParameters parm) throws CloneNotSupportedException {
-        this.wsp = parm.clone();
+    public WsParameters getWsParameters() {
+        wsp.sslParameters = isSecure
+                ? ((SSLServerSocket) serverSocket).getSSLParameters() : null;
+        return wsp;
     }
 
-    public WsParameters getWsParameters() {
-        if (isSecure) {
-            wsp.sslParameters = ((SSLServerSocket) serverSocket).getSSLParameters();
-        }
-        return this.wsp;
-    }
+    private String closeReason = null;
 
     public void close() {
+        this.setPriority(MAX_PRIORITY);
         this.isRunning = false;
         try {
             serverSocket.close();
         } catch (Exception e) {
 //            e.printStackTrace();
         }
+    }
+
+    public void close(String reason) {
+        closeReason = reason;
+        close();
     }
 
     public WsConnection[] listConnections() {
@@ -102,9 +90,9 @@ public class WsListener extends Thread {
             while (this.isRunning) {
                 try {
                     Socket socket = serverSocket.accept();
-                    WsConnection conn = new WsConnection(socket, handler, isSecure);
+                    WsConnection conn
+                            = new WsConnection(socket, handler, isSecure, wsp);
                     conn.setName(connectionPrefix + conn.getId());
-                    conn.setWsParameters(wsp);
                     socket.setSoTimeout(wsp.handshakeSoTimeout);
                     conn.start();
                 } catch (Exception e) {
@@ -116,40 +104,10 @@ public class WsListener extends Thread {
                 }
             }
         }
-// close listener connections            
+
+// close associated connections            
         for (WsConnection connection : listConnections()) {
-            connection.close(WsStatus.GOING_AWAY, "Shutdown");
-        }
-    }
-
-// https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/sockets/server/ClassFileServer.java
-    private ServerSocketFactory getServerSocketFactory() throws Exception {
-//            throws NoSuchAlgorithmException, KeyStoreException,
-//            FileNotFoundException, IOException, CertificateException,
-//            UnrecoverableKeyException {
-        if (isSecure) {
-            SSLServerSocketFactory ssf;
-            SSLContext ctx;
-            KeyManagerFactory kmf;
-            KeyStore ks;
-            String ksPassphrase = System.getProperty("javax.net.ssl.keyStorePassword");
-            char[] passphrase = ksPassphrase.toCharArray();
-
-            ctx = SSLContext.getInstance("TLS");
-            kmf = KeyManagerFactory.getInstance("SunX509");
-            ks = KeyStore.getInstance("JKS"); //
-            File ksFile = new File(System.getProperty("javax.net.ssl.keyStore"));
-            ks.load(new FileInputStream(ksFile), passphrase);
-            kmf.init(ks, passphrase);
-//        TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
-//        tmf.init(ks);
-//        ctx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-            ctx.init(kmf.getKeyManagers(), null, null);
-
-            ssf = ctx.getServerSocketFactory();
-            return ssf;
-        } else {
-            return ServerSocketFactory.getDefault();
+            connection.close(WsStatus.GOING_AWAY, closeReason);
         }
     }
 

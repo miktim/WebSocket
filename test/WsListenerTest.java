@@ -150,7 +150,7 @@ public class WsListenerTest {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                listener.close();
+                listener.close("Shutdown");
                 timer.cancel();
             }
         }, LISTENER_SHUTDOWN_TIMEOUT);
