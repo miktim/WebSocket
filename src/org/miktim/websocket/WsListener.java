@@ -1,11 +1,7 @@
 /*
  * WsListener. WebSocket listener, MIT (c) 2020-2021 miktim@mail.ru
  *
- * Release notes:
- * - Java SE 7+, Android compatible;
- * - RFC-6455: https://tools.ietf.org/html/rfc6455;
- * - WebSocket protocol version: 13;
- * - WebSocket extensions not supported.
+ * Accept sockets, create and start connection threads.
  *
  * Created: 2020-03-09
  */
@@ -21,7 +17,7 @@ public class WsListener extends Thread {
 
     private boolean isRunning;
     private final boolean isSecure;
-    private WsParameters wsp;
+    private final WsParameters wsp;
     private String connectionPrefix; // connection thread name
     private final ServerSocket serverSocket;
     private final WsHandler handler;
@@ -42,7 +38,7 @@ public class WsListener extends Thread {
         return isRunning;
     }
 
-    public WsParameters getWsParameters() {
+    public WsParameters getParameters() {
         wsp.sslParameters = isSecure
                 ? ((SSLServerSocket) serverSocket).getSSLParameters() : null;
         return wsp;
@@ -51,7 +47,7 @@ public class WsListener extends Thread {
     private String closeReason = null;
 
     public void close() {
-        this.setPriority(MAX_PRIORITY);
+        Thread.currentThread().setPriority(MAX_PRIORITY);
         this.isRunning = false;
         try {
             serverSocket.close();

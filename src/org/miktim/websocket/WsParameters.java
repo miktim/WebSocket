@@ -5,22 +5,33 @@
  */
 package org.miktim.websocket;
 
-//import java.util.Arrays;
 import javax.net.ssl.SSLParameters;
 
 public class WsParameters implements Cloneable {
 
+    String[] subProtocols = null; // WebSocket subprotocol[s] in preferred order
     int handshakeSoTimeout = 30000; // millis, TLS and WebSocket open/close handshake
     int connectionSoTimeout = 60000;// millis
     boolean pingEnabled = true; // if false, connection terminate by socket timeout
     public static final int MIN_PAYLOAD_BUFFER_LENGTH = 512;
     int payloadBufferLength = 32768; // bytes 
-    String subProtocols[] = null; // WebSocket subprotocol[s] in preferred order
     SSLParameters sslParameters;  // TLS parameters
 
     public WsParameters() {
         sslParameters = new SSLParameters();
         sslParameters.setNeedClientAuth(false);
+    }
+
+    public void setSubProtocols(String[] subps) {
+        if (subps == null || subps.length == 0) {
+            subProtocols = null;
+        } else {
+            subProtocols = subps;
+        }
+    }
+
+    public String[] getSubProtocols() {
+        return subProtocols;
     }
 
     public void setHandshakeSoTimeout(int millis) {
@@ -53,18 +64,6 @@ public class WsParameters implements Cloneable {
         return payloadBufferLength;
     }
 
-    public void setSubProtocols(String[] subps) {
-        if (subps == null || subps.length == 0) {
-            subProtocols = null;
-        } else {
-            subProtocols = subps;
-        }
-    }
-
-    public String[] getSubProtocols() {
-        return subProtocols;
-    }
-
     public void setSSLParameters(SSLParameters sslParms) {
         sslParameters = sslParms;
     }
@@ -73,7 +72,7 @@ public class WsParameters implements Cloneable {
         return sslParameters;
     }
 
-    public static String join(Object[] array) {
+    public String join(Object[] array) {
         if (array == null || array.length == 0) {
             return null;
         }
@@ -93,6 +92,4 @@ public class WsParameters implements Cloneable {
         return clone;
     }
 
-//    String keyFile = null; // listener keyFile
-//    String keyFilePassword = null;
 }

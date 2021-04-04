@@ -1,7 +1,6 @@
 /*
  * Secure WsConnection test. MIT (c) 2020-2021 miktim@mail.ru
  */
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,12 +23,20 @@ public class WssConnectionTest {
     static void ws_log(String msg) {
         System.out.println(msg);
     }
-
+    
     static String makePath(WsConnection con) {
         return con.getPath()
                 + (con.getQuery() == null ? "" : "?" + con.getQuery());
     }
-
+    
+    static String repeat(String s, int count) {
+        StringBuilder sb = new StringBuilder();
+        for(int i = 0; i<count; i++){
+            sb.append(s);
+        }
+        return sb.toString();
+    }
+    
     public static void main(String[] args) throws Exception {
         String path = ".";
         if (args.length > 0) {
@@ -95,8 +102,8 @@ public class WssConnectionTest {
             public void onMessage(WsConnection con, String s) {
                 try {
                     if (s.length() < 128) {
-                        con.send(s + s);
                         ws_log("Listener" + con.getId() + " onTEXT: " + s);
+                        con.send(s + s);
                     } else {
                         con.send(s);
                     }
@@ -168,15 +175,14 @@ public class WssConnectionTest {
             public void onMessage(WsConnection con, String s) {
                 try {
                     if (s.length() < 128) {
-                        con.send(s + s);
                         ws_log("Client" + con.getId() + " onTEXT: " + s);
-                    } else {
-                        if (s.getBytes("utf-8").length < (MAX_MESSAGE_LENGTH / 2)) {
-                            con.send(s + s);
-                        } else {
-                            con.send(new ByteArrayInputStream(s.getBytes("utf-8")), true);
-                        }
                     }
+                    if (s.getBytes("utf-8").length < (MAX_MESSAGE_LENGTH / 2)) {
+                        con.send(s + s);
+                    } else {
+                        con.send(s);
+                    }
+
                 } catch (IOException e) {
                     ws_log("Client" + con.getId() + " onTEXT: send error: "
                             + e + " " + con.getStatus());
@@ -196,7 +202,7 @@ public class WssConnectionTest {
         final WebSocket webSocket = new WebSocket();
         WsParameters wsp = new WsParameters();
         wsp.setConnectionSoTimeout(1000, true); // ping
-        webSocket.setWsParameters(wsp);
+        webSocket.setParameters(wsp);
 // Listener and client must use the same self-signed certificate
         /* Android
         String keyFile = (new File(getCacheDir(),"testkeys")).getCanonicalPath();
@@ -219,6 +225,7 @@ public class WssConnectionTest {
         }, WEBSOCKET_SHUTDOWN_TIMEOUT);
         ws_log("\r\nWssConnection (v"
                 + WsConnection.VERSION + ") test"
+                + "\r\nIncoming maxMessageLength: " + MAX_MESSAGE_LENGTH
                 + "\r\nClient try to connect to " + remoteAddr
                 + "\r\nWebSocket will be closed after "
                 + (WEBSOCKET_SHUTDOWN_TIMEOUT / 1000) + " seconds"

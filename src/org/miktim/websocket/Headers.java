@@ -1,8 +1,8 @@
 /*
- * Headers. Http message headers. MIT (c) 2020-2021 miktim@mail.ru
+ * Headers. Read/write/store http headers. MIT (c) 2020-2021 miktim@mail.ru
  *
- * Replaces the core class com.sun.net.httpserver.Headers for Android compatibility
- */
+ * Created: 2020-11-19
+ */ 
 package org.miktim.websocket;
 
 import java.io.BufferedReader;

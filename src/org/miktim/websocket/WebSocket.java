@@ -1,11 +1,16 @@
 /*
- * WebSocket. WebSocket factory, MIT (c) 2020-2021 miktim@mail.ru
+ * WebSocket. MIT (c) 2020-2021 miktim@mail.ru
+ *
+ * Prepare ServerSocket/Socket (bind, connect).
+ * Create and start listener/connection threads.
  *
  * Release notes:
  * - Java SE 7+, Android compatible;
  * - RFC-6455: https://tools.ietf.org/html/rfc6455;
  * - WebSocket protocol version: 13;
- * - WebSocket extensions not supported.
+ * - WebSocket extensions not supported;
+ * - plain socket/TLS connections;
+ * - stream-oriented messaging.
  *
  * Created: 2020-06-06
  */
@@ -67,11 +72,11 @@ public class WebSocket {
         System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
 
-    public void setWsParameters(WsParameters parm) throws CloneNotSupportedException {
+    public void setParameters(WsParameters parm) throws CloneNotSupportedException {
         this.wsp = parm.clone();
     }
 
-    public WsParameters getWsParameters() {
+    public WsParameters getParameters() {
         return this.wsp;
     }
 

@@ -5,7 +5,7 @@
  */
 package org.miktim.websocket;
 
-public class WsStatus {
+public class WsStatus implements Cloneable {
 // Predefined WebSocket closure codes:
 //  https://tools.ietf.org/html/rfc6455#section-7.4
 //  https://www.iana.org/assignments/websocket/websocket.xml#close-code-number 
@@ -27,15 +27,22 @@ public class WsStatus {
     public static final int TRY_AGAIN_LATER = 1013; //
 
     public int code = GOING_AWAY;  // closing code (1000-4999)
-    public String reason = "";     // closing reason
+    public String reason = "";     // closing reason (max length 123 BYTES)
     public boolean clean = false;  // WebSocket closing handshake completed
     public boolean remote = false; // closed remotely
+    public Exception error = null; // closed due to exception
 
-    WsStatus(int closeCode, String closeReason, boolean clean, boolean remote) {
-        code = closeCode;
-        reason = closeReason;
-        this.clean = clean;
-        this.remote = remote;
+    WsStatus() {
+    }
+
+    @Override
+    public WsStatus clone() {
+        WsStatus clone = this;
+        try {
+            clone = (WsStatus) super.clone();
+        } catch (CloneNotSupportedException ex) {
+        }
+        return clone;
     }
 
     @Override

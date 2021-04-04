@@ -1,11 +1,7 @@
 /*
  * WsConnection. WebSocket connection, MIT (c) 2020-2021 miktim@mail.ru
  *
- * Release notes:
- * - java SE 7+;
- * - RFC-6455: https://tools.ietf.org/html/rfc6455;
- * - WebSocket protocol version: 13;
- * - WebSocket extensions not supported
+ * SSL/WebSocket handshaking. Messaging. Events handling.
  *
  * Created: 2020-03-09
  */
@@ -16,6 +12,8 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Reader;
+import java.io.StringReader;
 import java.net.InetSocketAddress;
 import java.net.ProtocolException;
 import java.net.Socket;
@@ -33,30 +31,66 @@ import javax.net.ssl.SSLSocket;
 public class WsConnection extends Thread {
 
     public static final String VERSION = "2.4.0";
-    private static final String CONNECTION_NAME = "WsLite/" + VERSION; // Server/UserAgent
+    private static final String SERVER_AGENT = "WsLite/" + VERSION;
 
     private final Socket socket;
-    private final WsHandler handler;
+    private WsHandler handler;
+    private final boolean isSecure; // SSL connection
     private final boolean isClientSide;
-    private final boolean isSecure;
-    private Headers peerHeaders;
     private URI requestURI;
-    private int closeCode = WsStatus.GOING_AWAY;
-    private String closeReason = "";
-    private boolean closeClean = false;
-    private Exception closeException;
     private String subProtocol = null; // handshaked WebSocket subprotocol
     private final WsParameters wsp;
+    private final WsStatus status = new WsStatus();
+
+// send binary data    
+    public void send(InputStream is) throws IOException {
+        syncSend(is, false);
+    }
+// send UTF-8 text
+
+    public void send(Reader rd) throws IOException {
+        syncSend(new ReaderInputStream(rd), true);
+    }
+
+// send binary data
+    public void send(byte[] message) throws IOException {
+        syncSend(new ByteArrayInputStream(message), false);
+    }
+
+// send UTF-8 text
+    public void send(String message) throws IOException {
+        syncSend(new ReaderInputStream(new StringReader(message)), true);
+    }
+
+// Returns handshaked WebSocket subprotocol
+    public String getSubProtocol() {
+        return subProtocol;
+    }
+
+    public WsStatus getStatus() {
+        return status.clone();
+    }
 
     public boolean isOpen() {
-        return closeCode == WsStatus.IS_OPEN;
+        return status.code == WsStatus.IS_OPEN;
     }
 
     public boolean isSecure() {
         return isSecure;
     }
 
-    public WsParameters getWsParameters() {
+    public boolean isClientSide() {
+        return isClientSide;
+    }
+
+    public synchronized void setHandler(WsHandler h) {
+        handler = h;
+        if (isOpen()) {
+            h.onOpen(this, subProtocol);
+        }
+    }
+
+    public WsParameters getParameters() {
         SSLParameters sslp = null;
         if (isSecure) {
             try {
@@ -72,10 +106,7 @@ public class WsConnection extends Thread {
         return wsp;
     }
 
-    public String getSubProtocol() { // get handshaked subprotocol
-        return subProtocol;
-    }
-
+// Returns remote host name
     public String getPeerHost() {
         try {
             if (isClientSide) {
@@ -91,10 +122,12 @@ public class WsConnection extends Thread {
         }
     }
 
+// Returns the bound/connected port
     public int getPort() {
         return socket.getPort();
     }
 
+// Returns http request path
     public String getPath() {
         if (this.requestURI != null) {
             return requestURI.getPath();
@@ -102,6 +135,7 @@ public class WsConnection extends Thread {
         return null;
     }
 
+// Returns http request query
     public String getQuery() {
         if (this.requestURI != null) {
             return requestURI.getQuery();
@@ -116,19 +150,33 @@ public class WsConnection extends Thread {
         return null;
     }
 
-    public void send(byte[] message) throws IOException {
-//        syncSend(message, false);
-        syncSend(new ByteArrayInputStream(message), false);
-    }
+    public class ReaderInputStream extends InputStream {
 
-    public void send(String message) throws IOException {
-//        syncSend(message.getBytes(StandardCharsets.UTF_8), true);
-        syncSend(new ByteArrayInputStream(
-                message.getBytes(StandardCharsets.UTF_8)), true);
-    }
+        private final Reader rd;
+        private int c = 0;
+    
+        public ReaderInputStream(Reader reader) {
+            super();
+            this.rd = reader;
+        }
 
-    public void send(InputStream is, boolean isUtf8Text) throws IOException {
-        syncSend(is, isUtf8Text);
+        @Override
+        public int read() throws IOException {
+            if (c < 0x100) {
+                while ((c = rd.read()) != -1) {
+                    return c > 0xFF ? (c >> 8) : c;
+                }
+                c = 0; // prevent eof from being recognized as char
+                return -1; // eof
+            }
+            c &= 0xFF;
+            return c;
+        }
+
+        @Override
+        public boolean markSupported() {
+            return false;
+        }
     }
 
     private synchronized void syncSend(InputStream is, boolean isText)
@@ -149,16 +197,17 @@ public class WsConnection extends Thread {
         }
     }
 
-    public WsStatus getStatus() {
-        return new WsStatus(Math.abs(closeCode), closeReason, closeClean, closeCode < 0);
-    }
-
+// Close notes:
+// - the closing code outside 1000-4999 is replaced by 1005 (NO_STATUS)
+//   and the reason is ignored; 
+// - a reason that is longer than 123 bytes is truncated;
+// - closing the connection blocks sending messages (send methods throws IOException)
     public void close() {
         close(WsStatus.NO_STATUS, "");
     }
 
     public synchronized void close(int code, String reason) {
-        if (this.closeCode == 0) {
+        if (this.status.code == 0) {
             code = (code < 1000 || code > 4999) ? WsStatus.NO_STATUS : code;
             byte[] payload = new byte[125];
             byte[] byteReason = (reason == null ? "" : reason)
@@ -175,17 +224,15 @@ public class WsConnection extends Thread {
             try {
                 this.socket.setSoTimeout(wsp.handshakeSoTimeout);
                 sendFrame(OP_CLOSE, payload, payloadLen);
-                this.closeCode = code; // disable sending data
-                this.closeReason = new String(byteReason, StandardCharsets.UTF_8);
+                status.code = code; // disable sending data
+                status.reason = new String(byteReason, StandardCharsets.UTF_8);
             } catch (IOException e) {
-                this.closeCode = WsStatus.ABNORMAL_CLOSURE;
-                this.closeReason = "WebSocket close error";
-                handler.onError(this, e);
+                status.reason = "WebSocket close error";
             }
         }
     }
 
-// WebSocket listener connection
+// WebSocket listener connection constructor
     WsConnection(Socket s, WsHandler h, boolean secure, WsParameters wsp)
             throws CloneNotSupportedException {
         this.isClientSide = false;
@@ -195,7 +242,7 @@ public class WsConnection extends Thread {
         this.wsp = wsp.clone();
     }
 
-//  WebSocket client connection
+// WebSocket client connection constructor
     WsConnection(Socket s, WsHandler h, URI uri, WsParameters wsp)
             throws CloneNotSupportedException {
         this.isClientSide = true;
@@ -214,7 +261,7 @@ public class WsConnection extends Thread {
         try {
             inStream = socket.getInputStream();
             outStream = socket.getOutputStream();
-            closeCode = WsStatus.PROTOCOL_ERROR;
+            status.code = WsStatus.PROTOCOL_ERROR;
             if (isClientSide) {
                 handshakeServer();
             } else {
@@ -231,29 +278,29 @@ public class WsConnection extends Thread {
 
     private void handshakeClient()
             throws IOException, URISyntaxException, NoSuchAlgorithmException {
-        peerHeaders = (new Headers()).read(inStream);
+        Headers peerHeaders = (new Headers()).read(inStream);
         String[] parts = peerHeaders.get(Headers.REQUEST_LINE).split(" ");
         this.requestURI = new URI(parts[1]);
         String upgrade = peerHeaders.get("Upgrade");
         String key = peerHeaders.get("Sec-WebSocket-Key");
 
-        Headers responseHeaders = new Headers();
+        Headers responseHeaders = (new Headers()).set("Server", SERVER_AGENT);
         if (parts[0].equals("GET")
                 && upgrade != null && upgrade.equals("websocket")
                 && key != null) {
+            setSubprotocol(peerHeaders.get("Sec-WebSocket-Protocol"), responseHeaders);
             responseHeaders
                     .set(Headers.STATUS_LINE, "HTTP/1.1 101 Upgrade")
                     .set("Upgrade", "websocket")
                     .set("Connection", "Upgrade,keep-alive")
                     .set("Sec-WebSocket-Accept", sha1Hash(key))
                     .set("Sec-WebSocket-Version", "13")
-                    .set("Server", CONNECTION_NAME);
-            setSubprotocol(this.peerHeaders.get("Sec-WebSocket-Protocol"), responseHeaders);
-            responseHeaders.write(outStream);
+                    .write(outStream);
         } else {
-            responseHeaders.set(Headers.STATUS_LINE, "HTTP/1.1 400 Bad Request")
-                    .set("Connection", "close");
-            responseHeaders.write(outStream);
+            responseHeaders
+                    .set(Headers.STATUS_LINE, "HTTP/1.1 400 Bad Request")
+                    .set("Connection", "close")
+                    .write(outStream);
             throw new ProtocolException("WebSocket handshake failed");
         }
     }
@@ -288,22 +335,21 @@ public class WsConnection extends Thread {
         String host = requestURI.getHost()
                 + (requestURI.getPort() > 0 ? ":" + requestURI.getPort() : "");
 //        host = (new URI(host)).toASCIIString(); // URISyntaxException on IP addr
-        String requestLine = "GET " + requestPath + " HTTP/1.1";
-        Headers headers = new Headers();
-        headers.set(Headers.REQUEST_LINE, requestLine)
+        Headers requestHeaders = (new Headers())
+                .set(Headers.REQUEST_LINE, "GET " + requestPath + " HTTP/1.1")
                 .set("Host", host)
                 .set("Origin", requestURI.getScheme() + "://" + host)
                 .set("Upgrade", "websocket")
                 .set("Connection", "Upgrade,keep-alive")
                 .set("Sec-WebSocket-Key", key)
                 .set("Sec-WebSocket-Version", "13")
-                .set("User-Agent", CONNECTION_NAME);
+                .set("User-Agent", SERVER_AGENT);
         if (wsp.subProtocols != null) {
-            headers.set("Sec-WebSocket-Protocol", wsp.join(wsp.subProtocols));
+            requestHeaders.set("Sec-WebSocket-Protocol", wsp.join(wsp.subProtocols));
         }
-        headers.write(outStream);
+        requestHeaders.write(outStream);
 
-        this.peerHeaders = (new Headers()).read(inStream);
+        Headers peerHeaders = (new Headers()).read(inStream);
         this.subProtocol = peerHeaders.get("Sec-WebSocket-Protocol");
         if (!(peerHeaders.get(Headers.REQUEST_LINE).split(" ")[1].equals("101")
                 && peerHeaders.get("Sec-WebSocket-Accept").equals(sha1Hash(key))
@@ -382,31 +428,32 @@ public class WsConnection extends Thread {
     static final byte[] PING_PAYLOAD = "PingPong".getBytes();
     static final byte[] EMPTY_PAYLOAD = new byte[0];
 
-// the below variables are filled with waitDataFrame() function
-    private int opData;
-    private final byte[] payloadMask = new byte[8]; //buffer for frame length and mask
+// variables are filled with waitDataFrame()
+    private int opData; // data frame opcode
+    private final byte[] payloadMask = new byte[8]; // mask & temp buffer for payloadLength
     private long payloadLength = 0;
     private boolean pingFrameSent = false;
 
     private void startMessaging() throws IOException {
-        this.closeCode = WsStatus.IS_OPEN;
-        this.handler.onOpen(this, getSubProtocol());
+        this.status.code = WsStatus.IS_OPEN;
+        this.handler.onOpen(this, subProtocol);
         while (waitDataFrame()) {
             InputStream wis = new WsInputStream();
             handler.onMessage(this, wis, (opData & 0x7F) == OP_TEXT);
             wis.close();
         }
         closeSocket();
-        if (closeException != null) {
-            handler.onError(this, closeException);
+        if (status.error != null) {
+            handler.onError(this, status.error);
         }
         handler.onClose(this, getStatus());
     }
 
-// returns true when a data frame arrives
+    // Sets WsConnection properties: opData, payloadMask, payloadLegth
+    // Returns true when a data frame arrives
     private boolean waitDataFrame() {
         boolean maskedPayload;
-        while (!closeClean) {
+        while (!status.clean) { // !closing hanshake completed
             try {
                 int b1 = inStream.read();
                 int b2 = inStream.read();
@@ -420,7 +467,7 @@ public class WsConnection extends Thread {
                 if ((opData & OP_FINAL) != 0) {
                     opData = 0; // reset prev opData
                 }
-// check op    
+// check frame op    
                 switch (b1) {
                     case OP_TEXT_FINAL:
                     case OP_TEXT:
@@ -534,27 +581,28 @@ public class WsConnection extends Thread {
                         break;
                     }
                     case OP_PING: {
-                        if (closeCode == 0) {
+                        if (status.code == 0) {
                             sendFrame(OP_PONG, framePayload, framePayload.length);
                         }
                         break;
                     }
                     case OP_CLOSE: { // close handshake
-                        if (closeCode == 0) {
+                        if (status.code == 0) {
+                            status.remote = true;
                             sendFrame(OP_CLOSE, framePayload, framePayload.length);
                             if (framePayload.length > 1) {
-                                closeCode = -(((framePayload[0] & 0xFF) << 8)
-                                        + (framePayload[1] & 0xFF));
-                                closeReason = new String(framePayload,
+                                status.code = ((framePayload[0] & 0xFF) << 8)
+                                        + (framePayload[1] & 0xFF);
+                                status.reason = new String(framePayload,
                                         2, framePayload.length - 2,
                                         StandardCharsets.UTF_8
                                 );
                             }
-                            if (closeCode == 0) {
-                                closeCode = -WsStatus.NO_STATUS;
+                            if (status.code == 0) {
+                                status.code = WsStatus.NO_STATUS;
                             }
                         }
-                        this.closeClean = true;
+                        status.clean = true;
                         return false;
                     }
                     default: {
@@ -563,7 +611,7 @@ public class WsConnection extends Thread {
                     }
                 }
             } catch (SocketTimeoutException e) {
-                if (this.closeCode == 0 && this.wsp.pingEnabled && !pingFrameSent) {
+                if (this.status.code == 0 && this.wsp.pingEnabled && !pingFrameSent) {
                     pingFrameSent = true;
                     try {
                         sendFrame(OP_PING, PING_PAYLOAD, PING_PAYLOAD.length);
@@ -603,7 +651,7 @@ public class WsConnection extends Thread {
 
         WsInputStream() {
             super();
-// align buffer to mask length, prevent zero length buffer         
+// alloc buffer aligned to mask length, prevent zero length buffer         
             this.buf = new byte[(Math.max(WsParameters.MIN_PAYLOAD_BUFFER_LENGTH,
                     (int) Math.min(payloadLength,
                             (long) wsp.payloadBufferLength))
@@ -670,7 +718,7 @@ public class WsConnection extends Thread {
                 this.state = IS_CLOSED;
             }
         }
-        /*        
+        /* ????     
         @Override
         public int read(byte[] b, int off, int len) throws IOException {
            System.arraycopy 
@@ -679,8 +727,8 @@ public class WsConnection extends Thread {
     }
 
     boolean isSocketOpen() {
-        return !(this.socket == null || this.socket.isClosed()
-                || this.socket.isInputShutdown());
+        return !(this.socket == null || this.socket.isClosed());
+//                || this.socket.isInputShutdown());
     }
 
     void closeSocket() {
@@ -689,7 +737,7 @@ public class WsConnection extends Thread {
                 if (this.isSecure) {
                     ((SSLSocket) this.socket).close();
                 } else {
-                    this.socket.shutdownInput(); // ???
+//                    this.socket.shutdownInput(); // ???
                     this.socket.close();
                 }
             } catch (IOException e) {
@@ -708,11 +756,11 @@ public class WsConnection extends Thread {
         return bytesCnt;
     }
 
-    private void closeDueTo(int status, Exception e) {
-        if (closeCode == 0 && closeException == null) {
-            closeException = e;
+    private void closeDueTo(int closeCode, Exception e) {
+        if (status.code == 0 && status.error == null) {
+            status.error = e;
         }
-        close(status, "");
+        close(closeCode, "");
     }
 
 // unmask/mask payload
@@ -725,7 +773,7 @@ public class WsConnection extends Thread {
 
     private synchronized void sendFrame(int opFrame, byte[] payload, int len)
             throws IOException {
-        if (closeCode != 0) { // || !isSocketOpen()) {
+        if (status.code != 0) { // || !isSocketOpen()) {
 // WebSocket closed or close handshake in progress            
             throw new SocketException("WebSocket closed");
         }
@@ -768,7 +816,7 @@ public class WsConnection extends Thread {
             }
             outStream.flush();
         } catch (IOException e) {
-            this.closeCode = WsStatus.ABNORMAL_CLOSURE;
+            this.status.code = WsStatus.ABNORMAL_CLOSURE;
             throw e;
         }
     }
