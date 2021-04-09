@@ -13,7 +13,7 @@ import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsListener;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsStatus;
- 
+
 public class WssConnectionTest {
 
     static final int MAX_MESSAGE_LENGTH = 1000000; //~1MB

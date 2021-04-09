@@ -1,7 +1,7 @@
 /*
  * WsListener. WebSocket listener, MIT (c) 2020-2021 miktim@mail.ru
  *
- * Accept sockets, create and start connection threads.
+ * Accepts sockets, creates and starts connection threads.
  *
  * Created: 2020-03-09
  */

@@ -46,8 +46,8 @@ public class WsConnection extends Thread {
     public void send(InputStream is) throws IOException {
         syncSend(is, false);
     }
-// send UTF-8 text
 
+// send UTF-8 text
     public void send(Reader rd) throws IOException {
         syncSend(new ReaderInputStream(rd), true);
     }
@@ -189,7 +189,7 @@ public class WsConnection extends Thread {
                 sendFrame(op, buf, buf.length);
                 op = OP_CONTINUATION;
             }
-// be sure to send the final frame even if eof is detected!            
+// be sure to send the final frame even if eof is detected (payload length = 0)!            
             sendFrame(op | OP_FINAL, buf, len >= 0 ? len : 0);
         } catch (IOException e) {
             closeDueTo(WsStatus.INTERNAL_ERROR, e);
@@ -201,7 +201,8 @@ public class WsConnection extends Thread {
 // - the closing code outside 1000-4999 is replaced by 1005 (NO_STATUS)
 //   and the reason is ignored; 
 // - a reason that is longer than 123 bytes is truncated;
-// - closing the connection blocks sending messages (send methods throws IOException)
+// - closing the connection blocks outgoing messages (send methods throws IOException);
+// - incoming messages are available until the closing handshake completed.
     public void close() {
         close(WsStatus.NO_STATUS, "");
     }
@@ -428,7 +429,7 @@ public class WsConnection extends Thread {
     static final byte[] PING_PAYLOAD = "PingPong".getBytes();
     static final byte[] EMPTY_PAYLOAD = new byte[0];
 
-// variables are filled with waitDataFrame()
+// variables are filled with waitDataFrame() function
     private int opData; // data frame opcode
     private final byte[] payloadMask = new byte[8]; // mask & temp buffer for payloadLength
     private long payloadLength = 0;
@@ -449,8 +450,8 @@ public class WsConnection extends Thread {
         handler.onClose(this, getStatus());
     }
 
-    // Sets WsConnection properties: opData, payloadMask, payloadLegth
-    // Returns true when a data frame arrives
+// Sets WsConnection properties: opData, payloadMask, payloadLegth
+// Returns true when a data frame arrives
     private boolean waitDataFrame() {
         boolean maskedPayload;
         while (!status.clean) { // !closing hanshake completed
@@ -516,7 +517,7 @@ public class WsConnection extends Thread {
                         payloadLength += (payloadMask[i] & 0xFF);
                     }
                 }
-// get mask 
+// get payload mask 
                 maskedPayload = (b2 & MASKED_DATA) != 0;
                 if (maskedPayload) {
                     toRead = 4;
@@ -718,7 +719,7 @@ public class WsConnection extends Thread {
                 this.state = IS_CLOSED;
             }
         }
-        /* ????     
+        /* ??? can speed up     
         @Override
         public int read(byte[] b, int off, int len) throws IOException {
            System.arraycopy 
@@ -773,7 +774,7 @@ public class WsConnection extends Thread {
 
     private synchronized void sendFrame(int opFrame, byte[] payload, int len)
             throws IOException {
-        if (status.code != 0) { // || !isSocketOpen()) {
+        if (status.code != 0) { // !isOpen()
 // WebSocket closed or close handshake in progress            
             throw new SocketException("WebSocket closed");
         }

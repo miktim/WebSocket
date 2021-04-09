@@ -17,8 +17,8 @@ public interface WsHandler {
     public void onOpen(WsConnection conn, String subProtocol);
 
 // onMessage:
-//   - WebSocket message presented by input stream of binary data or UTF-8 characters;    
-//   - exiting the handler closes the stream.
+// - the WebSocket message is represented by an input stream of binary data or UTF-8 characters;
+// - exiting the handler closes the stream.
     public void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text);
 
 // onError:

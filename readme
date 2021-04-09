@@ -6,7 +6,7 @@ Release notes:
   - supported WebSocket version: 13;
   - WebSocket extensions not supported;
   - supports TLS connections (without client auth and tunneling);
-  - stream-oriented messaging.
+  - stream-based messaging.
 
 Overview:
   Constructors:
@@ -61,8 +61,8 @@ Overview:
 //        - incoming messages are available until the closing handshake completed.
       WsStatus getStatus();
       String getSubProtocol(); // returns null or handshaked WebSocket subprotocol
-      boolean isOpen();   // connection is open
-      boolean isSecure(); // is TLS connection
+      boolean isOpen();     // connection is open
+      boolean isSecure();   // is TLS connection
       String getPeerHost(); // returns remote host name
       int getPort() // returns bound/connected port
       String getPath();  // returns http request path or null

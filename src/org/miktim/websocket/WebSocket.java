@@ -1,16 +1,16 @@
 /*
  * WebSocket. MIT (c) 2020-2021 miktim@mail.ru
  *
- * Prepare ServerSocket/Socket (bind, connect).
- * Create and start listener/connection threads.
+ * Creates ServerSocket/Socket (bind, connect).
+ * Creates and starts listener/connection threads.
  *
  * Release notes:
  * - Java SE 7+, Android compatible;
  * - RFC-6455: https://tools.ietf.org/html/rfc6455;
  * - WebSocket protocol version: 13;
  * - WebSocket extensions not supported;
- * - plain socket/TLS connections;
- * - stream-oriented messaging.
+ * - supports plain socket/TLS connections;
+ * - stream-based messaging.
  *
  * Created: 2020-06-06
  */
@@ -36,14 +36,9 @@ import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
-//import javax.net.ssl.SSLSocket;
-//import javax.net.ssl.TrustManagerFactory;
 
 public class WebSocket {
 
-//    private int handshakeSoTimeout = WsConnection.DEFAULT_HANDSHAKE_SO_TIMEOUT; // open/close handshake
-//    private int connectionSoTimeout = WsConnection.DEFAULT_CONNECTION_SO_TIMEOUT;
-//    private boolean pingPong = true;
     private WsParameters wsp = new WsParameters();
     private InetAddress bindAddress;
     private final long wsId = (new Thread()).getId();
