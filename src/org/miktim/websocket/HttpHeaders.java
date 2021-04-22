@@ -1,5 +1,5 @@
 /*
- * Headers. Read/write/store http headers. MIT (c) 2020-2021 miktim@mail.ru
+ * HttpHeaders. Read/write/store http headers. MIT (c) 2020-2021 miktim@mail.ru
  *
  * Created: 2020-11-19
  */ 
@@ -14,21 +14,21 @@ import java.net.ProtocolException;
 import java.util.HashMap; // key case sensitive
 import java.util.Set;
 
-class Headers extends HashMap<String, String> {
+public class HttpHeaders extends HashMap<String, String> {
 
     static final String REQUEST_LINE = null;
     static final String STATUS_LINE = REQUEST_LINE;
 
-    Headers() {
+    public HttpHeaders() {
         super();
     }
 
-    Headers set(String key, String value) {
+    public HttpHeaders set(String key, String value) {
         put(key, value);
         return this;
     }
 
-    Headers add(String key, String value) {
+    public HttpHeaders add(String key, String value) {
         String val = get(key);
         if (val == null || val.isEmpty()) {
             put(key, value);
@@ -45,7 +45,7 @@ class Headers extends HashMap<String, String> {
         return hks;
     }
 
-    Headers read(InputStream is) throws IOException {
+    public HttpHeaders read(InputStream is) throws IOException {
         BufferedReader br = new BufferedReader(
                 new InputStreamReader(is));
         String line = br.readLine();
@@ -74,7 +74,7 @@ class Headers extends HashMap<String, String> {
         return this;
     }
 
-    void write(OutputStream os) throws IOException {
+    public void write(OutputStream os) throws IOException {
         StringBuilder sb = (new StringBuilder(get(STATUS_LINE))).append("\r\n");
         for (String hn : keySet()) {
             sb.append(hn).append(": ").append(get(hn)).append("\r\n");

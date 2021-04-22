@@ -73,6 +73,6 @@ Overview:
     see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsStatus.java
 
 Usage example see in:
-  https://github.com/miktim/WebSocket/blob/new/test/WssConnectionTest.java
-  https://github.com/miktim/WebSocket/blob/new/test/WsListenerTest.java
-  https://github.com/miktim/WebSocket/blob/new/test/WssClientTest.java
+  https://github.com/miktim/WebSocket/blob/new/test/websocket/WssConnectionTest.java
+  https://github.com/miktim/WebSocket/blob/new/test/websocket/WsListenerTest.java
+  https://github.com/miktim/WebSocket/blob/new/test/websocket/WssClientTest.java

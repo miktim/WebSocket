@@ -8,7 +8,7 @@ if [ ! -d ${cpath} ]
   else rm -f ${cpath}/*.*
 fi
 javac -Xstdout ./compile.log -Xlint:unchecked -cp .${cpath} -d ./ \
-  ../src${cpath}*.java
+  ../../src${cpath}*.java
 #  WsHandler.java Headers.java WsConnection.java WebSocket.java WsListener.java
 if [ $? -eq 0 ] ; then
   jar cvf ./${jname}.jar .${cpath}/*.class
