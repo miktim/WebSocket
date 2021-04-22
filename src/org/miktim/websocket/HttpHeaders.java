@@ -16,8 +16,8 @@ import java.util.Set;
 
 public class HttpHeaders extends HashMap<String, String> {
 
-    static final String REQUEST_LINE = null;
-    static final String STATUS_LINE = REQUEST_LINE;
+    public static final String REQUEST_LINE = null;
+    public static final String STATUS_LINE = REQUEST_LINE;
 
     public HttpHeaders() {
         super();
