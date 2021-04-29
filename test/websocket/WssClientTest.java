@@ -60,7 +60,7 @@ public class WssClientTest {
             }
 
             @Override
-            public void onError(WsConnection con, Exception e) {
+            public void onError(WsConnection con, Throwable e) {
                 ws_log("Error: " + e.toString() + " " + con.getStatus());
 //                e.printStackTrace();
             }

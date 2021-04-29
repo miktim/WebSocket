@@ -23,7 +23,7 @@ public interface WsHandler {
 
 // onError:
 //   - conn can be null in the listener handler on ServerSocket failure.
-    public void onError(WsConnection conn, Exception e);
+    public void onError(WsConnection conn, Throwable e);
 
     public void onClose(WsConnection conn, WsStatus closeStatus);
 }

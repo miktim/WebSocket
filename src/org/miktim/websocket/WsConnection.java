@@ -273,12 +273,8 @@ public class WsConnection extends Thread {
             startMessaging();
         } catch (Throwable e) {
             closeSocket();
-            Exception e1;
-            if (e instanceof Error)
-                e1 = new Exception(e.toString(), e);
-            else e1 = (Exception) e;
-            status.error = e1;
-            handler.onError(this, e1);
+            status.error = e;
+            handler.onError(this, e);
 //            e.printStackTrace();
             if (isOpen()) {
                 status.code = WsStatus.INTERNAL_ERROR;
@@ -639,9 +635,6 @@ public class WsConnection extends Thread {
             } catch (Exception e) {
 //e.printStackTrace();
                 closeDueTo(WsStatus.INTERNAL_ERROR, e);
-                break;
-            } catch (Error e) {// ???large messages can throw java.lang.OutOfMemoryError
-                closeDueTo(WsStatus.INTERNAL_ERROR, new Exception(e.toString(), e));
                 break;
             }
         }

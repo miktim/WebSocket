@@ -30,7 +30,7 @@ public class WsStatus implements Cloneable {
     public String reason = "";     // closing reason (max length 123 BYTES)
     public boolean clean = false;  // WebSocket closing handshake completed
     public boolean remote = false; // closed remotely
-    public Exception error = null; // closed due to exception
+    public Throwable error = null; // closed due to exception
 
     WsStatus() {
     }

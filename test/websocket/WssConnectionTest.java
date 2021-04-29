@@ -68,7 +68,7 @@ public class WssConnectionTest {
             }
 
             @Override
-            public void onError(WsConnection con, Exception e) {
+            public void onError(WsConnection con, Throwable e) {
                 if (con == null) {
                     ws_log("Listener CRASHED! " + e);
                     e.printStackTrace();
@@ -146,7 +146,7 @@ public class WssConnectionTest {
             }
 
             @Override
-            public void onError(WsConnection con, Exception e) {
+            public void onError(WsConnection con, Throwable e) {
                 ws_log("Client" + con.getId() + " onERROR: "
                         + e + " " + con.getStatus());
 //                e.printStackTrace();

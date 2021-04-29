@@ -50,7 +50,7 @@ public class WsListenerTest implements WsHandler {
             }
 
             @Override
-            public void onError(WsConnection conn, Exception e) {
+            public void onError(WsConnection conn, Throwable e) {
                 if (conn == null) {
                     ws_log("Listener CRASHED! " + e);
                     e.printStackTrace();
@@ -129,7 +129,7 @@ public class WsListenerTest implements WsHandler {
     }
 
     @Override
-    public void onError(WsConnection con, Exception e) {
+    public void onError(WsConnection con, Throwable e) {
         ws_log(listener + " onERROR: "
                 + con.getPath() + " " + e + " " + con.getStatus());
 //                e.printStackTrace();
