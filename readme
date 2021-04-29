@@ -57,7 +57,8 @@ Overview:
 //      Close method notes:
 //        - the closing code outside 1000-4999 is replaced by 1005 (NO_STATUS), the reason is ignored;
 //        - a reason that is longer than 123 bytes is truncated;
-//        - the method blocks outgoing  messages (the send methods throws an IOException);
+//        - the method blocks outgoing messages (the send methods throws an IOException);
+//        - isOpen() returns false;
 //        - incoming messages are available until the closing handshake completed.
       WsStatus getStatus();
       String getSubProtocol(); // returns null or handshaked WebSocket subprotocol

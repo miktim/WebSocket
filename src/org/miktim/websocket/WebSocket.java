@@ -40,7 +40,7 @@ import javax.net.ssl.SSLSocketFactory;
 public class WebSocket {
 
     private WsParameters wsp = new WsParameters();
-    private InetAddress bindAddress;
+    private InetAddress bindAddress = null;
     private final long wsId = (new Thread()).getId();
     private final String listenerPrefix = "WsListener-" + wsId + "-";
     private final String connectionPrefix = "WsConnection-" + wsId + "-";
@@ -52,7 +52,7 @@ public class WebSocket {
     public WebSocket(InetAddress bindAddr) throws Exception {
         super();
         if (NetworkInterface.getByInetAddress(bindAddr) == null) {
-            throw new BindException();
+            throw new BindException("Not interface");
         }
         bindAddress = bindAddr;
     }
@@ -94,7 +94,8 @@ public class WebSocket {
         if (secure && wsp.sslParameters != null) {
             ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
         }
-        serverSocket.bind(makeSocketAddress(port));
+
+        serverSocket.bind(new InetSocketAddress(bindAddress, port));
         serverSocket.setSoTimeout(0);
 
         WsListener listener = new WsListener(serverSocket, handler, secure, wsp);
@@ -134,13 +135,6 @@ public class WebSocket {
         }
     }
 
-    private InetSocketAddress makeSocketAddress(int port) {
-        if (bindAddress == null) {
-            return new InetSocketAddress(port);
-        }
-        return new InetSocketAddress(bindAddress, port);
-    }
-
     public WsConnection connect(String uri, WsHandler handler) throws Exception {
         if (handler == null || uri == null) {
             throw new NullPointerException();
@@ -168,7 +162,9 @@ public class WebSocket {
             isSecure = false;
             socket = new Socket();
         }
-        socket.bind(new InetSocketAddress(bindAddress, 0));
+        if (bindAddress != null) {
+            socket.bind(new InetSocketAddress(bindAddress, 0));
+        }
         int port = requestURI.getPort();
         if (port < 0) {
             port = isSecure ? 443 : 80;
