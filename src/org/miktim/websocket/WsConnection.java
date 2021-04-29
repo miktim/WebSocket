@@ -271,11 +271,15 @@ public class WsConnection extends Thread {
             }
             socket.setSoTimeout(wsp.connectionSoTimeout);
             startMessaging();
-        } catch (Exception e) {
-            status.error = e;
-            handler.onError(this, e);
-//            e.printStackTrace();
+        } catch (Throwable e) {
             closeSocket();
+            Exception e1;
+            if (e instanceof Error)
+                e1 = new Exception(e.toString(), e);
+            else e1 = (Exception) e;
+            status.error = e1;
+            handler.onError(this, e1);
+//            e.printStackTrace();
             if (isOpen()) {
                 status.code = WsStatus.INTERNAL_ERROR;
                 handler.onClose(this, getStatus());
