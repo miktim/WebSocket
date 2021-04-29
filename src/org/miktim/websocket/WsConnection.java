@@ -30,7 +30,7 @@ import javax.net.ssl.SSLSocket;
 
 public class WsConnection extends Thread {
 
-    public static final String VERSION = "2.4.0";
+    public static final String VERSION = "2.4.1";
     private static final String SERVER_AGENT = "WsLite/" + VERSION;
 
     private final Socket socket;
@@ -201,7 +201,8 @@ public class WsConnection extends Thread {
 // - the closing code outside 1000-4999 is replaced by 1005 (NO_STATUS)
 //   and the reason is ignored; 
 // - a reason that is longer than 123 bytes is truncated;
-// - closing the connection blocks outgoing messages (send methods throws IOException);
+// - closing the connection blocks outgoing messages (send methods throw IOException);
+// - isOpen() returns false;
 // - incoming messages are available until the closing handshake completed.
     public void close() {
         close(WsStatus.NO_STATUS, "");
@@ -271,9 +272,14 @@ public class WsConnection extends Thread {
             socket.setSoTimeout(wsp.connectionSoTimeout);
             startMessaging();
         } catch (Exception e) {
+            status.error = e;
             handler.onError(this, e);
 //            e.printStackTrace();
             closeSocket();
+            if (isOpen()) {
+                status.code = WsStatus.INTERNAL_ERROR;
+                handler.onClose(this, getStatus());
+            }
         }
     }
 
