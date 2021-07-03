@@ -10,11 +10,11 @@ import javax.net.ssl.SSLParameters;
 public class WsParameters implements Cloneable {
 
     String[] subProtocols = null; // WebSocket subprotocol[s] in preferred order
-    int handshakeSoTimeout = 30000; // millis, TLS and WebSocket open/close handshake
+    int handshakeSoTimeout = 30000; // millis, TLS and WebSocket open/close handshake timeout
     int connectionSoTimeout = 60000;// millis
-    boolean pingEnabled = true; // if false, connection terminate by socket timeout
+    boolean pingEnabled = true; // if false, connection terminate by connectionSoTimeout
     public static final int MIN_PAYLOAD_BUFFER_LENGTH = 512;
-    int payloadBufferLength = 32768; // bytes 
+    int payloadBufferLength = 32768; // bytes. Outgoing payload length, incoming buffer length. 
     SSLParameters sslParameters;  // TLS parameters
 
     public WsParameters() {

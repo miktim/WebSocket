@@ -3,7 +3,7 @@
  *
  * There are two scenarios for handling connection events:
  * - onError (if SSL/WebSocket handshake or ServerSocket fails);
- * - onOpen - [onMessage, onMessage, ...] - [onError] - onClose.
+ * - onOpen - [onMessage - onMessage - ...] - [onError] - onClose.
  *
  * Created: 2020-03-09
  */
@@ -17,11 +17,13 @@ public interface WsHandler {
     public void onOpen(WsConnection conn, String subProtocol);
 
 // onMessage:
-// - the WebSocket message is represented by an input stream of binary data or UTF-8 characters;
-// - exiting the handler closes the stream.
+//   - the WebSocket message is represented by an input stream of binary data or UTF-8 characters;
+//   - exiting the handler closes the stream.
     public void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text);
 
-// onError:
+// onError (for logging and debugging):
+//   - any error closes the WebSocket connection;
+//   - allocating large buffers may throw an OutOfMemoryError;
 //   - conn can be null in the listener handler on ServerSocket failure.
     public void onError(WsConnection conn, Throwable e);
 

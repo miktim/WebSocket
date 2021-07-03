@@ -154,7 +154,7 @@ public class WsConnection extends Thread {
 
         private final Reader rd;
         private int c = 0;
-    
+
         public ReaderInputStream(Reader reader) {
             super();
             this.rd = reader;
@@ -398,27 +398,26 @@ public class WsConnection extends Thread {
                 (key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").getBytes()));
     }
 
+    private static final byte[] B64_BYTES = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".getBytes();
+
     public static String base64Encode(byte[] b) {
-        final byte[] chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".getBytes();
-        int i = 0;
-        int l = 0;
-        byte[] b64 = new byte[((b.length + 2) / 3 * 4)];
-        Arrays.fill(b64, (byte) '=');
-        while (i < b.length) {
-            int k = Math.min(3, b.length - i);
+        byte[] s = new byte[((b.length + 2) / 3 * 4)];
+        int bi = 0;
+        int si = 0;
+        while (bi < b.length) {
+            int k = Math.min(3, b.length - bi);
             int bits = 0;
-            int shift = 16;
-            for (int j = 0; j < k; j++) {
-                bits += ((b[i++] & 0xFF) << shift);
-                shift -= 8;
+            for (int j = 0, shift = 16; j < k; j++, shift -= 8) {
+                bits += ((b[bi++] & 0xFF) << shift);
             }
-            shift = 18;
-            for (int j = 0; j <= k; j++) {
-                b64[l++] = chars[(bits >> shift) & 0x3F];
-                shift -= 6;
+            for (int j = 0, shift = 18; j <= k; j++, shift -= 6) {
+                s[si++] = B64_BYTES[(bits >> shift) & 0x3F];
             }
         }
-        return new String(b64);
+        while (si < s.length) {
+            s[si++] = (byte) '=';
+        }
+        return new String(s);
     }
 
     static final int OP_FINAL = 0x80;
