@@ -8,7 +8,10 @@ Release notes:
   - supports TLS connections (without client auth and tunneling);
   - stream-based messaging (incoming WebSocket messages are represented by input streams).
 
+package org.miktim.websocket
+
 Overview:
+
   Class WebSocket:
     Constructors:
       WebSocket() throws Exception;
@@ -34,7 +37,7 @@ Overview:
   Class WsParameters:
     see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsParameters.java
 
-  Class WsListener (extends Thread, is created with current WebSocket parameters):
+  Class WsListener extends Thread: (is created with current WebSocket parameters):
     Methods:
       boolean isOpen();
       boolean isSecure();
@@ -43,7 +46,7 @@ Overview:
       void close(); // also closes all associated connections (close code 1001)
       void close(String closeReason);
 
-  Class WsConnection (extends Thread, is created with current WebSocket/WsListener parameters):
+  Class WsConnection extends Thread (is created with current WebSocket/WsListener parameters):
     Constants:
       String VERSION = "2.4.1";
 
