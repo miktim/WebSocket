@@ -37,7 +37,7 @@ Overview:
   Class WsParameters:
     see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsParameters.java
 
-  Class WsListener extends Thread: (is created with current WebSocket parameters):
+  Class WsListener extends Thread (is created with current WebSocket parameters):
     Methods:
       boolean isOpen();
       boolean isSecure();

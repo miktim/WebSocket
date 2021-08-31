@@ -11,36 +11,42 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.ProtocolException;
-import java.util.HashMap; // key case sensitive
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
-public class HttpHeaders extends HashMap<String, String> {
+public class HttpHeaders {
 
-    public static final String REQUEST_LINE = null;
+    public static final String REQUEST_LINE = "Request-Or-Status-Line";
     public static final String STATUS_LINE = REQUEST_LINE;
+    
+    // keys are case-insensitive
+    private final Map<String, String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
     public HttpHeaders() {
-        super();
     }
-
+ 
     public HttpHeaders set(String key, String value) {
-        put(key, value);
+        headers.put(key, value);
         return this;
     }
 
     public HttpHeaders add(String key, String value) {
-        String val = get(key);
+        String val = headers.get(key);
         if (val == null || val.isEmpty()) {
-            put(key, value);
+            headers.put(key, value);
         } else {
-            put(key, val + "," + value);
+            headers.put(key, val + "," + value);
         }
         return this;
     }
-
-    @Override
+    
+    public String get(String key) {
+        return headers.get(key);
+    }
+    
     public Set<String> keySet() {
-        Set<String> hks = super.keySet();
+        Set<String> hks = headers.keySet();
         hks.remove(REQUEST_LINE);
         return hks;
     }
@@ -65,7 +71,7 @@ public class HttpHeaders extends HashMap<String, String> {
                 break;
             }
             if (line.startsWith(" ") || line.startsWith("\t")) { // continued
-                put(key, get(key) + line.trim());
+                headers.put(key, headers.get(key) + line.trim());
                 continue;
             }
             key = line.substring(0, line.indexOf(":"));
@@ -75,9 +81,9 @@ public class HttpHeaders extends HashMap<String, String> {
     }
 
     public void write(OutputStream os) throws IOException {
-        StringBuilder sb = (new StringBuilder(get(STATUS_LINE))).append("\r\n");
+        StringBuilder sb = (new StringBuilder(headers.get(STATUS_LINE))).append("\r\n");
         for (String hn : keySet()) {
-            sb.append(hn).append(": ").append(get(hn)).append("\r\n");
+            sb.append(hn).append(": ").append(headers.get(hn)).append("\r\n");
         }
         sb.append("\r\n");
         os.write(sb.toString().getBytes());
