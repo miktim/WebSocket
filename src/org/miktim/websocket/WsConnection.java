@@ -285,34 +285,34 @@ public class WsConnection extends Thread {
 
     private void handshakeClient()
             throws IOException, URISyntaxException, NoSuchAlgorithmException {
-        HttpHeaders peerHeaders = (new HttpHeaders()).read(inStream);
-        String[] parts = peerHeaders.get(HttpHeaders.REQUEST_LINE).split(" ");
+        HttpHead requestHead = (new HttpHead()).read(inStream);
+        String[] parts = requestHead.get(HttpHead.START_LINE).split(" ");
         this.requestURI = new URI(parts[1]);
-        String upgrade = peerHeaders.get("Upgrade");
-        String key = peerHeaders.get("Sec-WebSocket-Key");
+        String upgrade = requestHead.get("Upgrade");
+        String key = requestHead.get("Sec-WebSocket-Key");
 
-        HttpHeaders responseHeaders = (new HttpHeaders()).set("Server", SERVER_AGENT);
+        HttpHead responseHead = (new HttpHead()).set("Server", SERVER_AGENT);
         if (parts[0].equals("GET")
                 && upgrade != null && upgrade.equals("websocket")
                 && key != null) {
-            setSubprotocol(peerHeaders.get("Sec-WebSocket-Protocol"), responseHeaders);
-            responseHeaders
-                    .set(HttpHeaders.STATUS_LINE, "HTTP/1.1 101 Upgrade")
+            setSubprotocol(requestHead.get("Sec-WebSocket-Protocol"), responseHead);
+            responseHead
+                    .set(HttpHead.START_LINE, "HTTP/1.1 101 Upgrade")
                     .set("Upgrade", "websocket")
                     .set("Connection", "Upgrade,keep-alive")
                     .set("Sec-WebSocket-Accept", sha1Hash(key))
                     .set("Sec-WebSocket-Version", "13")
                     .write(outStream);
         } else {
-            responseHeaders
-                    .set(HttpHeaders.STATUS_LINE, "HTTP/1.1 400 Bad Request")
+            responseHead
+                    .set(HttpHead.START_LINE, "HTTP/1.1 400 Bad Request")
                     .set("Connection", "close")
                     .write(outStream);
             throw new ProtocolException("WebSocket handshake failed");
         }
     }
 
-    private void setSubprotocol(String requestedSubps, HttpHeaders rs) {
+    private void setSubprotocol(String requestedSubps, HttpHead rs) {
         if (requestedSubps == null || wsp.subProtocols == null) {
             return;
         }
@@ -342,8 +342,8 @@ public class WsConnection extends Thread {
         String host = requestURI.getHost()
                 + (requestURI.getPort() > 0 ? ":" + requestURI.getPort() : "");
 //        host = (new URI(host)).toASCIIString(); // URISyntaxException on IP addr
-        HttpHeaders requestHeaders = (new HttpHeaders())
-                .set(HttpHeaders.REQUEST_LINE, "GET " + requestPath + " HTTP/1.1")
+        HttpHead requestHead = (new HttpHead())
+                .set(HttpHead.START_LINE, "GET " + requestPath + " HTTP/1.1")
                 .set("Host", host)
                 .set("Origin", requestURI.getScheme() + "://" + host)
                 .set("Upgrade", "websocket")
@@ -352,14 +352,14 @@ public class WsConnection extends Thread {
                 .set("Sec-WebSocket-Version", "13")
                 .set("User-Agent", SERVER_AGENT);
         if (wsp.subProtocols != null) {
-            requestHeaders.set("Sec-WebSocket-Protocol", wsp.join(wsp.subProtocols));
+            requestHead.set("Sec-WebSocket-Protocol", wsp.join(wsp.subProtocols));
         }
-        requestHeaders.write(outStream);
+        requestHead.write(outStream);
 
-        HttpHeaders peerHeaders = (new HttpHeaders()).read(inStream);
-        this.subProtocol = peerHeaders.get("Sec-WebSocket-Protocol");
-        if (!(peerHeaders.get(HttpHeaders.REQUEST_LINE).split(" ")[1].equals("101")
-                && peerHeaders.get("Sec-WebSocket-Accept").equals(sha1Hash(key))
+        HttpHead responseHead = (new HttpHead()).read(inStream);
+        this.subProtocol = responseHead.get("Sec-WebSocket-Protocol");
+        if (!(responseHead.get(HttpHead.START_LINE).split(" ")[1].equals("101")
+                && responseHead.get("Sec-WebSocket-Accept").equals(sha1Hash(key))
                 && checkSubprotocol())) {
             throw new ProtocolException("WebSocket handshake failed");
         }

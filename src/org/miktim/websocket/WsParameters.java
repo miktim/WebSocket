@@ -11,7 +11,7 @@ public class WsParameters implements Cloneable {
 
     String[] subProtocols = null; // WebSocket subprotocol[s] in preferred order
     int handshakeSoTimeout = 30000; // millis, TLS and WebSocket open/close handshake timeout
-    int connectionSoTimeout = 60000;// millis
+    int connectionSoTimeout = 60000;// millis, data exchange timeout
     boolean pingEnabled = true; // if false, connection terminate by connectionSoTimeout
     public static final int MIN_PAYLOAD_BUFFER_LENGTH = 512;
     int payloadBufferLength = 32768; // bytes. Outgoing payload length, incoming buffer length. 
@@ -21,7 +21,7 @@ public class WsParameters implements Cloneable {
         sslParameters = new SSLParameters();
         sslParameters.setNeedClientAuth(false);
     }
-
+    
     public void setSubProtocols(String[] subps) {
         if (subps == null || subps.length == 0) {
             subProtocols = null;

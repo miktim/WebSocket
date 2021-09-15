@@ -6,7 +6,8 @@ Release notes:
   - supported WebSocket version: 13;
   - WebSocket extensions not supported;
   - supports TLS connections (without client auth and tunneling);
-  - stream-based messaging (incoming WebSocket messages are represented by input streams).
+  - stream-based messaging (incoming WebSocket messages are represented by input streams);
+  - includes the org.miktim.http.HttpHead package.
 
 package org.miktim.websocket
 

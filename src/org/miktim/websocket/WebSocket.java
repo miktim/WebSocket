@@ -95,6 +95,7 @@ public class WebSocket {
             ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
         }
 
+        serverSocket.setReuseAddress(true);
         serverSocket.bind(new InetSocketAddress(bindAddress, port));
         serverSocket.setSoTimeout(0);
 
@@ -162,9 +163,8 @@ public class WebSocket {
             isSecure = false;
             socket = new Socket();
         }
-        if (bindAddress != null) {
-            socket.bind(new InetSocketAddress(bindAddress, 0));
-        }
+        socket.setReuseAddress(true);
+        socket.bind(new InetSocketAddress(bindAddress, 0));
         int port = requestURI.getPort();
         if (port < 0) {
             port = isSecure ? 443 : 80;
