@@ -30,7 +30,7 @@ import javax.net.ssl.SSLSocket;
 
 public class WsConnection extends Thread {
 
-    public static final String VERSION = "2.4.1";
+    public static final String VERSION = "2.4.2";
     private static final String SERVER_AGENT = "WsLite/" + VERSION;
 
     private final Socket socket;
@@ -59,6 +59,7 @@ public class WsConnection extends Thread {
 
 // send UTF-8 text
     public void send(String message) throws IOException {
+//        syncSend(new ByteArrayInputStream(message.getBytes(StandardCharsets.UTF_8)), true);
         syncSend(new ReaderInputStream(new StringReader(message)), true);
     }
 
@@ -95,7 +96,7 @@ public class WsConnection extends Thread {
         if (isSecure) {
             try {
                 sslp = ((SSLSocket) socket).getSSLParameters();
-                sslp.setProtocols(new String[]{
+                sslp.setProtocols(new String[]{ // ??? already defined
                     ((SSLSocket) socket).getSession().getProtocol()});
                 sslp.setCipherSuites(new String[]{
                     ((SSLSocket) socket).getSession().getCipherSuite()});
@@ -150,10 +151,13 @@ public class WsConnection extends Thread {
         return null;
     }
 
-    public class ReaderInputStream extends InputStream {
+    class ReaderInputStream extends InputStream {
 
         private final Reader rd;
-        private int c = 0;
+        private final char[] cbuf = new char[512];
+        private byte[] bbuf = new byte[0];
+        private int boff = 0;
+        private int eof = 0;
 
         public ReaderInputStream(Reader reader) {
             super();
@@ -162,15 +166,16 @@ public class WsConnection extends Thread {
 
         @Override
         public int read() throws IOException {
-            if (c < 0x100) {
-                while ((c = rd.read()) != -1) {
-                    return c > 0xFF ? (c >> 8) : c;
+            do {
+                if (boff < bbuf.length) {
+                    return bbuf[boff++];
                 }
-                c = 0; // prevent eof from being recognized as char
-                return -1; // eof
-            }
-            c &= 0xFF;
-            return c;
+                if ((eof = rd.read(cbuf)) > 0) {
+                    bbuf = (new String(cbuf, 0, eof)).getBytes(StandardCharsets.UTF_8);
+                    boff = 0;
+                }
+            } while (eof != -1);
+            return eof;
         }
 
         @Override

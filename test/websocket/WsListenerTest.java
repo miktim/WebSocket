@@ -114,7 +114,11 @@ public class WsListenerTest implements WsHandler {
             return;
         }
         try {
-            con.send("Hello Browser!");
+            if (con.getPath().endsWith("1")) {
+                con.send("Привет Браузер!");
+            } else {
+                con.send("Hello Browser!");
+            }
         } catch (IOException e) {
             ws_log("Listener" + con.getId() + " onOPEN: " + con.getPath()
                     + " send error: " + e);

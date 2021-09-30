@@ -52,6 +52,7 @@ public class WssClientTest {
             @Override
             public void onOpen(WsConnection con, String subp) {
                 ws_log("Connected. " + con.getSSLSessionProtocol());
+                WsParameters wsp = con.getParameters(); // debug
             }
 
             @Override

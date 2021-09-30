@@ -132,7 +132,7 @@ public class WssConnectionTest {
                         + " onOPEN: " + makePath(con)
                         + " Peer: " + con.getPeerHost());
                 try {
-                    con.send("Hello Listener!");
+                    con.send("Привет Листенер!");
                 } catch (IOException e) {
                     ws_log("Client" + con.getId() + " onOPEN: send error: "
                             + e + " " + con.getStatus());

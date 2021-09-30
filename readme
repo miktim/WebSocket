@@ -6,8 +6,7 @@ Release notes:
   - supported WebSocket version: 13;
   - WebSocket extensions not supported;
   - supports TLS connections (without client auth and tunneling);
-  - stream-based messaging (incoming WebSocket messages are represented by input streams);
-  - includes the org.miktim.http.HttpHead package.
+  - stream-based messaging (incoming WebSocket messages are represented by input streams).
 
 package org.miktim.websocket
 
@@ -49,7 +48,7 @@ Overview:
 
   Class WsConnection extends Thread (is created with current WebSocket/WsListener parameters):
     Constants:
-      String VERSION = "2.4.1";
+      String VERSION = "2.4.2";
 
     Methods:
       void setHandler(WsHandler handler); // calls onOpen in the new handler without notifying the old handler
