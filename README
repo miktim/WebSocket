@@ -1,0 +1,83 @@
+# Java SE WebSocket listener/connector,  MIT (c) 2020-2021 miktim@mail.ru
+
+Release notes:
+  - Java SE 7+, Android compatible;
+  - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
+  - supported WebSocket version: 13;
+  - WebSocket extensions not supported;
+  - supports TLS connections (without client auth and tunneling);
+  - stream-based messaging (incoming WebSocket messages are represented by input streams).
+
+package org.miktim.websocket
+
+Overview:
+
+  Class WebSocket:
+    Constructors:
+      WebSocket() throws Exception;
+      WebSocket(InetAddress bindAddr) throws Exception;
+
+    Methods:
+      static void setKeyStore(String keyFilePath, String passphrase); // set jvm keyStore (listener)
+      static void setTrustStore(String keyFilePath, String passphrase); // set jvm trustStore (client)
+
+      WsParameters getParameters();
+      void setParameters(WsParameters wsp);
+      WsListener listen(int port, WsHandler handler) throws Exception; 
+      WsListener listenSafely(int port, WsHandler handler) throws Exception;
+      WsConnection connect(String uri, WsHahdler handler) throws Exception;
+      WsListener[] listListeners();
+      WsConnection[] listConnections();
+      void closeAll(); // close code 1001 (GOING_AWAY)
+      void closeAll(String closeReason);
+
+  Interface WsHandler:
+    see ./src/org/miktim/websocket/WsHandler.java
+
+  Class WsParameters:
+    see ./src/org/miktim/websocket/WsParameters.java
+
+  Class WsListener extends Thread (is created with current WebSocket parameters):
+    Methods:
+      boolean isOpen();
+      boolean isSecure();
+      WsParameters getParameters();
+      WsConnection[] listConnections(); 
+      void close(); // also closes all associated connections (close code 1001)
+      void close(String closeReason);
+
+  Class WsConnection extends Thread (is created with current WebSocket/WsListener parameters):
+    Constants:
+      String VERSION = "2.4.2";
+
+    Methods:
+      void setHandler(WsHandler handler); // calls onOpen in the new handler without notifying the old handler
+      void send(Reader rd) throws IOExceptions;     // send UTF-8 text
+      void send(InputStream is) throws IOException; // send binary data
+      void send(String message) throws IOException; // send UTF-8 text
+      void send(byte[] message) throws IOException; // send binary data
+      void close(); // close without status code (NO_STATUS)
+      void close(int statusCode, String reason); 
+//      Close method notes:
+//        - the closing code outside 1000-4999 is replaced by 1005 (NO_STATUS), the reason is ignored;
+//        - a reason that is longer than 123 bytes is truncated;
+//        - the method blocks outgoing messages (send methods throw IOException);
+//        - isOpen() returns false;
+//        - incoming messages are available until the closing handshake completed.
+      WsStatus getStatus();
+      String getSubProtocol(); // returns null or handshaked WebSocket subprotocol
+      boolean isOpen();     // WebSocket connection is open
+      boolean isSecure();   // is TLS connection
+      String getPeerHost(); // returns remote host name
+      int getPort() // returns bound/connected port
+      String getPath();  // returns http request path or null
+      String getQuery(); // returns http request query or null
+      WsParameters getParameters();
+
+  Class WsStatus:
+    see ./src/org/miktim/websocket/WsStatus.java
+
+Usage examples see in:
+  ./test/websocket/WssConnectionTest.java
+  ./test/websocket/WsListenerTest.java
+  ./test/websocket/WssClientTest.java
