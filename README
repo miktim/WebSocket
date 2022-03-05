@@ -32,10 +32,10 @@ Overview:
       void closeAll(String closeReason);
 
   Interface WsHandler:
-    see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsHandler.java
+    see ./src/org/miktim/websocket/WsHandler.java
 
   Class WsParameters:
-    see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsParameters.java
+    see ./src/org/miktim/websocket/WsParameters.java
 
   Class WsListener extends Thread (is created with current WebSocket parameters):
     Methods:
@@ -75,9 +75,9 @@ Overview:
       WsParameters getParameters();
 
   Class WsStatus:
-    see https://github.com/miktim/WsServer/blob/new/src/org/miktim/websocket/WsStatus.java
+    see ./src/org/miktim/websocket/WsStatus.java
 
-Usage example see in:
-  https://github.com/miktim/WebSocket/blob/new/test/websocket/WssConnectionTest.java
-  https://github.com/miktim/WebSocket/blob/new/test/websocket/WsListenerTest.java
-  https://github.com/miktim/WebSocket/blob/new/test/websocket/WssClientTest.java
+Usage examples see in:
+  ./test/websocket/WssConnectionTest.java
+  ./test/websocket/WsListenerTest.java
+  ./test/websocket/WssClientTest.java
