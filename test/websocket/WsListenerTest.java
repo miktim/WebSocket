@@ -1,5 +1,5 @@
 /*
- * WebSocket WsListener test. MIT (c) 2020-2021 miktim@mail.ru
+ * WebSocket WsListener test. MIT (c) 2020-2023 miktim@mail.ru
  * Created: 2020-03-09
  */
 
@@ -57,7 +57,7 @@ public class WsListenerTest implements WsHandler {
                 } else {
                     ws_log("Listener" + conn.getId() + " onERROR: "
                             + conn.getPath() + " " + e + " " + conn.getStatus());
-//                e.printStackTrace();
+                    e.printStackTrace();
                 }
             }
         };
@@ -65,13 +65,12 @@ public class WsListenerTest implements WsHandler {
 /// create WebSocket "bound" to 127.0.0.1
         final WebSocket webSocket
                 = new WebSocket(InetAddress.getByName("localhost"));
-        WsParameters wsp = webSocket.getParameters();
+        WsParameters wsp = new WsParameters();
 // set WebSocket parameters: ping timeout and supported subProtocols
         wsp.setConnectionSoTimeout(1000, true); // ping on 1 second timeout
         wsp.setSubProtocols(WEBSOCKET_SUBPROTOCOLS.split(","));
-        webSocket.setParameters(wsp);
 // create and start listener on 8080 port binded to 127.0.0.1
-        final WsListener listener = webSocket.listen(8080, listenerHandler);
+        final WsListener listener = webSocket.listen(8080, listenerHandler, wsp);
 // init shutdown timer
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
@@ -104,6 +103,7 @@ public class WsListenerTest implements WsHandler {
     @Override
     public void onOpen(WsConnection con, String subp) {
         listener = "Listener" + con.getId();
+        String hello = "Hello, Browser! Привет, Браузер! ";
         ws_log(listener + " onOPEN: " + con.getPath()
                 + (con.getQuery() == null ? "" : "?" + con.getQuery())
                 + " Peer: " + con.getPeerHost()
@@ -114,15 +114,11 @@ public class WsListenerTest implements WsHandler {
             return;
         }
         try {
-            if (con.getPath().endsWith("1")) {
-                con.send("Привет Браузер!");
-            } else {
-                con.send("Hello Browser!");
-            }
+            con.send(hello);
         } catch (IOException e) {
             ws_log("Listener" + con.getId() + " onOPEN: " + con.getPath()
                     + " send error: " + e);
-//                    e.printStackTrace();
+            e.printStackTrace();
         }
     }
 

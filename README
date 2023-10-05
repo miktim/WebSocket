@@ -1,43 +1,78 @@
-# Java SE WebSocket listener/connector,  MIT (c) 2020-2021 miktim@mail.ru
+# Java SE WebSocket client/server,  MIT (c) 2020-2023 miktim@mail.ru
 
 Release notes:
   - Java SE 7+, Android compatible;
   - in accordance with RFC-6455: https://tools.ietf.org/html/rfc6455;
   - supported WebSocket version: 13;
-  - WebSocket extensions not supported;
+  - WebSocket extensions are not supported;
   - supports TLS connections (without client auth and tunneling);
-  - stream-based messaging (incoming WebSocket messages are represented by input streams).
+  - stream-based messaging (incoming WebSocket messages are represented by input streams);
+  - Internationalized Domain Names (IDNs) are not supported yet.
 
 package org.miktim.websocket
 
 Overview:
 
   Class WebSocket:
+    Constant:
+      static String VERSION = "3.1.0";
     Constructors:
-      WebSocket() throws Exception;
-      WebSocket(InetAddress bindAddr) throws Exception;
-
+      WebSocket() throws NoSuchAlgorithmException; // check if SHA1 exists
+      WebSocket(InetAddress bindAddr)
+         throws SocketException, NoSuchAlgorithmException;
     Methods:
-      static void setKeyStore(String keyFilePath, String passphrase); // set jvm keyStore (listener)
-      static void setTrustStore(String keyFilePath, String passphrase); // set jvm trustStore (client)
+      static void setKeyStore(String keyFilePath, String passphrase); 
+    //  set jvm keyStore (listener)
+      static void setTrustStore(String keyFilePath, String passphrase);
+    //  set jvm trustStore (client)
 
-      WsParameters getParameters();
-      void setParameters(WsParameters wsp);
-      WsListener listen(int port, WsHandler handler) throws Exception; 
-      WsListener listenSafely(int port, WsHandler handler) throws Exception;
-      WsConnection connect(String uri, WsHahdler handler) throws Exception;
+      WsListener listen(int port, WsHandler handler, WsParameters wsp)
+         throws IOException, GeneralSecurityException; // serve plain connections 
+      WsListener listenSafely(int port, WsHandler handler, WsParameters wsp)
+         throws IOException, GeneralSecurityException; // serve TLS connections
+      WsConnection connect(String uri, WsHahdler handler, WsParameters wsp)
+         throws URISyntaxException, IOException, GeneralSecurityException;
       WsListener[] listListeners();
       WsConnection[] listConnections();
       void closeAll(); // close code 1001 (GOING_AWAY)
-      void closeAll(String closeReason);
+      void closeAll(String closeReason); // close code 1001 (GOING_AWAY)
 
   Interface WsHandler:
-    see ./src/org/miktim/websocket/WsHandler.java
+    There are two scenarios for handling connection events:
+      - onError (if SSL/WebSocket handshake or ServerSocket fails);
+      - onOpen - [onMessage - onMessage - ...] - [onError] - onClose.
+
+    Methods:
+      void onOpen(WsConnection conn, String subProtocol);
+    // - the second argument is the negotiated WebSocket subprotocol or null.    
+      void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text);
+    // - input stream of binary data or UTF-8 encoded text
+    // - exiting the handler closes the stream (not connection!).
+      void onError(WsConnection conn, Throwable e);
+    // - any exception closes the WebSocket connection;
+    // - allocating large buffers may throw an OutOfMemoryError;
+    // - conn can be null in the listener handler on ServerSocket failure.
+      void onClose(WsConnection conn, WsStatus closeStatus);
 
   Class WsParameters:
-    see ./src/org/miktim/websocket/WsParameters.java
+    Constructor:
+      WsParameters();
+    Methods:
+      void setSubProtocols(String[] subps); // WebSocket subProtocols
+      String[] getSubProtocols();
+      void setHandshakeSoTimeout(int millis);
+      int getHandshakeSoTimeout();
+      void setConnectionSoTimeout(int millis, boolean pingEnabled)
+      int getConnectionSoTimeout();
+      boolean isPingEnabled();
+      void setPayloadBufferLength(int len); // min len = 126 bytes
+      int getPayloadBufferLength();
+      void setSSLParameters(SSLParameters sslParms);
+      SSLParameters getSSLParameters();
 
-  Class WsListener extends Thread (is created with current WebSocket parameters):
+      String join(Object[] array, char delimiter);
+
+  Class WsListener extends Thread:
     Methods:
       boolean isOpen();
       boolean isSecure();
@@ -46,36 +81,39 @@ Overview:
       void close(); // also closes all associated connections (close code 1001)
       void close(String closeReason);
 
-  Class WsConnection extends Thread (is created with current WebSocket/WsListener parameters):
-    Constants:
-      String VERSION = "2.4.2";
-
+  Class WsConnection extends Thread:
     Methods:
-      void setHandler(WsHandler handler); // calls onOpen in the new handler without notifying the old handler
-      void send(Reader rd) throws IOExceptions;     // send UTF-8 text
-      void send(InputStream is) throws IOException; // send binary data
-      void send(String message) throws IOException; // send UTF-8 text
+      void send(InputStream is, boolean isUTF8Text) throws IOException; 
+    // sending data in binary format or UTF-8 encoded text
+      void send(String message) throws IOException; // send text
       void send(byte[] message) throws IOException; // send binary data
       void close(); // close without status code (NO_STATUS)
       void close(int statusCode, String reason); 
-//      Close method notes:
-//        - the closing code outside 1000-4999 is replaced by 1005 (NO_STATUS), the reason is ignored;
-//        - a reason that is longer than 123 bytes is truncated;
-//        - the method blocks outgoing messages (send methods throw IOException);
-//        - isOpen() returns false;
-//        - incoming messages are available until the closing handshake completed.
+    // - the closing code outside 1000-4999 will be replaced with 1005 (NO_STATUS),
+    //   the reason is ignored;
+    // - a reason that is longer than 123 BYTES is truncated;
+    // - the method blocks outgoing messages (sending methods throw IOException);
+    // - isOpen() returns false;
+    // - incoming messages are available until the closing handshake completed.
+      void setHandler(WsHandler handler); 
+    // calls onClose in the old handler, then calls onOpen in the new handler
       WsStatus getStatus();
       String getSubProtocol(); // returns null or handshaked WebSocket subprotocol
       boolean isOpen();     // WebSocket connection is open
-      boolean isSecure();   // is TLS connection
+      boolean isSecure();   // is TLS connection?
       String getPeerHost(); // returns remote host name
-      int getPort() // returns bound/connected port
+      int getPort()      // returns connected port
       String getPath();  // returns http request path or null
       String getQuery(); // returns http request query or null
       WsParameters getParameters();
 
   Class WsStatus:
-    see ./src/org/miktim/websocket/WsStatus.java
+    Parameters:
+      int code;         // closing code (1000-4999)
+      String reason;    // closing reason (max length 123 BYTES)
+      boolean wasClean; // WebSocket closing handshake completed cleanly
+      boolean remotely; // closed remotely
+      Throwable error;  // closed due to an exception
 
 Usage examples see in:
   ./test/websocket/WssConnectionTest.java

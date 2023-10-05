@@ -1,5 +1,5 @@
 /*
- * WebSocket. MIT (c) 2020-2021 miktim@mail.ru
+ * WebSocket. MIT (c) 2020-2023 miktim@mail.ru
  *
  * Creates ServerSocket/Socket (bind, connect).
  * Creates and starts listener/connection threads.
@@ -18,17 +18,23 @@ package org.miktim.websocket;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -38,25 +44,23 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
 public class WebSocket {
-
-    private WsParameters wsp = new WsParameters();
+    public static String VERSION = "3.1.0";
     private InetAddress bindAddress = null;
-    private final long wsId = (new Thread()).getId();
-    private final String listenerPrefix = "WsListener-" + wsId + "-";
-    private final String connectionPrefix = "WsConnection-" + wsId + "-";
+    private final List<Object> connections = Collections.synchronizedList(new ArrayList<>());
+    private final List<Object> listeners = Collections.synchronizedList(new ArrayList<>());
 
     public WebSocket() throws NoSuchAlgorithmException {
-        MessageDigest.getInstance("SHA-1"); // check algorithm present
+        MessageDigest.getInstance("SHA-1"); // check algorithm exists
     }
 
-    public WebSocket(InetAddress bindAddr) throws Exception {
+    public WebSocket(InetAddress bindAddr) throws SocketException {
         super();
         if (NetworkInterface.getByInetAddress(bindAddr) == null) {
             throw new BindException("Not interface");
         }
         bindAddress = bindAddr;
     }
-
+    
     public static void setTrustStore(String jksFile, String passphrase) {
         System.setProperty("javax.net.ssl.trustStore", jksFile);
         System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
@@ -66,7 +70,7 @@ public class WebSocket {
         System.setProperty("javax.net.ssl.keyStore", jksFile);
         System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
-
+/*
     public void setParameters(WsParameters parm) throws CloneNotSupportedException {
         this.wsp = parm.clone();
     }
@@ -74,17 +78,19 @@ public class WebSocket {
     public WsParameters getParameters() {
         return this.wsp;
     }
-
-    public WsListener listen(int port, WsHandler handler) throws Exception {
-        return startListener(port, handler, false);
+*/
+    public WsListener listen(int port, WsHandler handler, WsParameters wsp)
+            throws IOException, GeneralSecurityException {
+        return startListener(port, handler, false, wsp);
     }
 
-    public WsListener listenSafely(int port, WsHandler handler) throws Exception {
-        return startListener(port, handler, true);
+    public WsListener listenSafely(int port, WsHandler handler, WsParameters wsp)
+            throws IOException, GeneralSecurityException  {
+        return startListener(port, handler, true, wsp);
     }
 
-    WsListener startListener(int port, WsHandler handler, boolean secure)
-            throws Exception {
+    WsListener startListener(int port, WsHandler handler, boolean secure, WsParameters wsp)
+            throws IOException, GeneralSecurityException {
         if (handler == null) {
             throw new NullPointerException();
         }
@@ -99,14 +105,16 @@ public class WebSocket {
         serverSocket.bind(new InetSocketAddress(bindAddress, port));
         serverSocket.setSoTimeout(0);
 
-        WsListener listener = new WsListener(serverSocket, handler, secure, wsp);
-        listener.setName(listenerPrefix + listener.getId());
+        WsListener listener = new WsListener(
+                serverSocket, handler, secure, wsp);
+        listener.listeners = listeners;
         listener.start();
         return listener;
     }
 
 // https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/sockets/server/ClassFileServer.java
-    private ServerSocketFactory getServerSocketFactory(boolean isSecure) throws Exception {
+    private ServerSocketFactory getServerSocketFactory(boolean isSecure) 
+            throws IOException, GeneralSecurityException {
 //            throws NoSuchAlgorithmException, KeyStoreException,
 //            FileNotFoundException, IOException, CertificateException,
 //            UnrecoverableKeyException {
@@ -136,7 +144,8 @@ public class WebSocket {
         }
     }
 
-    public WsConnection connect(String uri, WsHandler handler) throws Exception {
+    public WsConnection connect(String uri, WsHandler handler, WsParameters wsp)
+        throws IOException, GeneralSecurityException, URISyntaxException {
         if (handler == null || uri == null) {
             throw new NullPointerException();
         }
@@ -173,17 +182,17 @@ public class WebSocket {
                 new InetSocketAddress(requestURI.getHost(), port), wsp.handshakeSoTimeout);
 
         WsConnection conn = new WsConnection(socket, handler, requestURI, wsp);
-        conn.setName(connectionPrefix + conn.getId());
+        conn.connections = this.connections;
         conn.start();
         return conn;
     }
 
     public WsConnection[] listConnections() {
-        return WsListener.listByPrefix(WsConnection.class, connectionPrefix);
+        return connections.toArray(new WsConnection[0]);
     }
 
     public WsListener[] listListeners() {
-        return WsListener.listByPrefix(WsListener.class, listenerPrefix);
+        return listeners.toArray(new WsListener[0]);
     }
 
     public void closeAll(String closeReason) {

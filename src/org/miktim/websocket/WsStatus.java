@@ -28,27 +28,25 @@ public class WsStatus implements Cloneable {
 
     public int code = GOING_AWAY;  // closing code (1000-4999)
     public String reason = "";     // closing reason (max length 123 BYTES)
-    public boolean clean = false;  // WebSocket closing handshake completed
-    public boolean remote = false; // closed remotely
+    public boolean wasClean = false;  // WebSocket closing handshake completed
+    public boolean remotely = false; // closed remotely
     public Throwable error = null; // closed due to exception
 
     WsStatus() {
     }
 
-    @Override
-    public WsStatus clone() {
-        WsStatus clone = this;
-        try {
-            clone = (WsStatus) super.clone();
-        } catch (CloneNotSupportedException ex) {
-        }
-        return clone;
+    WsStatus(WsStatus wss) {
+        code = wss.code;
+        reason = wss.reason;
+        wasClean = wss.wasClean;
+        remotely = wss.remotely;
+        error = wss.error;
     }
 
     @Override
     public String toString() {
-        return String.format("WsStatus(%d,\"%s\",%s%s)",
-                code, reason, clean, (remote ? ",remotely" : ""));
+        return String.format("WsStatus(%d,\"%s\",%s,%s)",
+                code, reason, wasClean, (remotely ? "remotely" : "locally"));
     }
 
 }

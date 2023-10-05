@@ -12,20 +12,17 @@ package org.miktim.websocket;
 import java.io.InputStream;
 
 public interface WsHandler {
-// onOpen:
-//   - the second argument is the negotiated WebSocket subprotocol or null.    
     public void onOpen(WsConnection conn, String subProtocol);
+//   - the second argument is the negotiated WebSocket subprotocol or null.    
 
-// onMessage:
-//   - the WebSocket message is represented by an input stream of binary data or UTF-8 characters;
-//   - exiting the handler closes the stream.
     public void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text);
+//   - the WebSocket message is represented by an input stream of binary data or UTF-8 characters;
+//   - exiting the handler closes the stream (not connection!).
 
-// onError (for logging and debugging):
+    public void onError(WsConnection conn, Throwable e);
 //   - any error closes the WebSocket connection;
 //   - allocating large buffers may throw an OutOfMemoryError;
 //   - conn can be null in the listener handler on ServerSocket failure.
-    public void onError(WsConnection conn, Throwable e);
 
     public void onClose(WsConnection conn, WsStatus closeStatus);
 }
