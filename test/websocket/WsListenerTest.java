@@ -19,8 +19,8 @@ import org.miktim.websocket.WsStatus;
 
 public class WsListenerTest implements WsHandler {
 
-    public static final int MAX_MESSAGE_LENGTH = 10000000;//1MB
-    public static final int LISTENER_SHUTDOWN_TIMEOUT = 30000;//30sec
+    public static final int MAX_MESSAGE_LENGTH = 10000000;// bytes
+    public static final int LISTENER_SHUTDOWN_TIMEOUT = 50000;// millis
     public static final String WEBSOCKET_SUBPROTOCOLS = "chat,superChat";
 
     String listener;
@@ -34,7 +34,7 @@ public class WsListenerTest implements WsHandler {
         if (args.length > 0) {
             path = args[0];
         }
-
+/*
         WsHandler listenerHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection conn, String subProtocol) {
@@ -57,11 +57,11 @@ public class WsListenerTest implements WsHandler {
                 } else {
                     ws_log("Listener" + conn.getId() + " onERROR: "
                             + conn.getPath() + " " + e + " " + conn.getStatus());
-                    e.printStackTrace();
+//                    e.printStackTrace();
                 }
             }
         };
-
+*/
 /// create WebSocket "bound" to 127.0.0.1
         final WebSocket webSocket
                 = new WebSocket(InetAddress.getByName("localhost"));
@@ -70,13 +70,14 @@ public class WsListenerTest implements WsHandler {
         wsp.setConnectionSoTimeout(1000, true); // ping on 1 second timeout
         wsp.setSubProtocols(WEBSOCKET_SUBPROTOCOLS.split(","));
 // create and start listener on 8080 port binded to 127.0.0.1
-        final WsListener listener = webSocket.listen(8080, listenerHandler, wsp);
+//        final WsListener listener = webSocket.listen(8080, listenerHandler, wsp);
+        final WsListener listener = webSocket.listen(8080, new WsListenerTest(), wsp);
 // init shutdown timer
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                listener.close("Shutdown");
+                listener.close("Time is over!");
                 timer.cancel();
             }
         }, LISTENER_SHUTDOWN_TIMEOUT);
@@ -157,7 +158,6 @@ public class WsListenerTest implements WsHandler {
         }
     }
 
-//            @Override
     public void onMessage(WsConnection con, String s) {
         try {
             String testPath = con.getPath();
@@ -188,7 +188,6 @@ public class WsListenerTest implements WsHandler {
         }
     }
 
-//            @Override
     public void onMessage(WsConnection con, byte[] b) {
         try {
             con.send(b);

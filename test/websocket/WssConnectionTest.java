@@ -170,16 +170,16 @@ public class WssConnectionTest {
                 + "\r\n");
         WsParameters cwsp1 = new WsParameters();
         cwsp1.setSubProtocols("1,2,3,4,5".split(","));
-        webSocket.connect("wss://" + remoteAddr + "/путь", handler, cwsp1);
+        webSocket.connect("wss://" + remoteAddr + "/тест", handler, cwsp1);
         WsParameters cwsp2 = new WsParameters();
         cwsp2.setSubProtocols("2,3,4,5".split(","));
         webSocket.connect("wss://" + remoteAddr + "/", handler, cwsp2);
         WsParameters cwsp3 = new WsParameters();
         cwsp3.setSubProtocols("3,4,5".split(","));
-        webSocket.connect("wss://" + remoteAddr + "/test", handler, cwsp3);
+        webSocket.connect("wss://" + remoteAddr + "/тест", handler, cwsp3);
         WsParameters cwsp4 = new WsParameters();
         cwsp4.setSubProtocols("4,5".split(","));
-        webSocket.connect("wss://" + remoteAddr + "?query=значение", handler, cwsp4);
+        webSocket.connect("wss://" + remoteAddr + "?параметр=значение", handler, cwsp4);
 // The connection listed below should fail (unsecured connection to a secure listener)
         webSocket.connect("ws://" + remoteAddr + "/must_fail", handler, cwsp4);
     }

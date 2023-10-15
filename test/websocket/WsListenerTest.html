@@ -14,15 +14,15 @@
         <script src="http://localhost:8080/this_request_must_fail.js"></script>
         <script>
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-            var testuri = 'ws://localhost:8080/test/';
+            var testuri = 'ws://localhost:8080/тест/';
             var msg = 'Hello, Server! Привет, Сервер! ';
             var lastMsgLength = 0;
             var lastMsgStartEnd = '';
             var testNo = 0;
             var tests = [
-                'unknown subprotocol (1003 FireFox, 1006 others expected)',
-                'closing websocket by browser (1000 expected)',
-                'closing websocket by the listener (1000 expected)',
+                'unknown WebSocket subprotocol (1006 expected)',
+                'closing WebSocket by browser (1000 expected)',
+                'closing WebSocket by listener (1000 expected)',
                 'waiting message too big (1009 expected)',
                 'ping, waiting for listener shutdown (1001 expected)'
             ];
@@ -70,8 +70,8 @@
                     }
                 };
                 webSocket.onerror = event => {
-// event:                 
-                    show('onerror: ' + event.name + ':' + event.message);
+// event:                    
+                    show('onerror: no error info. WebSocket.bufferedAmount: ' + event.target.bufferedAmount);
                 };
                 webSocket.onclose = event => {
 // event: .code .reason .wasClean

@@ -29,7 +29,7 @@ public class WsStatus implements Cloneable {
     public int code = GOING_AWAY;  // closing code (1000-4999)
     public String reason = "";     // closing reason (max length 123 BYTES)
     public boolean wasClean = false;  // WebSocket closing handshake completed
-    public boolean remotely = false; // closed remotely
+    public boolean remotely = true; // closed remotely
     public Throwable error = null; // closed due to exception
 
     WsStatus() {

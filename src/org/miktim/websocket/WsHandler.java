@@ -1,8 +1,9 @@
 /*
- * WsHandler. WebSocket connection events handler, MIT (c) 2020-2021 miktim@mail.ru
+ * WsHandler. WebSocket connection events handler, MIT (c) 2020-2023 miktim@mail.ru
  *
- * There are two scenarios for handling connection events:
- * - onError (if SSL/WebSocket handshake or ServerSocket fails);
+ * There are three scenarios for handling events:
+ * - onError, on the listener side when the ServerSocket fails;
+ * - onError - onClose, when SSL/WebSocket handshake fails;
  * - onOpen - [onMessage - onMessage - ...] - [onError] - onClose.
  *
  * Created: 2020-03-09

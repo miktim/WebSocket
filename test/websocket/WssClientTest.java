@@ -99,7 +99,7 @@ public class WssClientTest {
                     } else if (cmd.equals("version")) {
                         if (!response.equals("hybi-draft-13")) {
                             ws_log("Something wrong...");
-                        }
+                        } else  ws_log("OK");
                         counter = 0;
                         ws_send(con, "echo,test message");
                     } else if (cmd.equals("ping")) {

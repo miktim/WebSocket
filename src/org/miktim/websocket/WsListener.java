@@ -3,6 +3,9 @@
  *
  * Accepts sockets, creates and starts connection threads.
  *
+ * 3.2.0
+ * - set infinit ServerSocket timeout
+ *
  * Created: 2020-03-09
  */
 package org.miktim.websocket;
@@ -75,6 +78,7 @@ public class WsListener extends Thread {
             this.isRunning = true;
             while (this.isRunning) {
                 try {
+                    serverSocket.setSoTimeout(0);
                     Socket socket = serverSocket.accept();
                     WsConnection conn
                             = new WsConnection(socket, handler, isSecure, wsp);

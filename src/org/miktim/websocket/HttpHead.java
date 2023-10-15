@@ -6,6 +6,9 @@
  *  - multiple values are stored on a comma separated string;
  *  - the request/status line of the HTTP message head is accessed using the START_LINE constant.
  *
+ * 2023-10:
+ * - functions join, getValues, setValues added
+ *
  * Created: 2020-11-19
  */
 package org.miktim.websocket;
@@ -53,6 +56,33 @@ public class HttpHead {
 
     public String get(String key) {
         return head.get(key);
+    }
+
+    public HttpHead setValues(String key, String[] values) {
+        if (values == null) return this;
+        return set(key, join(values, ','));
+    }
+
+    public String[] getValues(String key) {
+        if (!containsKey(key)) {
+            return null;
+        }
+        String[] values = head.get(key).split(",");
+        for (int i = 0; i < values.length; i++) {
+            values[i] = values[i].trim();
+        }
+        return values;
+    }
+
+    public static String join(Object[] array, char delimiter) {
+        if (array == null || array.length == 0) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Object obj : array) {
+            sb.append(obj).append(",");
+        }
+        return sb.deleteCharAt(sb.length() - 1).toString();
     }
 
     public boolean containsKey(String key) {

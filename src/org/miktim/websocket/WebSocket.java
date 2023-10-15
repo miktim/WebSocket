@@ -6,11 +6,16 @@
  *
  * Release notes:
  * - Java SE 7+, Android compatible;
- * - RFC-6455: https://tools.ietf.org/html/rfc6455;
+ * - RFC-6455: https://tools.ietf.org/html/rfc6455 ;
  * - WebSocket protocol version: 13;
  * - WebSocket extensions not supported;
  * - supports plain socket/TLS connections;
  * - stream-based messaging.
+ *
+ * 3.1.0
+ * - wsParameters moved from WebSocket constructor to listener/connection creators
+ *
+ * TODO: Internationalized Domain Names (IDNs) support
  *
  * Created: 2020-06-06
  */
@@ -44,7 +49,8 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
 public class WebSocket {
-    public static String VERSION = "3.1.0";
+
+    public static String VERSION = "3.2.0";
     private InetAddress bindAddress = null;
     private final List<Object> connections = Collections.synchronizedList(new ArrayList<>());
     private final List<Object> listeners = Collections.synchronizedList(new ArrayList<>());
@@ -60,7 +66,7 @@ public class WebSocket {
         }
         bindAddress = bindAddr;
     }
-    
+
     public static void setTrustStore(String jksFile, String passphrase) {
         System.setProperty("javax.net.ssl.trustStore", jksFile);
         System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
@@ -70,34 +76,48 @@ public class WebSocket {
         System.setProperty("javax.net.ssl.keyStore", jksFile);
         System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
-/*
-    public void setParameters(WsParameters parm) throws CloneNotSupportedException {
-        this.wsp = parm.clone();
+
+    public WsConnection[] listConnections() {
+        return connections.toArray(new WsConnection[0]);
     }
 
-    public WsParameters getParameters() {
-        return this.wsp;
+    public WsListener[] listListeners() {
+        return listeners.toArray(new WsListener[0]);
     }
-*/
+
+    public void closeAll(String closeReason) {
+// close WebSocket listeners/connections 
+        for (WsListener listener : listListeners()) {
+            listener.close(closeReason);
+        }
+        for (WsConnection conn : listConnections()) {
+            conn.close(WsStatus.GOING_AWAY, closeReason);
+        }
+    }
+
+    public void closeAll() {
+        closeAll("");
+    }
+
     public WsListener listen(int port, WsHandler handler, WsParameters wsp)
             throws IOException, GeneralSecurityException {
         return startListener(port, handler, false, wsp);
     }
 
     public WsListener listenSafely(int port, WsHandler handler, WsParameters wsp)
-            throws IOException, GeneralSecurityException  {
+            throws IOException, GeneralSecurityException {
         return startListener(port, handler, true, wsp);
     }
 
     WsListener startListener(int port, WsHandler handler, boolean secure, WsParameters wsp)
             throws IOException, GeneralSecurityException {
-        if (handler == null) {
+        if (handler == null || wsp == null) {
             throw new NullPointerException();
         }
 
         ServerSocket serverSocket = getServerSocketFactory(secure)
                 .createServerSocket();
-        if (secure && wsp.sslParameters != null) {
+        if (secure) {
             ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
         }
 
@@ -113,7 +133,7 @@ public class WebSocket {
     }
 
 // https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/sockets/server/ClassFileServer.java
-    private ServerSocketFactory getServerSocketFactory(boolean isSecure) 
+    private ServerSocketFactory getServerSocketFactory(boolean isSecure)
             throws IOException, GeneralSecurityException {
 //            throws NoSuchAlgorithmException, KeyStoreException,
 //            FileNotFoundException, IOException, CertificateException,
@@ -145,8 +165,8 @@ public class WebSocket {
     }
 
     public WsConnection connect(String uri, WsHandler handler, WsParameters wsp)
-        throws IOException, GeneralSecurityException, URISyntaxException {
-        if (handler == null || uri == null) {
+            throws IOException, GeneralSecurityException, URISyntaxException {
+        if (uri == null || handler == null || wsp == null) {
             throw new NullPointerException();
         }
         URI requestURI = new URI(uri);
@@ -185,28 +205,6 @@ public class WebSocket {
         conn.connections = this.connections;
         conn.start();
         return conn;
-    }
-
-    public WsConnection[] listConnections() {
-        return connections.toArray(new WsConnection[0]);
-    }
-
-    public WsListener[] listListeners() {
-        return listeners.toArray(new WsListener[0]);
-    }
-
-    public void closeAll(String closeReason) {
-// close WebSocket listeners/connections 
-        for (WsListener listener : listListeners()) {
-            listener.close(closeReason);
-        }
-        for (WsConnection conn : listConnections()) {
-            conn.close(WsStatus.GOING_AWAY, closeReason);
-        }
-    }
-
-    public void closeAll() {
-        closeAll("");
     }
 
 }
