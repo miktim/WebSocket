@@ -7,15 +7,18 @@
  * Release notes:
  * - Java SE 7+, Android compatible;
  * - RFC-6455: https://tools.ietf.org/html/rfc6455 ;
- * - WebSocket protocol version: 13;
+ * - supported WebSocket version: 13;
  * - WebSocket extensions not supported;
  * - supports plain socket/TLS connections;
  * - stream-based messaging.
  *
  * 3.1.0
  * - wsParameters moved from WebSocket constructor to listener/connection creators
+ * 3.3.1
+ * - listener creator backlog parameter support added;
+ * - getInetAddress() function added
  *
- * TODO: Internationalized Domain Names (IDNs) support
+ * TODO: ???Internationalized Domain Names (IDNs) support
  *
  * Created: 2020-06-06
  */
@@ -50,7 +53,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 public class WebSocket {
 
-    public static String VERSION = "3.2.0";
+    public static String VERSION = "3.3.1";
     private InetAddress bindAddress = null;
     private final List<Object> connections = Collections.synchronizedList(new ArrayList<>());
     private final List<Object> listeners = Collections.synchronizedList(new ArrayList<>());
@@ -76,7 +79,11 @@ public class WebSocket {
         System.setProperty("javax.net.ssl.keyStore", jksFile);
         System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
-
+    
+    public InetAddress getBindAddress() {
+        return bindAddress;
+    }
+    
     public WsConnection[] listConnections() {
         return connections.toArray(new WsConnection[0]);
     }
@@ -116,13 +123,13 @@ public class WebSocket {
         }
 
         ServerSocket serverSocket = getServerSocketFactory(secure)
-                .createServerSocket();
+                .createServerSocket(port, wsp.backlog, bindAddress);
         if (secure) {
             ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
         }
 
         serverSocket.setReuseAddress(true);
-        serverSocket.bind(new InetSocketAddress(bindAddress, port));
+//        serverSocket.bind(new InetSocketAddress(bindAddress, port));
         serverSocket.setSoTimeout(0);
 
         WsListener listener = new WsListener(
@@ -185,9 +192,7 @@ public class WebSocket {
             SSLSocketFactory factory
                     = (SSLSocketFactory) SSLSocketFactory.getDefault();
             socket = (SSLSocket) factory.createSocket();
-            if (wsp.sslParameters != null) {
                 ((SSLSocket) socket).setSSLParameters(wsp.sslParameters);
-            }
         } else {
             isSecure = false;
             socket = new Socket();

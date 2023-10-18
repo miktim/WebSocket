@@ -23,7 +23,8 @@ public interface WsHandler {
     public void onError(WsConnection conn, Throwable e);
 //   - any error closes the WebSocket connection;
 //   - allocating large buffers may throw an OutOfMemoryError;
-//   - conn can be null in the listener handler on ServerSocket failure.
-
+//   - conn is null in the listener handler when ServerSocket fails.
+//     The listener and all associated connections will be closed
+    
     public void onClose(WsConnection conn, WsStatus closeStatus);
 }

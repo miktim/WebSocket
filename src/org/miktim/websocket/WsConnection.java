@@ -4,15 +4,16 @@
  * SSL/WebSocket handshaking. Messaging. Events handling.
  * 
  * 3.1.0
- * - force closing connection
+ * - the join() function has ben moved to the HttpHead
+ * - force closing socket
  * 3.2.0
  * - direct reading from the socket input stream (without buffering)
  * - onClose when SSL/WebSocket handshake failed
  * - disconnect if the requested WebSocket subprotocol is not found
- * - the join function has ben moved to the HttpHead
  *
  * TODO: increase payload buffer from 1/4 to wsp.payloadBufferLength.
- * TODO: Internationalized Domain Names (IDNs) support
+ * TODO: ??Internationalized Domain Names (IDNs) support
+ * TODO: check the case-insensitive HTTP request header values
  *
  * Created: 2020-03-09
  */
@@ -90,7 +91,8 @@ public class WsConnection extends Thread {
     }
 
     public WsConnection[] listConnections() {
-        return connections.toArray(new WsConnection[0]);
+        return isClientSide ? new WsConnection[]{this}
+                : connections.toArray(new WsConnection[0]);
     }
 
     public synchronized void setHandler(WsHandler h) {
@@ -217,7 +219,7 @@ public class WsConnection extends Thread {
             } catch (IOException e) {
                 status.error = e;
             }
-// force closing connection            
+// force closing socket            
             (new Timer(true)).schedule(new TimerTask() { // daemon timer
                 @Override
                 public void run() {
@@ -249,8 +251,8 @@ public class WsConnection extends Thread {
         this.wsp = wsp;
     }
 
-    private InputStream inStream;
-    private OutputStream outStream;
+    InputStream inStream;
+    OutputStream outStream;
 
     @Override
     public void run() {
@@ -679,7 +681,7 @@ public class WsConnection extends Thread {
                     if (!waitDataFrame()) {
                         throw new ProtocolException();
                     }
-                } catch (IOException e) {
+                } catch (Throwable e) {
                     this.endOfMessage = true;
                     closeDueTo(WsStatus.PROTOCOL_ERROR, e);
                     throw e;
@@ -726,8 +728,8 @@ public class WsConnection extends Thread {
         return bytesCnt;
     }
 
-    private void closeDueTo(int closeCode, Exception e) {
-        if (status.code == 0 && status.error == null) {
+    private void closeDueTo(int closeCode, Throwable e) {
+        if (status.code == 0 && status.error == null) { 
             status.error = e;
         }
         close(closeCode, "");

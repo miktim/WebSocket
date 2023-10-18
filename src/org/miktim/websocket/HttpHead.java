@@ -1,5 +1,5 @@
 /*
- * HttpHead. Read/write/store HTTP message head. MIT (c) 2020-2021 miktim@mail.ru
+ * HttpHead. Read/write/store HTTP message head. MIT (c) 2020-2023 miktim@mail.ru
  *
  * Notes:
  *  - the header names (keys) ara case-insensitive;
@@ -27,6 +27,17 @@ import java.util.TreeMap;
 public class HttpHead {
 
     public static final String START_LINE = "http-message-head-start-line";
+
+    public static String join(Object[] array, char delimiter) {
+        if (array == null || array.length == 0) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Object obj : array) {
+            sb.append(obj).append(delimiter);
+        }
+        return sb.deleteCharAt(sb.length() - 1).toString();
+    }
 
     private final TreeMap<String, String> head = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
@@ -72,17 +83,6 @@ public class HttpHead {
             values[i] = values[i].trim();
         }
         return values;
-    }
-
-    public static String join(Object[] array, char delimiter) {
-        if (array == null || array.length == 0) {
-            return null;
-        }
-        StringBuilder sb = new StringBuilder();
-        for (Object obj : array) {
-            sb.append(obj).append(",");
-        }
-        return sb.deleteCharAt(sb.length() - 1).toString();
     }
 
     public boolean containsKey(String key) {

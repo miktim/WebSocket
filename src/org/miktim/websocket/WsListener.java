@@ -3,14 +3,15 @@
  *
  * Accepts sockets, creates and starts connection threads.
  *
- * 3.2.0
- * - set infinit ServerSocket timeout
+ * 3.3.1
+ * - functions getPort(), getInetSocketAddress() added
  *
  * Created: 2020-03-09
  */
 package org.miktim.websocket;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -41,6 +42,14 @@ public class WsListener extends Thread {
 
     public boolean isOpen() {
         return isRunning;
+    }
+    
+    public int getPort() {
+        return serverSocket.getLocalPort();
+    }
+    
+    public InetSocketAddress getInetSocketAddress() {
+        return (InetSocketAddress)serverSocket.getLocalSocketAddress();
     }
 
     public WsParameters getParameters() {
@@ -78,7 +87,7 @@ public class WsListener extends Thread {
             this.isRunning = true;
             while (this.isRunning) {
                 try {
-                    serverSocket.setSoTimeout(0);
+// SO_TIMEOUT = 0 by WebSocket creator                    
                     Socket socket = serverSocket.accept();
                     WsConnection conn
                             = new WsConnection(socket, handler, isSecure, wsp);
@@ -88,7 +97,7 @@ public class WsListener extends Thread {
                 } catch (Exception e) {
                     if (this.isRunning) {
                         handler.onError(null, e);
-                        this.close();
+                        this.close("Listener abnormal closure");
                     }
                     break;
                 }
