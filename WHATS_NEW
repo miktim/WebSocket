@@ -1,0 +1,6 @@
+3.3.2a
+The package has been significantly redesigned:
+  - asynchronous reception of WebSocket messages;
+  - added new methods to objects;
+  - a test application has been created in the Android environment:
+    https://github.com/miktim/WebSocket-Android-Test.
