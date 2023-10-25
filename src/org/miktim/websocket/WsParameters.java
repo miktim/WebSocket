@@ -21,7 +21,7 @@ public class WsParameters {
     public static final int MIN_PAYLOAD_BUFFER_LENGTH = 126;
     int payloadBufferLength = 32768; // bytes. Outgoing payload length, incoming buffer length. 
     int backlog = -1; // maximum number of pending connections on the server socket (system default)
-    
+
     SSLParameters sslParameters;  // TLS parameters
 
     public WsParameters() {
@@ -38,20 +38,24 @@ public class WsParameters {
             pingEnabled = wsp.pingEnabled;
             payloadBufferLength = wsp.payloadBufferLength;
             backlog = wsp.backlog;
-            SSLParameters sslp = wsp.sslParameters; // !!! Java 7 
-            sslParameters.setAlgorithmConstraints(sslp.getAlgorithmConstraints());
-            sslParameters.setCipherSuites(sslp.getCipherSuites());
-            sslParameters.setEndpointIdentificationAlgorithm(
-                    sslp.getEndpointIdentificationAlgorithm());
-            sslParameters.setNeedClientAuth(sslp.getNeedClientAuth());
-            sslParameters.setProtocols(sslp.getProtocols());
-            sslParameters.setWantClientAuth(sslp.getWantClientAuth());
+            SSLParameters sslp = wsp.sslParameters; // !!! Java 7
+            if (sslp != null) {
+                sslParameters.setCipherSuites(sslp.getCipherSuites());
+                sslParameters.setNeedClientAuth(sslp.getNeedClientAuth());
+                sslParameters.setProtocols(sslp.getProtocols());
+                sslParameters.setWantClientAuth(sslp.getWantClientAuth());
+// TODO:  removed code API 24 to API 16
+
+//            sslParameters.setAlgorithmConstraints(sslp.getAlgorithmConstraints());
+//            sslParameters.setEndpointIdentificationAlgorithm(
+//                    sslp.getEndpointIdentificationAlgorithm());
+            }
         }
     }
-    
+
     public WsParameters setSubProtocols(String[] subps) {
-          subProtocols = subps;
-          return this;
+        subProtocols = subps;
+        return this;
     }
 
     public String[] getSubProtocols() {
@@ -89,7 +93,7 @@ public class WsParameters {
     public int getPayloadBufferLength() {
         return payloadBufferLength;
     }
-    
+
 // maximum number of pending connections on the server socket
 // default value -1: system depended 
     public WsParameters setBacklog(int num) {

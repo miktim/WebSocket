@@ -17,7 +17,6 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import javax.net.ssl.SSLServerSocket;
 
 public class WsListener extends Thread {
 
@@ -53,8 +52,6 @@ public class WsListener extends Thread {
     }
 
     public WsParameters getParameters() {
-        wsp.sslParameters = isSecure
-                ? ((SSLServerSocket) serverSocket).getSSLParameters() : null;
         return wsp;
     }
 
@@ -87,7 +84,7 @@ public class WsListener extends Thread {
             this.isRunning = true;
             while (this.isRunning) {
                 try {
-// SO_TIMEOUT = 0 by WebSocket creator                    
+// serverSocket SO_TIMEOUT = 0 by WebSocket creator
                     Socket socket = serverSocket.accept();
                     WsConnection conn
                             = new WsConnection(socket, handler, isSecure, wsp);

@@ -17,7 +17,7 @@ import org.miktim.websocket.WsStatus;
 public class WssClientTest {
 
     static final int MAX_MESSAGE_LENGTH = 10000; //
-    static final int WEBSOCKET_SHUTDOWN_TIMEOUT = 15000; //milliseconds 
+    static final int WEBSOCKET_SHUTDOWN_TIMEOUT = 150000; //milliseconds 
     static final String REMOTE_CONNECTION = "wss://websocketstest.com:443/service";//
 
     static String fragmentTest = randomString(512);
@@ -34,12 +34,12 @@ public class WssClientTest {
 
     static String randomString(int string_length) {
         String chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
-        String randomstring = "";
+        StringBuilder randomstring = new StringBuilder();
         for (int i = 0; i < string_length; i++) {
             int rnum = (int) Math.floor(Math.random() * chars.length());
-            randomstring += chars.substring(rnum, rnum + 1);
+            randomstring.append(chars.charAt(rnum));
         }
-        return randomstring;
+        return randomstring.toString();
     }
 
     public static void main(String[] args) throws Exception {
@@ -47,6 +47,7 @@ public class WssClientTest {
         if (args.length > 0) {
             path = args[0];
         }
+        WebSocket.setTrustStore("/nofile", "");
 
         WsHandler clientHandler = new WsHandler() {
             @Override
@@ -99,25 +100,33 @@ public class WssClientTest {
                     } else if (cmd.equals("version")) {
                         if (!response.equals("hybi-draft-13")) {
                             ws_log("Something wrong...");
-                        } else  ws_log("OK");
+                        } else {
+                            ws_log("OK");
+                        }
                         counter = 0;
                         ws_send(con, "echo,test message");
                     } else if (cmd.equals("ping")) {
                         if (!response.equals("success")) {
                             ws_log("Failed!");
-                        } else ws_log("OK");
+                        } else {
+                            ws_log("OK");
+                        }
                         counter = 0;
                         ws_send(con, "fragments," + fragmentTest);
                     } else if (cmd.equals("fragments")) {
                         if (!response.equals(fragmentTest)) {
                             ws_log("Failed!");
-                        } else ws_log("OK");
+                        } else {
+                            ws_log("OK");
+                        }
                         counter = 0;
                         ws_send(con, "timer,");
                     } else if (cmd.equals("echo")) {
                         if (!response.equals("test message")) {
                             ws_log("Failed!");
-                        } else ws_log("OK");
+                        } else {
+                            ws_log("OK");
+                        }
                         ws_send(con, "ping,");
                     } else if (cmd.equals("time")) {
                         if (++counter > 4) {
@@ -139,17 +148,17 @@ public class WssClientTest {
         };
 
         final WebSocket webSocket = new WebSocket();
-        WsParameters wsp = new WsParameters();
-        wsp.setConnectionSoTimeout(1000, true); // ping 
+        WsParameters wsp = new WsParameters()
+                .setConnectionSoTimeout(100000, true); // ping 
 //        wsp.setPayloadLength(fragmentTest.length()/2); // not work!
-        ws_log("\r\nWssClient (v"
-                + WebSocket.VERSION + ") test"
+        ws_log("\r\nWssClient "
+                + WebSocket.VERSION + " test"
                 + "\r\nTrying to connect to " + REMOTE_CONNECTION
-                + "\r\nConnection will be closed after "
+                + "\r\nTest will be terminated after "
                 + (WEBSOCKET_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
         final WsConnection wsConnection
-                = webSocket.connect(REMOTE_CONNECTION, clientHandler,wsp);
+                = webSocket.connect(REMOTE_CONNECTION, clientHandler, wsp);
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override

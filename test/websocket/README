@@ -1,6 +1,6 @@
 Testing:
-  - this package has been tested with desktop jdk/jre 7,8,11.
-    Package compiled with Android Studio but not tested;
+  - this package has been tested with desktop jdk/jre 7,8,11
+    and Android emulators/devices (see WebSocket-Android-Test repo);
   - listener has been tested with desktop browsers:
     Firefox 68.8, Chrome 83.0, Chromium 81.0, Opera 68.0, Yandex 20.4, MS Edge 85.0.564.41;
   - safe listener was tested by Chromium with “chrome://flags/#allow-insecure-localhost” enabled

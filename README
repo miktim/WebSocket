@@ -1,9 +1,9 @@
 # Java SE WebSocket client/server,  MIT (c) 2020-2023 miktim@mail.ru
 
 Release notes:
-    - Java SE 7+, Android compatible;
-    - in accordance with RFC-6455: https://datatracker.ietf.org/doc/html/rfc6455/ ;
-    = supported WebSocket version: 13;
+    - Java SE 7+, Android (see WebSocket-Android-Test repo) compatible;
+    - in accordance with RFC6455: https://datatracker.ietf.org/doc/html/rfc6455/ ;
+    - supported WebSocket version: 13;
     - WebSocket extensions are not supported;
     - supports SSL/TLS connections (without client auth and tunneling);
     - stream-based messaging (incoming WebSocket messages are represented by input streams);
@@ -15,21 +15,26 @@ Overview:
 
   Class WebSocket:
     Constant:
-      static String VERSION = "3.3.1";
+      static String VERSION = "3.3.2a";
     Constructors:
       WebSocket() throws NoSuchAlgorithmException; // check if SHA1 exists
       WebSocket(InetAddress bindAddr)
          throws SocketException, NoSuchAlgorithmException;
     Methods:
+    // To cancel the registration of the key, specify a non-existent file
+    // and an empty password. For example: 
+    //   WebSocket.setKeyStore("/nonexistentfile","")
       static void setKeyStore(String keyFilePath, String passphrase); 
-    //  set jvm keyStore (listener)
+    //  set system  properties javax.net.ssl.keytStore/keyStorePassword (listener)
       static void setTrustStore(String keyFilePath, String passphrase);
-    //  set jvm trustStore (client)
+    //  set system properties javax.net.ssl.trustStore/trustStorePassword (client)
 
       WsListener listen(int port, WsHandler handler, WsParameters wsp)
-         throws IOException, GeneralSecurityException; // serve plain connections 
+         throws IOException, GeneralSecurityException; 
+    // serve plain connections 
       WsListener listenSafely(int port, WsHandler handler, WsParameters wsp)
-         throws IOException, GeneralSecurityException; // serve TLS connections
+         throws IOException, GeneralSecurityException;
+    // serve TLS connections
       WsConnection connect(String uri, WsHahdler handler, WsParameters wsp)
          throws URISyntaxException, IOException, GeneralSecurityException;
     // uri's scheme (ws: | wss:) and host are required, user-info@ and #fragment - ignored
@@ -50,11 +55,12 @@ Overview:
       void onOpen(WsConnection conn, String subProtocol);
     // - the second argument is the negotiated WebSocket subprotocol or null.    
       void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text);
-    // - input stream of binary data or UTF-8 encoded text
+    // - messages are processed asynchronously;
+    // - the message is an InputStream of binary data or UTF-8 encoded text;
     // - exiting the handler closes the stream (not connection!).
       void onError(WsConnection conn, Throwable e);
     // - any exception closes the WebSocket connection;
-    // - allocating large buffers may throw an OutOfMemoryError;
+    // - large incoming messages may throw an OutOfMemoryError;
     // - conn is null on the listener side when the ServerSocket failed.
     //   The listener and all associated connections will be closed
       void onClose(WsConnection conn, WsStatus closeStatus);
@@ -74,14 +80,14 @@ Overview:
       int getConnectionSoTimeout();
       boolean isPingEnabled(); // enabled by default
       WsParameters setPayloadBufferLength(int len); 
-    // outgoing messages max payload length, min buffer length = 126 bytes
+    // outgoing messages max payload length, min len = 126 bytes
       int getPayloadBufferLength();
       WsParameters setBacklog(int num);
     // maximum number of pending connections on the ServerSocket 
-      int getBacklog(); // default -1: system depended
+      int getBacklog(); // default value is -1: system depended
       WsParameters setSSLParameters(SSLParameters sslParms);
     // javax.net.ssl.SSLParameters
-      SSLParameters getSSLParameters();
+      SSLParameters getSSLParameters(); // created with setNeedClientAuth=false
 
   Class WsListener extends Thread:
     Methods:
@@ -90,7 +96,7 @@ Overview:
       int getPort();
     // returns the port number on which this socket is listening.
       InetSocketAddress getInetSocketAddress();
-    // get bind info
+    // get ServerSocket bind info (java.net.InetSocketAddress)
       WsParameters getParameters();
       WsConnection[] listConnections();
       void close(); // also closes all associated connections (close code 1001)

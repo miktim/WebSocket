@@ -18,7 +18,6 @@
  * - listener creator backlog parameter support added;
  * - getInetAddress() function added
  *
- * TODO: ???Internationalized Domain Names (IDNs) support
  *
  * Created: 2020-06-06
  */
@@ -46,6 +45,7 @@ import java.util.List;
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
@@ -53,7 +53,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 public class WebSocket {
 
-    public static String VERSION = "3.3.1";
+    public static String VERSION = "3.3.2a";
     private InetAddress bindAddress = null;
     private final List<Object> connections = Collections.synchronizedList(new ArrayList<>());
     private final List<Object> listeners = Collections.synchronizedList(new ArrayList<>());
@@ -123,13 +123,18 @@ public class WebSocket {
         }
 
         ServerSocket serverSocket = getServerSocketFactory(secure)
-                .createServerSocket(port, wsp.backlog, bindAddress);
-        if (secure) {
-            ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
+            .createServerSocket(port, wsp.backlog, bindAddress);
+        SSLParameters sslp = wsp.getSSLParameters();
+        if (secure && sslp != null) {
+            ((SSLServerSocket) serverSocket).setEnabledCipherSuites(sslp.getCipherSuites());
+            ((SSLServerSocket) serverSocket).setNeedClientAuth(sslp.getNeedClientAuth());
+            ((SSLServerSocket) serverSocket).setEnabledProtocols(sslp.getProtocols());
+            ((SSLServerSocket) serverSocket).setWantClientAuth(sslp.getWantClientAuth());
+// TODO:  removed code API 24 to API 16
+
+//            ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
         }
 
-        serverSocket.setReuseAddress(true);
-//        serverSocket.bind(new InetSocketAddress(bindAddress, port));
         serverSocket.setSoTimeout(0);
 
         WsListener listener = new WsListener(
@@ -192,7 +197,7 @@ public class WebSocket {
             SSLSocketFactory factory
                     = (SSLSocketFactory) SSLSocketFactory.getDefault();
             socket = (SSLSocket) factory.createSocket();
-                ((SSLSocket) socket).setSSLParameters(wsp.sslParameters);
+            ((SSLSocket) socket).setSSLParameters(wsp.sslParameters);
         } else {
             isSecure = false;
             socket = new Socket();
