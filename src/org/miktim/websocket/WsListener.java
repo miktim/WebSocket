@@ -6,6 +6,8 @@
  * 3.3.1
  * - functions getPort(), getInetSocketAddress() added
  *
+ * TODO separate exception handling from ServerSocket and clients
+ *
  * Created: 2020-03-09
  */
 package org.miktim.websocket;

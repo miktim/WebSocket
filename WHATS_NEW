@@ -1,3 +1,12 @@
+TODO:
+  - non-empty SSLParameters; 
+  - listener/connection: optimize exception handling
+
+3.4.0a
+  - fixed bugs when preparing TLS
+  - added the WebSocket instance method setKeyStore
+  - added the Ws parameter maxMessageLength;
+
 3.3.2a
 The package has been significantly redesigned:
   - asynchronous reception of WebSocket messages;

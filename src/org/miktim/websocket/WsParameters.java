@@ -1,49 +1,58 @@
 /*
- * WsParameters. Common WebSocket parameters, MIT (c) 2020-2023 miktim@mail.ru
+ * WsParameters. Common listener/connection parameters, MIT (c) 2020-2023 miktim@mail.ru
  *
  * 3.2.0
  * - setters return this;
  * 3.3.1
  * - backlog parameter added;
+ *
+ * TODO non-empty SSL default parameters
  * 
  * Created: 2021-01-29
  */
 package org.miktim.websocket;
 
+import java.util.Arrays;
+
 import javax.net.ssl.SSLParameters;
 
 public class WsParameters {
+
+    public static final int MIN_PAYLOAD_BUFFER_LENGTH = 126;
+    public static final int MIN_MESSAGE_LENGTH = 2048;
 
     String[] subProtocols = null; // WebSocket subprotocol[s] in preferred order
     int handshakeSoTimeout = 4000; // millis, TLS and WebSocket open/close handshake timeout
     int connectionSoTimeout = 4000; // millis, data exchange timeout
     boolean pingEnabled = true; // if false, connection terminate by connectionSoTimeout
-    public static final int MIN_PAYLOAD_BUFFER_LENGTH = 126;
     int payloadBufferLength = 32768; // bytes. Outgoing payload length, incoming buffer length. 
     int backlog = -1; // maximum number of pending connections on the server socket (system default)
-
+    long maxMessageLength = 1048576L; // 1 mib
     SSLParameters sslParameters;  // TLS parameters
 
     public WsParameters() {
-        sslParameters = new SSLParameters();
+        sslParameters = new SSLParameters(new String[0], new String[0]);
         sslParameters.setNeedClientAuth(false);
     }
 
-    public WsParameters(WsParameters wsp) {
-        super();
+// deep clone
+    public WsParameters clone(WsParameters wsp) {
+        WsParameters clon = new WsParameters();
         if (wsp != null) {
-            subProtocols = wsp.subProtocols;
-            handshakeSoTimeout = wsp.handshakeSoTimeout;
-            connectionSoTimeout = wsp.connectionSoTimeout;
-            pingEnabled = wsp.pingEnabled;
-            payloadBufferLength = wsp.payloadBufferLength;
-            backlog = wsp.backlog;
-            SSLParameters sslp = wsp.sslParameters; // !!! Java 7
+            clon.subProtocols = cloneArray(wsp.subProtocols);
+            clon.handshakeSoTimeout = wsp.handshakeSoTimeout;
+            clon.connectionSoTimeout = wsp.connectionSoTimeout;
+            clon.pingEnabled = wsp.pingEnabled;
+            clon.payloadBufferLength = wsp.payloadBufferLength;
+            clon.backlog = wsp.backlog;
+            clon.maxMessageLength = wsp.maxMessageLength;
+            SSLParameters sslp = wsp.sslParameters;
             if (sslp != null) {
-                sslParameters.setCipherSuites(sslp.getCipherSuites());
-                sslParameters.setNeedClientAuth(sslp.getNeedClientAuth());
-                sslParameters.setProtocols(sslp.getProtocols());
-                sslParameters.setWantClientAuth(sslp.getWantClientAuth());
+// Android API 16
+                clon.sslParameters.setCipherSuites(cloneArray(sslp.getCipherSuites()));
+                clon.sslParameters.setNeedClientAuth(sslp.getNeedClientAuth());
+                clon.sslParameters.setProtocols(cloneArray(sslp.getProtocols()));
+                clon.sslParameters.setWantClientAuth(sslp.getWantClientAuth());
 // TODO:  removed code API 24 to API 16
 
 //            sslParameters.setAlgorithmConstraints(sslp.getAlgorithmConstraints());
@@ -51,6 +60,11 @@ public class WsParameters {
 //                    sslp.getEndpointIdentificationAlgorithm());
             }
         }
+        return clon;
+    }
+
+    String[] cloneArray(String[] array) {
+        return (array == null ? null : (String[])Arrays.copyOf(array, array.length) );
     }
 
     public WsParameters setSubProtocols(String[] subps) {
@@ -104,7 +118,15 @@ public class WsParameters {
     public int getBacklog() {
         return backlog;
     }
-
+    
+    public WsParameters setMaxMessageLength(int len) {
+        maxMessageLength = Math.max(len, MIN_MESSAGE_LENGTH);
+        return this;
+    }
+    public int getMaxMessageLength() {
+        return (int)maxMessageLength;
+    }
+    
     public WsParameters setSSLParameters(SSLParameters sslParms) {
         sslParameters = sslParms;
         return this;

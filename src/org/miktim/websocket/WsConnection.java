@@ -10,8 +10,10 @@
  * - direct reading from the socket input stream (without buffering)
  * - call onClose when SSL/WebSocket handshake failed
  * - disconnect if the requested WebSocket subprotocol is not found
+ * 3.4.0
+ * - go back to buffered input
  *
- * TODO: go back to buffered input
+ * TODO: optimize exception handling
  * TODO: increase payload buffer from 1/4 to wsp.payloadBufferLength.
  * TODO: check the case-insensitive HTTP request header values
  * TODO: divide the class code into a lot of classes (handshake, frame reading)
@@ -454,6 +456,7 @@ public class WsConnection extends Thread {
         int opData = OP_FINAL; // data frame opcode
         final byte[] payloadMask = new byte[8]; // mask & temp buffer for payloadLength
         long payloadLength;
+        long messageLength = 0;
         boolean pingFrameSent = false;
         boolean maskedPayload;
         ArrayList<byte[]> messageFrames = null;
@@ -479,7 +482,8 @@ public class WsConnection extends Thread {
                     case OP_TEXT_FINAL:
                         if ((opData & OP_FINAL) != 0) {
                             opData = b1;
-                            messageFrames = new <byte[]>ArrayList();
+                            messageFrames = new ArrayList<byte[]>();
+                            messageLength = 0;
                             break;
                         }
                     case OP_CONTINUATION:
@@ -543,9 +547,14 @@ public class WsConnection extends Thread {
                     case OP_BINARY_FINAL:
                     case OP_CONTINUATION:
                     case OP_FINAL:
-                        if(payloadLength < (long)Integer.MAX_VALUE) {
-                            break;
+                        messageLength += payloadLength;
+                        if((messageLength) > wsp.maxMessageLength) {
+                            closeDueTo(WsStatus.MESSAGE_TOO_BIG
+                                    ,new IOException("Message too big"));
                         }
+//                        if(payloadLength < (long)Integer.MAX_VALUE) {
+                        break;
+                        
                     case OP_PING:
                     case OP_PONG:
                     case OP_CLOSE:

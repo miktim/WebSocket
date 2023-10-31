@@ -149,8 +149,11 @@ public class WssClientTest {
 
         final WebSocket webSocket = new WebSocket();
         WsParameters wsp = new WsParameters()
-                .setConnectionSoTimeout(100000, true); // ping 
-//        wsp.setPayloadLength(fragmentTest.length()/2); // not work!
+                .setConnectionSoTimeout(10000, true)
+                .setMaxMessageLength(MAX_MESSAGE_LENGTH); // ping
+        wsp.setSSLParameters(null);
+//        wsp.getSSLParameters().setProtocols(new String[]{"TLSv1.2"});
+////        wsp.setPayloadLength(fragmentTest.length()/2); // not work!
         ws_log("\r\nWssClient "
                 + WebSocket.VERSION + " test"
                 + "\r\nTrying to connect to " + REMOTE_CONNECTION

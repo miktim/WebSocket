@@ -1,12 +1,13 @@
-# Java SE WebSocket client/server,  MIT (c) 2020-2023 miktim@mail.ru
+# Java SE/Android WebSocket client/server package,  MIT (c) 2020-2023 miktim@mail.ru
 
 Release notes:
-    - Java SE 7+, Android (see WebSocket-Android-Test repo) compatible;
+    - Java SE 7+/Android compatible (see WebSocket-Android-Test repo);
     - in accordance with RFC6455: https://datatracker.ietf.org/doc/html/rfc6455/ ;
     - supported WebSocket version: 13;
     - WebSocket extensions are not supported;
-    - supports SSL/TLS connections (without client auth and tunneling);
-    - stream-based messaging (incoming WebSocket messages are represented by input streams);
+    - supports plain/TLS connections (without client auth and tunneling);
+    - stream-based messaging: incoming WebSocket messages are represented
+      by input streams;
     - support for Internationalized Domain Names (IDNs) is provided by user.
 
 package org.miktim.websocket
@@ -15,20 +16,19 @@ Overview:
 
   Class WebSocket:
     Constant:
-      static String VERSION = "3.3.2a";
+      static String VERSION = "3.4.0";
     Constructors:
       WebSocket() throws NoSuchAlgorithmException; // check if SHA1 exists
       WebSocket(InetAddress bindAddr)
          throws SocketException, NoSuchAlgorithmException;
     Methods:
-    // To cancel the registration of the key, specify a non-existent file
-    // and an empty password. For example: 
-    //   WebSocket.setKeyStore("/nonexistentfile","")
-      static void setKeyStore(String keyFilePath, String passphrase); 
-    //  set system  properties javax.net.ssl.keytStore/keyStorePassword (listener)
-      static void setTrustStore(String keyFilePath, String passphrase);
-    //  set system properties javax.net.ssl.trustStore/trustStorePassword (client)
+      static void setKeyStore(String keyFilePath, String password); 
+    //  set system  properties javax.net.ssl.keyStore/keyStorePassword
+      static void setTrustStore(String keyFilePath, String password);
+    //  set system properties javax.net.ssl.trustStore/trustStorePassword
 
+      void setKeyStore(File keyfile, String password);
+    // set keyStore (server) or trustStore (client)
       WsListener listen(int port, WsHandler handler, WsParameters wsp)
          throws IOException, GeneralSecurityException; 
     // serve plain connections 
@@ -37,7 +37,8 @@ Overview:
     // serve TLS connections
       WsConnection connect(String uri, WsHahdler handler, WsParameters wsp)
          throws URISyntaxException, IOException, GeneralSecurityException;
-    // uri's scheme (ws: | wss:) and host are required, user-info@ and #fragment - ignored
+    // uri's scheme (ws: | wss:) and host are required,
+    // user-info@ and #fragment - ignored
       InetAddress getBindAddress();
       WsListener[] listListeners();
       WsConnection[] listConnections();
@@ -82,6 +83,10 @@ Overview:
       WsParameters setPayloadBufferLength(int len); 
     // outgoing messages max payload length, min len = 126 bytes
       int getPayloadBufferLength();
+      WsParameters setMaxMessageLength(int len); 
+    // incoming messages max length. If this value is exceeded, the connection 
+    // will be terminated with the MESSAGE_TOO_BIG status code
+      int getMaxMessageLength(); // default: 1 MiB
       WsParameters setBacklog(int num);
     // maximum number of pending connections on the ServerSocket 
       int getBacklog(); // default value is -1: system depended
