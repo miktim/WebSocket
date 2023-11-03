@@ -12,11 +12,10 @@
  * - disconnect if the requested WebSocket subprotocol is not found
  * 3.4.0
  * - go back to buffered input
+ * 3.4.1
+ * - frame reading routine moved to WsReceiver class
  *
- * TODO: simplify error handling
  * TODO: increase payload buffer from 1/4 to wsp.payloadBufferLength.
- * TODO: check the case-insensitive HTTP request header values
- * TODO: divide the class code into a lot of classes (handshake, frame reading)
  *
  * Created: 2020-03-09
  */
@@ -118,7 +117,7 @@ public class WsConnection extends Thread {
             if (isSecure) {
                 return ((SSLSocket) socket).getSession().getPeerHost();
             }
-// TODO: removed code API 19 to API 16
+// TODO: removed code Android API 19 to API 16
 
 //          else {
 //                return ((InetSocketAddress) socket.getRemoteSocketAddress()).getHostString();

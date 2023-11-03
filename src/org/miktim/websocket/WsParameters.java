@@ -59,7 +59,7 @@ public class WsParameters {
             clon.sslParameters.setNeedClientAuth(sslp.getNeedClientAuth());
             clon.sslParameters.setProtocols(cloneArray(sslp.getProtocols()));
             clon.sslParameters.setWantClientAuth(sslp.getWantClientAuth());
-// TODO:  removed code API 24 to API 16
+// TODO:  removed code Android API 24 to API 16
 
 //            sslParameters.setAlgorithmConstraints(sslp.getAlgorithmConstraints());
 //            sslParameters.setEndpointIdentificationAlgorithm(
@@ -114,7 +114,7 @@ public class WsParameters {
         return payloadBufferLength;
     }
 
-    // maximum number of pending connections on the server socket
+// maximum number of pending connections on the server socket
 // default value -1: system depended 
     public WsParameters setBacklog(int num) {
         backlog = num;

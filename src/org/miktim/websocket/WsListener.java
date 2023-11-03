@@ -82,6 +82,10 @@ public class WsListener extends Thread {
     public WsConnection[] listConnections() {
         return connections.toArray(new WsConnection[0]);
     }
+    
+    public void interrupt() {
+        closeServerSocket();
+    }
 
     @Override
     public void run() {
@@ -98,6 +102,7 @@ public class WsListener extends Thread {
                 conn.start();
             } catch (Exception e) {
                 if (this.isRunning) {
+                    isRunning = false;
                     closeServerSocket();
                     handler.onError(null, e);
                     return;
