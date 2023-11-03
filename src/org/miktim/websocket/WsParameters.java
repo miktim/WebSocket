@@ -5,21 +5,23 @@
  * - setters return this;
  * 3.3.1
  * - backlog parameter added;
+ * 3.4.1
+ * - non-empty SSL default parameters
  *
- * TODO non-empty SSL default parameters
- * 
  * Created: 2021-01-29
  */
 package org.miktim.websocket;
 
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 
 public class WsParameters {
 
     public static final int MIN_PAYLOAD_BUFFER_LENGTH = 126;
-    public static final int MIN_MESSAGE_LENGTH = 2048;
+    public static final int MIN_MESSAGE_LENGTH = 256;
 
     String[] subProtocols = null; // WebSocket subprotocol[s] in preferred order
     int handshakeSoTimeout = 4000; // millis, TLS and WebSocket open/close handshake timeout
@@ -28,43 +30,47 @@ public class WsParameters {
     int payloadBufferLength = 32768; // bytes. Outgoing payload length, incoming buffer length. 
     int backlog = -1; // maximum number of pending connections on the server socket (system default)
     long maxMessageLength = 1048576L; // 1 mib
-    SSLParameters sslParameters;  // TLS parameters
+    SSLParameters sslParameters = null;  // TLS parameters
 
     public WsParameters() {
-        sslParameters = new SSLParameters(new String[0], new String[0]);
-        sslParameters.setNeedClientAuth(false);
+        try {
+            SSLContext sslContext = SSLContext.getDefault();
+            sslParameters = sslContext.getDefaultSSLParameters();
+            sslParameters.setNeedClientAuth(false);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
     }
 
-// deep clone
-    public WsParameters clone(WsParameters wsp) {
+    // deep clone
+    public WsParameters deepClone() {
         WsParameters clon = new WsParameters();
-        if (wsp != null) {
-            clon.subProtocols = cloneArray(wsp.subProtocols);
-            clon.handshakeSoTimeout = wsp.handshakeSoTimeout;
-            clon.connectionSoTimeout = wsp.connectionSoTimeout;
-            clon.pingEnabled = wsp.pingEnabled;
-            clon.payloadBufferLength = wsp.payloadBufferLength;
-            clon.backlog = wsp.backlog;
-            clon.maxMessageLength = wsp.maxMessageLength;
-            SSLParameters sslp = wsp.sslParameters;
-            if (sslp != null) {
+        clon.subProtocols = cloneArray(subProtocols);
+        clon.handshakeSoTimeout = handshakeSoTimeout;
+        clon.connectionSoTimeout = connectionSoTimeout;
+        clon.pingEnabled = pingEnabled;
+        clon.payloadBufferLength = payloadBufferLength;
+        clon.backlog = backlog;
+        clon.maxMessageLength = maxMessageLength;
+        SSLParameters sslp = sslParameters;
+        if (sslp != null) {
 // Android API 16
-                clon.sslParameters.setCipherSuites(cloneArray(sslp.getCipherSuites()));
-                clon.sslParameters.setNeedClientAuth(sslp.getNeedClientAuth());
-                clon.sslParameters.setProtocols(cloneArray(sslp.getProtocols()));
-                clon.sslParameters.setWantClientAuth(sslp.getWantClientAuth());
+            clon.sslParameters.setCipherSuites(cloneArray(sslp.getCipherSuites()));
+            clon.sslParameters.setNeedClientAuth(sslp.getNeedClientAuth());
+            clon.sslParameters.setProtocols(cloneArray(sslp.getProtocols()));
+            clon.sslParameters.setWantClientAuth(sslp.getWantClientAuth());
 // TODO:  removed code API 24 to API 16
 
 //            sslParameters.setAlgorithmConstraints(sslp.getAlgorithmConstraints());
 //            sslParameters.setEndpointIdentificationAlgorithm(
 //                    sslp.getEndpointIdentificationAlgorithm());
-            }
         }
+
         return clon;
     }
 
     String[] cloneArray(String[] array) {
-        return (array == null ? null : (String[])Arrays.copyOf(array, array.length) );
+        return (array == null ? null : (String[]) Arrays.copyOf(array, array.length));
     }
 
     public WsParameters setSubProtocols(String[] subps) {
@@ -108,7 +114,7 @@ public class WsParameters {
         return payloadBufferLength;
     }
 
-// maximum number of pending connections on the server socket
+    // maximum number of pending connections on the server socket
 // default value -1: system depended 
     public WsParameters setBacklog(int num) {
         backlog = num;
@@ -118,15 +124,16 @@ public class WsParameters {
     public int getBacklog() {
         return backlog;
     }
-    
+
     public WsParameters setMaxMessageLength(int len) {
         maxMessageLength = Math.max(len, MIN_MESSAGE_LENGTH);
         return this;
     }
+
     public int getMaxMessageLength() {
-        return (int)maxMessageLength;
+        return (int) maxMessageLength;
     }
-    
+
     public WsParameters setSSLParameters(SSLParameters sslParms) {
         sslParameters = sslParms;
         return this;

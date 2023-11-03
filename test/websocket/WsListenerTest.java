@@ -20,7 +20,7 @@ import org.miktim.websocket.WsStatus;
 public class WsListenerTest implements WsHandler {
 
     public static final int MAX_MESSAGE_LENGTH = 10000000;// bytes
-    public static final int LISTENER_SHUTDOWN_TIMEOUT = 50000;// millis
+    public static final int LISTENER_SHUTDOWN_TIMEOUT = 20000;// millis
     public static final String WEBSOCKET_SUBPROTOCOLS = "chat,superChat";
 
     String listener;
@@ -34,35 +34,6 @@ public class WsListenerTest implements WsHandler {
         if (args.length > 0) {
             path = args[0];
         }
-/*
-        WsHandler listenerHandler = new WsHandler() {
-            @Override
-            public void onOpen(WsConnection conn, String subProtocol) {
-                conn.setHandler(new WsListenerTest());
-            }
-
-            @Override
-            public void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text) {
-            }
-
-            @Override
-            public void onClose(WsConnection conn, WsStatus closeStatus) {
-            }
-
-            @Override
-            public void onError(WsConnection conn, Throwable e) {
-                if (conn == null) {
-                    ws_log("Listener CRASHED! " + e);
-                    e.printStackTrace();
-                } else {
-                    ws_log("Listener" + conn.getId() + " onERROR: "
-                            + conn.getPath() + " " + e + " " + conn.getStatus());
-//                    e.printStackTrace();
-                }
-            }
-        };
-*/
-/// create WebSocket "bound" to 127.0.0.1
         final WebSocket webSocket
                 = new WebSocket(InetAddress.getByName("localhost"));
         WsParameters wsp = new WsParameters();

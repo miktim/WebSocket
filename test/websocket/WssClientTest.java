@@ -47,13 +47,14 @@ public class WssClientTest {
         if (args.length > 0) {
             path = args[0];
         }
-        WebSocket.setTrustStore("/nofile", "");
+//        WebSocket.setTrustStore("/nofile", "");
 
         WsHandler clientHandler = new WsHandler() {
             @Override
             public void onOpen(WsConnection con, String subp) {
-                ws_log("Connected. " + con.getSSLSessionProtocol());
-                WsParameters wsp = con.getParameters(); // debug
+                ws_log("Connected. " + con.getSSLSessionProtocol()
+                + " Peer: " + con.getPeerHost());
+//                WsParameters wsp = con.getParameters(); // debug
             }
 
             @Override
@@ -151,8 +152,8 @@ public class WssClientTest {
         WsParameters wsp = new WsParameters()
                 .setConnectionSoTimeout(10000, true)
                 .setMaxMessageLength(MAX_MESSAGE_LENGTH); // ping
-        wsp.setSSLParameters(null);
-//        wsp.getSSLParameters().setProtocols(new String[]{"TLSv1.2"});
+//        wsp.setSSLParameters(null);
+        wsp.getSSLParameters().setProtocols(new String[]{"TLSv1.2"});
 ////        wsp.setPayloadLength(fragmentTest.length()/2); // not work!
         ws_log("\r\nWssClient "
                 + WebSocket.VERSION + " test"

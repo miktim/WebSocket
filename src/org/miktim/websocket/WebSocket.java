@@ -17,9 +17,9 @@
  * 3.3.1
  * - listener creator backlog parameter support added;
  * - getInetAddress() function added
- * 3.4.0
- * - setKeyStore() function added
- * - fixed bugs when preparing TLS connections
+ * 3.4.1
+ * - setKeyFile(...), resetKeyFile() functions added
+ * - fixed bugs when preparing TLS
  *
  * Created: 2020-06-06
  */
@@ -57,14 +57,14 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class WebSocket {
 
-    public static String VERSION = "3.4.0";
+    public static String VERSION = "3.4.1";
     private InetAddress bindAddress = null;
-    private final List<Object> connections = Collections.synchronizedList(new ArrayList<>());
-    private final List<Object> listeners = Collections.synchronizedList(new ArrayList<>());
+    private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
+    private final List<WsListener> listeners = Collections.synchronizedList(new ArrayList<WsListener>());
     private File keyStoreFile = null;
     private String keyStorePassword = null;
 
-    private String keyStoreAlgorithm = "RSA"; // "SunX509"
+ //   private String keyStoreAlgorithm = "BNC"; // "SunX509"
 
     public WebSocket() throws NoSuchAlgorithmException {
         MessageDigest.getInstance("SHA-1"); // check algorithm exists
@@ -88,10 +88,15 @@ public class WebSocket {
         System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
 
-    public void setKeyStore(File keyfile, String password){//, String algorithm) {
+    public void setKeyFile(File keyfile, String password){//, String algorithm) {
         keyStoreFile = keyfile;
         keyStorePassword = password;
 //        keyStoreAlgorithm = algorithm;
+    }
+
+    public void resetKeyFile() {
+        keyStoreFile = null;
+        keyStorePassword = null;
     }
 
     public InetAddress getBindAddress() {
@@ -130,11 +135,12 @@ public class WebSocket {
         return startListener(port, handler, true, wsp);
     }
 
-    WsListener startListener(int port, WsHandler handler, boolean isSecure, WsParameters wsp)
+    synchronized WsListener startListener(int port, WsHandler handler, boolean isSecure, WsParameters wsp)
             throws IOException, GeneralSecurityException {
         if (handler == null || wsp == null) {
             throw new NullPointerException();
         }
+        wsp = wsp.deepClone();
         ServerSocketFactory serverSocketFactory;
         if (isSecure) {
             if(this.keyStoreFile != null)
@@ -180,10 +186,10 @@ public class WebSocket {
 
             String ksPassphrase = this.keyStorePassword;
             File ksFile = this.keyStoreFile;
-            if (ksFile == null) {
-                ksPassphrase = System.getProperty("javax.net.ssl.keyStorePassword");
-                ksFile = new File(System.getProperty("javax.net.ssl.keyStore"));
-            }
+//            if (ksFile == null) {
+//                ksPassphrase = System.getProperty("javax.net.ssl.keyStorePassword");
+//                ksFile = new File(System.getProperty("javax.net.ssl.keyStore"));
+//            }
             char[] passphrase = ksPassphrase.toCharArray();
 
             ctx = SSLContext.getInstance("TLS");
@@ -208,11 +214,12 @@ public class WebSocket {
             return ctx;
     }
 
-    public WsConnection connect(String uri, WsHandler handler, WsParameters wsp)
-            throws IOException, GeneralSecurityException, URISyntaxException {
+    synchronized public WsConnection connect(String uri, WsHandler handler, WsParameters wsp)
+            throws URISyntaxException, IOException, GeneralSecurityException {
         if (uri == null || handler == null || wsp == null) {
             throw new NullPointerException();
         }
+        wsp = wsp.deepClone();
         URI requestURI = new URI(uri);
         String scheme = requestURI.getScheme();
         String host = requestURI.getHost();
@@ -224,7 +231,7 @@ public class WebSocket {
         }
 
         Socket socket;
-        boolean isSecure = scheme.equals("wss") ? true : false;
+        boolean isSecure = scheme.equals("wss");
         SSLSocketFactory factory;
 
         if (isSecure) {

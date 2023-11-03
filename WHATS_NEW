@@ -4,7 +4,6 @@ TODO:
 
 3.4.0a
   - fixed bugs when preparing TLS
-  - added the WebSocket instance method setKeyStore
   - added the Ws parameter maxMessageLength;
 
 3.3.2a

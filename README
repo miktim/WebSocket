@@ -1,7 +1,8 @@
 # Java SE/Android WebSocket client/server package,  MIT (c) 2020-2023 miktim@mail.ru
 
 Release notes:
-    - Java SE 7+/Android compatible (see WebSocket-Android-Test repo);
+    - Java SE 6+/Android compatible (see WebSocket-Android-Test repo).
+      The websocket jar file was built using JDK 1.8.0 with the target JDK 6
     - in accordance with RFC6455: https://datatracker.ietf.org/doc/html/rfc6455/ ;
     - supported WebSocket version: 13;
     - WebSocket extensions are not supported;
@@ -16,7 +17,7 @@ Overview:
 
   Class WebSocket:
     Constant:
-      static String VERSION = "3.4.0";
+      static String VERSION = "3.4.1";
     Constructors:
       WebSocket() throws NoSuchAlgorithmException; // check if SHA1 exists
       WebSocket(InetAddress bindAddr)
@@ -27,8 +28,9 @@ Overview:
       static void setTrustStore(String keyFilePath, String password);
     //  set system properties javax.net.ssl.trustStore/trustStorePassword
 
-      void setKeyStore(File keyfile, String password);
-    // set keyStore (server) or trustStore (client)
+      void setKeyFile(File keyfile, String password);
+    // set keyStore file (listener) or trustStore file (client)
+      void resetKeyFile()
       WsListener listen(int port, WsHandler handler, WsParameters wsp)
          throws IOException, GeneralSecurityException; 
     // serve plain connections 
@@ -54,16 +56,19 @@ Overview:
 
     Methods:
       void onOpen(WsConnection conn, String subProtocol);
-    // - the second argument is the negotiated WebSocket subprotocol or null.    
+    // - the second argument is the negotiated WebSocket subprotocol or null.
+    
       void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text);
     // - messages are processed asynchronously;
     // - the message is an InputStream of binary data or UTF-8 encoded text;
     // - exiting the handler closes the stream (not connection!).
+
       void onError(WsConnection conn, Throwable e);
     // - any exception closes the WebSocket connection;
     // - large incoming messages may throw an OutOfMemoryError;
     // - conn is null on the listener side when the ServerSocket failed.
-    //   The listener and all associated connections will be closed
+    //   The listener is interrupted, the associated connections remain active
+
       void onClose(WsConnection conn, WsStatus closeStatus);
 
   Class WsParameters:
@@ -104,8 +109,11 @@ Overview:
     // get ServerSocket bind info (java.net.InetSocketAddress)
       WsParameters getParameters();
       WsConnection[] listConnections();
-      void close(); // also closes all associated connections (close code 1001)
+      void close(); 
       void close(String closeReason);
+    // close methods also closes all associated connections (code GOING_AWAY)
+      void interrupt();
+    // listener interupted, associated connections keep alive
 
   Class WsConnection extends Thread:
     Methods:
@@ -124,6 +132,7 @@ Overview:
       void setHandler(WsHandler newHandler); 
     // calls onClose in the old handler, then calls onOpen in the new handler
       WsStatus getStatus();
+    // synchronyzed with TLS/WebSocket handshake  
       String getSubProtocol(); // returns null or handshaked WebSocket subprotocol
       boolean isClientSide();  // returns true for client connections 
       boolean isOpen();     // WebSocket connection is open
@@ -143,6 +152,8 @@ Overview:
       boolean wasClean; // WebSocket closing handshake completed cleanly
       boolean remotely; // closed remotely
       Throwable error;  // closing exception or null
+    Methods:
+      boolean isOpen()  // returns true if WebSocket connection is open
 
 Usage examples see in:
   ./test/websocket/WssConnectionTest.java

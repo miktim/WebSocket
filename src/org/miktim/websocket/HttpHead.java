@@ -39,7 +39,7 @@ public class HttpHead {
         return sb.deleteCharAt(sb.length() - 1).toString();
     }
 
-    private final TreeMap<String, String> head = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    private final TreeMap<String, String> head = new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
 
     public HttpHead() {
     }
@@ -91,7 +91,7 @@ public class HttpHead {
 
 // Returns list of header names    
     public List<String> nameList() {
-        List<String> names = new ArrayList<>(head.keySet());
+        List<String> names = new ArrayList<String>(head.keySet());
         names.remove(HttpHead.START_LINE);
         return names;
     }

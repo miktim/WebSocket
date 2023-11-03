@@ -26,5 +26,5 @@ public interface WsHandler {
 //   - conn is null in the listener handler when ServerSocket fails.
 //     The listener and all associated connections will be closed
     
-    public void onClose(WsConnection conn, WsStatus closeStatus);
+    public void onClose(WsConnection conn, WsStatus status);
 }
