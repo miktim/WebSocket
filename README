@@ -1,7 +1,8 @@
 # Java SE/Android WebSocket client/server package,  MIT (c) 2020-2023 miktim@mail.ru
 
 Release notes:
-    - Java SE 6+/Android compatible (see WebSocket-Android-Test repo).
+    - Java SE 6+/Android compatible (see WebSocket-Android-Test repo:
+      https://github.com/miktim/WebSocket-Android-Test ).
       The websocket jar file was built using JDK 1.8.0 with the target JDK 6
     - in accordance with RFC6455: https://datatracker.ietf.org/doc/html/rfc6455/ ;
     - supported WebSocket version: 13;
