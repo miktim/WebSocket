@@ -1,13 +1,6 @@
 /*
  * WsParameters. Common listener/connection parameters, MIT (c) 2020-2023 miktim@mail.ru
  *
- * 3.2.0
- * - setters return this;
- * 3.3.1
- * - backlog parameter added;
- * 3.4.1
- * - non-empty SSL default parameters
- *
  * Created: 2021-01-29
  */
 package org.miktim.websocket;

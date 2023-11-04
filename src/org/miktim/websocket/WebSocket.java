@@ -12,15 +12,6 @@
  * - supports plain socket/TLS connections;
  * - stream-based messaging.
  *
- * 3.1.0
- * - wsParameters moved from WebSocket constructor to listener/connection creators
- * 3.3.1
- * - listener creator backlog parameter support added;
- * - getInetAddress() function added
- * 3.4.1
- * - setKeyFile(...), resetKeyFile() functions added
- * - fixed bugs when preparing TLS
- *
  * Created: 2020-06-06
  */
 package org.miktim.websocket;
@@ -57,7 +48,7 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class WebSocket {
 
-    public static String VERSION = "3.4.1";
+    public static String VERSION = "3.4.2";
     private InetAddress bindAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
     private final List<WsListener> listeners = Collections.synchronizedList(new ArrayList<WsListener>());

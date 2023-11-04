@@ -1,3 +1,9 @@
+/*
+ * WsReceiver. Provides reading and processing of WebSocket frames, MIT (c) 2020-2023 miktim@mail.ru
+ *
+ * Created: 2021-01-29
+ */
+
 package org.miktim.websocket;
 
 import java.io.EOFException;

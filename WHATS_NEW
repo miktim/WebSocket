@@ -1,3 +1,6 @@
+3.4.2
+  - the bug that caused the Android read timeout has been fixed
+
 3.4.1
   - the getStatus() connection function is synchronized with 
     the TLS/WebSocket handshake;

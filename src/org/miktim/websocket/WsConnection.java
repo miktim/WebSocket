@@ -3,24 +3,11 @@
  *
  * SSL/WebSocket handshaking. Messaging. Events handling.
  *
- * 3.1.0
- * - the join() function has ben moved to the HttpHead
- * - force closing socket
- * 3.2.0
- * - direct reading from the socket input stream (without buffering)
- * - call onClose when SSL/WebSocket handshake failed
- * - disconnect if the requested WebSocket subprotocol is not found
- * 3.4.0
- * - go back to buffered input
- * 3.4.1
- * - frame reading routine moved to WsReceiver class
- *
- * TODO: increase payload buffer from 1/4 to wsp.payloadBufferLength.
- *
  * Created: 2020-03-09
  */
 package org.miktim.websocket;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -280,8 +267,8 @@ public class WsConnection extends Thread {
     synchronized private boolean waitConnection() {
         if (status.code != WsStatus.CONNECTION) return isOpen();
         try {
-            inStream = socket.getInputStream();
-            outStream = socket.getOutputStream();
+            inStream = new BufferedInputStream(socket.getInputStream());
+            outStream = socket.getOutputStream();//new BufferedOutputStream(socket.getOutputStream());
             if (isClientSide) {
                 handshakeServer();
             } else {

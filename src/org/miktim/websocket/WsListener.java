@@ -3,9 +3,6 @@
  *
  * Accepts sockets, creates and starts connection threads.
  *
- * 3.3.1
- * - functions getPort(), getInetSocketAddress() added
- *
  * Created: 2020-03-09
  */
 package org.miktim.websocket;
