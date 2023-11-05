@@ -5,7 +5,7 @@
  */
 package org.miktim.websocket;
 
-public class WsStatus implements Cloneable {
+public class WsStatus {
 // Predefined WebSocket closure codes:
 //  https://tools.ietf.org/html/rfc6455#section-7.4
 //  https://www.iana.org/assignments/websocket/websocket.xml#close-code-number 
@@ -45,14 +45,14 @@ public class WsStatus implements Cloneable {
         clone.error = error;
         return clone;
     }
-    public boolean isOpen() {
-        return code == IS_OPEN;
-    }
 
     @Override
     public String toString() {
-        return String.format("WsStatus(%d,\"%s\",%s,%s)",
-                code, reason, (wasClean ? "clean" : "dirty"), (remotely ? "remotely" : "locally"));
+        return String.format("WsStatus(%d,\"%s\",%s,%s%s)"
+                , code, reason, (wasClean ? "clean" : "dirty")
+                , (remotely ? "remotely" : "locally")
+                , (error != null ? ",error" : "")
+        );
     }
 
 }

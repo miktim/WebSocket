@@ -8,6 +8,7 @@
 package org.miktim.websocket;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,6 +25,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLSocket;
 
@@ -62,7 +65,6 @@ public class WsConnection extends Thread {
     }
 
     public WsStatus getStatus() {
-        waitConnection(); //
         return status.deepClone();
     }
 
@@ -158,10 +160,12 @@ public class WsConnection extends Thread {
             }
             return new byte[Math.min(pbl, buffer.length * 2)];
         }
-    */
+     */
     private synchronized void syncSend(InputStream is, boolean isText)
             throws IOException {
-        if (!isOpen()) throw new SocketException("WebSocket is not open");
+        if (!isOpen()) {
+            throw new SocketException("WebSocket is not open");
+        }
         int op = isText ? WsReceiver.OP_TEXT : WsReceiver.OP_BINARY;
         try {
             byte[] buf = new byte[wsp.payloadBufferLength];
@@ -173,10 +177,11 @@ public class WsConnection extends Thread {
 // be sure to send the final frame even if eof is detected (payload length = 0)!            
             sendFrame(op | WsReceiver.OP_FINAL, buf, len >= 0 ? len : 0); //
         } catch (IOException e) {
-            closeDueTo(WsStatus.INTERNAL_ERROR, e);
+            closeDueTo(WsStatus.INTERNAL_ERROR, "Send failed", e);
             throw e;
         }
     }
+
 // Close notes:
 // - the closing code outside 1000-4999 is replaced by 1005 (NO_STATUS)
 //   and the reason is ignored; 
@@ -209,10 +214,10 @@ public class WsConnection extends Thread {
                 payloadLen = 2 + byteReason.length;
             }
             try {
-                this.socket.setSoTimeout(wsp.handshakeSoTimeout);
                 sendFrame(WsReceiver.OP_CLOSE, payload, payloadLen);
                 status.code = code; // disable output
                 status.remotely = false;
+                socket.setSoTimeout(wsp.handshakeSoTimeout);
             } catch (IOException e) {
                 closeSocket();
                 return;
@@ -248,27 +253,27 @@ public class WsConnection extends Thread {
 
     InputStream inStream;
     OutputStream outStream;
+    static final int MESSAGE_QUEUE_CAPACITY = 3;
 
     @Override
     public void run() {
         connections.add(this);
         if (waitConnection()) {
             this.handler.onOpen(this, subProtocol);
-            (new WsReceiver(this)).waitData();
+            waitMessages(MESSAGE_QUEUE_CAPACITY);
         }
         if (status.error != null) {
             handler.onError(this, status.error);
         }
         handler.onClose(this, getStatus());
-        closeSocket();
+        if(!isClientSide) closeSocket();
         connections.remove(this);
     }
 
-    synchronized private boolean waitConnection() {
-        if (status.code != WsStatus.CONNECTION) return isOpen();
+    private boolean waitConnection() {
         try {
             inStream = new BufferedInputStream(socket.getInputStream());
-            outStream = socket.getOutputStream();//new BufferedOutputStream(socket.getOutputStream());
+            outStream = new BufferedOutputStream(socket.getOutputStream());
             if (isClientSide) {
                 handshakeServer();
             } else {
@@ -278,11 +283,30 @@ public class WsConnection extends Thread {
             status.code = WsStatus.IS_OPEN;
             return true;
         } catch (Exception e) {
-            status.reason = "Connection error";
+            status.reason = "Failed to connect";
             status.error = e;
             status.code = WsStatus.PROTOCOL_ERROR;
             return false;
         }
+    }
+    
+    ArrayBlockingQueue<WsInputStream> messageQueue;
+
+    void waitMessages(int queueCapacity) {
+        messageQueue = new ArrayBlockingQueue<WsInputStream>(queueCapacity);
+        WsReceiver receiver = new WsReceiver(this, messageQueue);
+        receiver.start();
+        WsInputStream is;
+        while(receiver.isAlive()) {
+            try {
+                is = messageQueue.poll(1000L,TimeUnit.MILLISECONDS);
+            } catch (InterruptedException ex) {
+                continue;
+            }
+            if(is == null) continue;
+            handler.onMessage(this, is, is.isText());
+        }
+        messageQueue.clear();
     }
 
     private void handshakeClient()
@@ -298,7 +322,7 @@ public class WsConnection extends Thread {
                 && upgrade != null && upgrade.equals("websocket")
                 && key != null
                 && setSubprotocol(
-                requestHead.getValues("Sec-WebSocket-Protocol"), responseHead)) {
+                        requestHead.getValues("Sec-WebSocket-Protocol"), responseHead)) {
             responseHead
                     .set(HttpHead.START_LINE, "HTTP/1.1 101 Upgrade")
                     .set("Upgrade", "websocket")
@@ -311,7 +335,7 @@ public class WsConnection extends Thread {
                     .set(HttpHead.START_LINE, "HTTP/1.1 400 Bad Request")
                     .set("Connection", "close")
                     .write(outStream);
-            status.remotely = true;
+            status.remotely = false;
             throw new ProtocolException("WebSocket handshake failed");
         }
     }
@@ -426,19 +450,11 @@ public class WsConnection extends Thread {
     static int readFully(InputStream is, byte[] buf, int off, int len)
             throws IOException {
         int bytesCnt = 0;
-        for (int n = is.read(buf, off, len); n >= 0 && bytesCnt < len; ) {
+        for (int n = is.read(buf, off, len); n >= 0 && bytesCnt < len;) {
             bytesCnt += n;
             n = is.read(buf, off + bytesCnt, len - bytesCnt);
         }
         return bytesCnt;
-    }
-
-    // unmask/mask payload
-    static void umaskPayload(byte[] mask, byte[] payload, int len) {
-        for (int i = 0; i < len; i++) {
-//            payload[i] ^= mask[i % 4];
-            payload[i] ^= mask[i & 3];
-        }
     }
 
     boolean isSocketOpen() {
@@ -448,70 +464,76 @@ public class WsConnection extends Thread {
     void closeSocket() {
         if (this.isSocketOpen()) {
             try {
-                if (this.isSecure) {
-                    ((SSLSocket) this.socket).close();
-                } else {
-                    this.socket.close();
-                }
+                this.socket.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
 
-    void closeDueTo(int closeCode, Throwable e) {
+    void closeDueTo(int closeCode, String reason, Throwable e) {
         if (isOpen()) {
             status.error = e;
-            close(closeCode, "Data exchange error");
+            close(closeCode, reason);
         }
     }
 
-    synchronized void sendFrame(int opFrame, byte[] payload, int len)
+    synchronized void sendFrame(int opFrame, byte[] payload, int payloadLen)
             throws IOException {
         if (!isOpen()) {
             throw new SocketException("Socket is not open");
         }
+// client MUST mask the payload, server - OPTIONAL
         boolean masked = this.isClientSide;
-        byte[] header = new byte[14]; //hopefully initialized with zeros
+        byte[] frame = new byte[14 + payloadLen]; //hopefully initialized with zeros
 
-        header[0] = (byte) opFrame;
+        frame[0] = (byte) opFrame;
         int headerLen = 2;
-
-        int payloadLen = len;
+        int tempLen = payloadLen;
         if (payloadLen < 126) {
-            header[1] = (byte) (payloadLen);
+            frame[1] = (byte) (payloadLen);
         } else if (payloadLen < 0x10000) {
-            header[1] = (byte) 126;
-            header[2] = (byte) (payloadLen >>> 8);
-            header[3] = (byte) payloadLen;
+            frame[1] = (byte) 126;
+            frame[2] = (byte) (tempLen >>> 8);
+            frame[3] = (byte) tempLen;
             headerLen += 2;
         } else {
-            header[1] = (byte) 127;
+            frame[1] = (byte) 127;
             headerLen += 4; // skip 4 zero bytes of 64bit payload length
             for (int i = 3; i > 0; i--) {
-                header[headerLen + i] = (byte) (payloadLen & 0xFF);
-                payloadLen >>>= 8;
+                frame[headerLen + i] = (byte) (tempLen & 0xFF);
+                tempLen >>>= 8;
             }
             headerLen += 4;
         }
+        
+        byte[] mask = WsReceiver.EMPTY_PAYLOAD;
+        if (masked) {
+            frame[1] |= WsReceiver.MASKED_DATA;
+            mask = randomBytes(4);
+            System.arraycopy(mask, 0, frame, headerLen, 4);
+            headerLen += 4;
+        }
+        
+        System.arraycopy(payload, 0, frame, headerLen, payloadLen);
+
+        if (masked) {
+            umaskPayload(mask, frame, headerLen, payloadLen);
+        }
+        
         try {
-            if (masked) {
-                header[1] |= WsReceiver.MASKED_DATA;
-                byte[] mask = randomBytes(4);
-                System.arraycopy(mask, 0, header, headerLen, 4);
-                headerLen += 4;
-                byte[] maskedPayload = payload.clone();
-                umaskPayload(mask, maskedPayload, len);
-                outStream.write(header, 0, headerLen);
-                outStream.write(maskedPayload, 0, len);
-            } else {
-                outStream.write(header, 0, headerLen);
-                outStream.write(payload, 0, len);
-            }
+            outStream.write(frame, 0, headerLen + payloadLen);
             outStream.flush();
         } catch (IOException e) {
-            this.status.code = WsStatus.ABNORMAL_CLOSURE;
+            closeDueTo(WsStatus.ABNORMAL_CLOSURE,"Write failed",e);
             throw e;
+        }
+    }
+
+// unmask/mask payload
+    static void umaskPayload(byte[] mask, byte[] payload, int off, int len) {
+        for (int i = 0; i < len; i++) {
+            payload[off++] ^= mask[i & 3];
         }
     }
 

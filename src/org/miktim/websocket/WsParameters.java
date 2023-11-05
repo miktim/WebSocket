@@ -52,7 +52,7 @@ public class WsParameters {
             clon.sslParameters.setNeedClientAuth(sslp.getNeedClientAuth());
             clon.sslParameters.setProtocols(cloneArray(sslp.getProtocols()));
             clon.sslParameters.setWantClientAuth(sslp.getWantClientAuth());
-// TODO:  removed code Android API 24 to API 16
+// TODO: removed code Android API 24 to API 16
 
 //            sslParameters.setAlgorithmConstraints(sslp.getAlgorithmConstraints());
 //            sslParameters.setEndpointIdentificationAlgorithm(

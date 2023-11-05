@@ -81,7 +81,7 @@
                     }
                     show('onclose: ' + event.code
                             + ':"' + event.reason
-                            + '":' + event.wasClean
+                            + '":' + (event.wasClean ? "clean":"dirty")
                             + ':' + event.target.url + '<br>');
 
                     subProtocols = subProtocols.concat(["chat", "superChat"]);

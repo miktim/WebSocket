@@ -48,15 +48,14 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class WebSocket {
 
-    public static String VERSION = "3.4.2";
+    public static String VERSION = "3.4.3";
     private InetAddress bindAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
     private final List<WsListener> listeners = Collections.synchronizedList(new ArrayList<WsListener>());
     private File keyStoreFile = null;
     private String keyStorePassword = null;
 
- //   private String keyStoreAlgorithm = "BNC"; // "SunX509"
-
+    //   private String keyStoreAlgorithm = "BNC"; // "SunX509"
     public WebSocket() throws NoSuchAlgorithmException {
         MessageDigest.getInstance("SHA-1"); // check algorithm exists
     }
@@ -79,7 +78,7 @@ public class WebSocket {
         System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
 
-    public void setKeyFile(File keyfile, String password){//, String algorithm) {
+    public void setKeyFile(File keyfile, String password) {//, String algorithm) {
         keyStoreFile = keyfile;
         keyStorePassword = password;
 //        keyStoreAlgorithm = algorithm;
@@ -132,34 +131,36 @@ public class WebSocket {
             throw new NullPointerException();
         }
         wsp = wsp.deepClone();
-        ServerSocketFactory serverSocketFactory;
-        if (isSecure) {
-            if(this.keyStoreFile != null)
-                serverSocketFactory = getSSLContext(false)
-                    .getServerSocketFactory();
-            else
-                serverSocketFactory = SSLServerSocketFactory.getDefault();
-        } else {
-            serverSocketFactory = ServerSocketFactory.getDefault();
-        }
-        ServerSocket serverSocket = serverSocketFactory
-                .createServerSocket(port, wsp.backlog, bindAddress);
 
-        SSLParameters sslp = wsp.getSSLParameters();
-        if (isSecure && sslp != null) {
-            ((SSLServerSocket) serverSocket).setNeedClientAuth(sslp.getNeedClientAuth());
-            ((SSLServerSocket) serverSocket).setEnabledProtocols(sslp.getProtocols());
-            ((SSLServerSocket) serverSocket).setWantClientAuth(sslp.getWantClientAuth());
-            ((SSLServerSocket) serverSocket).setEnabledCipherSuites(sslp.getCipherSuites());
-// TODO:  removed code API 24 to API 16
+        ServerSocket serverSocket;
+        if (isSecure) {
+            ServerSocketFactory serverSocketFactory;
+            if (this.keyStoreFile != null) {
+                serverSocketFactory = getSSLContext(false)
+                        .getServerSocketFactory();
+            } else {
+                serverSocketFactory = SSLServerSocketFactory.getDefault();
+            }
+            serverSocket = serverSocketFactory
+                    .createServerSocket(port, wsp.backlog, bindAddress);
+
+            SSLParameters sslp = wsp.getSSLParameters();
+            if (sslp != null) {
+                ((SSLServerSocket) serverSocket).setNeedClientAuth(sslp.getNeedClientAuth());
+                ((SSLServerSocket) serverSocket).setEnabledProtocols(sslp.getProtocols());
+                ((SSLServerSocket) serverSocket).setWantClientAuth(sslp.getWantClientAuth());
+                ((SSLServerSocket) serverSocket).setEnabledCipherSuites(sslp.getCipherSuites());
+// TODO: removed code Android API 24 to API 16
 
 //            ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
+            }
+        } else {
+            serverSocket = new ServerSocket(port, wsp.backlog, bindAddress);
         }
 
         serverSocket.setSoTimeout(0);
-
-        WsListener listener = new WsListener(
-                serverSocket, handler, isSecure, wsp);
+        WsListener listener = 
+                new WsListener(serverSocket, handler, isSecure, wsp);
         listener.listeners = listeners;
         listener.start();
         return listener;
@@ -171,38 +172,38 @@ public class WebSocket {
 //            throws NoSuchAlgorithmException, KeyStoreException,
 //            FileNotFoundException, IOException, CertificateException,
 //            UnrecoverableKeyException {
-            SSLContext ctx;
-            KeyManagerFactory kmf;
-            KeyStore ks;// = KeyStore.getInstance(KeyStore.getDefaultType());
+        SSLContext ctx;
+        KeyManagerFactory kmf;
+        KeyStore ks;// = KeyStore.getInstance(KeyStore.getDefaultType());
 
-            String ksPassphrase = this.keyStorePassword;
-            File ksFile = this.keyStoreFile;
+        String ksPassphrase = this.keyStorePassword;
+        File ksFile = this.keyStoreFile;
 //            if (ksFile == null) {
 //                ksPassphrase = System.getProperty("javax.net.ssl.keyStorePassword");
 //                ksFile = new File(System.getProperty("javax.net.ssl.keyStore"));
 //            }
-            char[] passphrase = ksPassphrase.toCharArray();
+        char[] passphrase = ksPassphrase.toCharArray();
 
-            ctx = SSLContext.getInstance("TLS");
-            kmf = KeyManagerFactory.getInstance(
-                    KeyManagerFactory.getDefaultAlgorithm()); // java:"SunX509", android:"PKIX"
-            ks = KeyStore.getInstance(KeyStore.getDefaultType()); // android: BKS, java: JKS
-            FileInputStream ksFis = new FileInputStream(ksFile);
-            ks.load(ksFis, passphrase);
-            ksFis.close();
-            kmf.init(ks, passphrase);
+        ctx = SSLContext.getInstance("TLS");
+        kmf = KeyManagerFactory.getInstance(
+                KeyManagerFactory.getDefaultAlgorithm()); // java:"SunX509", android:"PKIX"
+        ks = KeyStore.getInstance(KeyStore.getDefaultType()); // android: BKS, java: JKS
+        FileInputStream ksFis = new FileInputStream(ksFile);
+        ks.load(ksFis, passphrase);
+        ksFis.close();
+        kmf.init(ks, passphrase);
 
-            TrustManagerFactory tmf = TrustManagerFactory.getInstance(
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance(
                 TrustManagerFactory.getDefaultAlgorithm()
-            );
-            tmf.init(ks);
+        );
+        tmf.init(ks);
 
-            if (isClient) {
-                ctx.init(null, tmf.getTrustManagers(), new SecureRandom());
-            } else {
-                ctx.init(kmf.getKeyManagers(), null, null);
-            }
-            return ctx;
+        if (isClient) {
+            ctx.init(null, tmf.getTrustManagers(), new SecureRandom());
+        } else {
+            ctx.init(kmf.getKeyManagers(), null, null);
+        }
+        return ctx;
     }
 
     synchronized public WsConnection connect(String uri, WsHandler handler, WsParameters wsp)
@@ -226,13 +227,15 @@ public class WebSocket {
         SSLSocketFactory factory;
 
         if (isSecure) {
-            if(this.keyStoreFile != null)
+            if (this.keyStoreFile != null) {
                 factory = getSSLContext(true).getSocketFactory();
-            else
+            } else {
                 factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+            }
             socket = (SSLSocket) factory.createSocket();
-            if (wsp.sslParameters != null)
+            if (wsp.sslParameters != null) {
                 ((SSLSocket) socket).setSSLParameters(wsp.sslParameters);
+            }
         } else {
             socket = new Socket();
         }

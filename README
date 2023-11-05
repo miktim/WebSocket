@@ -8,8 +8,7 @@ Release notes:
     - supported WebSocket version: 13;
     - WebSocket extensions are not supported;
     - supports plain/TLS connections (without client auth and tunneling);
-    - stream-based messaging: incoming WebSocket messages are represented
-      by input streams;
+    - incoming WebSocket messages are represented by input streams;
     - support for Internationalized Domain Names (IDNs) is provided by user.
 
 package org.miktim.websocket
@@ -18,7 +17,7 @@ Overview:
 
   Class WebSocket:
     Constant:
-      static String VERSION = "3.4.2";
+      static String VERSION = "3.4.3";
     Constructors:
       WebSocket() throws NoSuchAlgorithmException; // check if SHA1 exists
       WebSocket(InetAddress bindAddr)
@@ -60,7 +59,6 @@ Overview:
     // - the second argument is the negotiated WebSocket subprotocol or null.
     
       void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text);
-    // - messages are processed asynchronously;
     // - the message is an InputStream of binary data or UTF-8 encoded text;
     // - exiting the handler closes the stream (not connection!).
 
@@ -97,8 +95,9 @@ Overview:
     // maximum number of pending connections on the ServerSocket 
       int getBacklog(); // default value is -1: system depended
       WsParameters setSSLParameters(SSLParameters sslParms);
-    // javax.net.ssl.SSLParameters
-      SSLParameters getSSLParameters(); // created with setNeedClientAuth=false
+    // javax.net.ssl.SSLParameters used:
+    //   Protocols, CipherSuites, NeedClientAut, WantClientAuth
+      SSLParameters getSSLParameters();
 
   Class WsListener extends Thread:
     Methods:
@@ -114,7 +113,8 @@ Overview:
       void close(String closeReason);
     // close methods also closes all associated connections (code GOING_AWAY)
       void interrupt();
-    // listener interupted, associated connections keep alive
+    // listener interupted, associated connections stay alive
+    // and can be closed in the usual way
 
   Class WsConnection extends Thread:
     Methods:
@@ -133,7 +133,6 @@ Overview:
       void setHandler(WsHandler newHandler); 
     // calls onClose in the old handler, then calls onOpen in the new handler
       WsStatus getStatus();
-    // synchronyzed with TLS/WebSocket handshake  
       String getSubProtocol(); // returns null or handshaked WebSocket subprotocol
       boolean isClientSide();  // returns true for client connections 
       boolean isOpen();     // WebSocket connection is open
@@ -153,8 +152,6 @@ Overview:
       boolean wasClean; // WebSocket closing handshake completed cleanly
       boolean remotely; // closed remotely
       Throwable error;  // closing exception or null
-    Methods:
-      boolean isOpen()  // returns true if WebSocket connection is open
 
 Usage examples see in:
   ./test/websocket/WssConnectionTest.java

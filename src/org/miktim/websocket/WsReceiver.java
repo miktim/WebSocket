@@ -10,14 +10,17 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.net.ProtocolException;
 import java.net.SocketTimeoutException;
-import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.concurrent.ArrayBlockingQueue;
 
-class WsReceiver {
+class WsReceiver extends Thread{
     final private WsConnection conn;
+    final private ArrayBlockingQueue<WsInputStream> messageQueue;
 
-    WsReceiver(WsConnection conn) {
+    WsReceiver(WsConnection conn, ArrayBlockingQueue<WsInputStream> messageQueue ) {
         this.conn = conn;
+        this.messageQueue = messageQueue;
     }
 
     static final int OP_FINAL = 0x80;
@@ -33,16 +36,16 @@ class WsReceiver {
     static final int MASKED_DATA = 0x80;
     static final byte[] PING_PAYLOAD = "PingPong".getBytes();
     static final byte[] EMPTY_PAYLOAD = new byte[0];
-
-    // returns true when closure was clean
-    boolean waitData() {
+    
+    @Override
+    public void run() {
         int opData = OP_FINAL; // data frame opcode
         final byte[] payloadMask = new byte[8]; // mask & temp buffer for payloadLength
         long payloadLength;
         long messageLength = 0;
         boolean pingFrameSent = false;
         boolean maskedPayload;
-        ArrayList<byte[]> messageFrames = null;
+        ArrayDeque<byte[]> messageFrames = null;
 
         while (true) {
             try {
@@ -62,7 +65,7 @@ class WsReceiver {
                     case OP_TEXT_FINAL:
                         if ((opData & OP_FINAL) != 0) {
                             opData = b1;
-                            messageFrames = new ArrayList<byte[]>();
+                            messageFrames = new ArrayDeque<byte[]>();
                             messageLength = 0;
                             break;
                         }
@@ -111,8 +114,8 @@ class WsReceiver {
                 }
 // client MUST mask the data, server - OPTIONAL
                 if (Boolean.compare(conn.isClientSide(), maskedPayload) == 0) {
-                    conn.closeDueTo(WsStatus.PROTOCOL_ERROR,
-                            new ProtocolException("Mask mismatch"));
+                    conn.closeDueTo(WsStatus.PROTOCOL_ERROR, "Mask mismatch",
+                            new ProtocolException());
                 }
 // check frame payload length
                 switch (b1) {
@@ -126,7 +129,8 @@ class WsReceiver {
                         if (messageLength > conn.wsp.maxMessageLength) {
                             messageFrames = null;
                             conn.closeDueTo(WsStatus.MESSAGE_TOO_BIG
-                                    , new IOException("Message too big"));
+                                    , "Message too big"
+                                    , new IOException());
                         } else break;
                     case OP_PING:
                     case OP_PONG:
@@ -148,7 +152,7 @@ class WsReceiver {
                 }
 // unmask frame payload
                 if (maskedPayload) {
-                    conn.umaskPayload(payloadMask, framePayload, framePayload.length);
+                    conn.umaskPayload(payloadMask, framePayload, 0, framePayload.length);
                 }
 // perform control frame op
                 switch (b1) {
@@ -162,11 +166,12 @@ class WsReceiver {
                     case OP_FINAL:
                         if (messageFrames != null) {
                             messageFrames.add(framePayload);
-                            (new WsInputStreamThread(
-                                    conn
-                                    , new ArrayList<byte[]>(messageFrames)
+                            messageQueue.add(
+                                    new WsInputStream(
+                                    new ArrayDeque<byte[]>(messageFrames)
+                                    , messageLength
                                     , (opData & OP_TEXT) != 0)
-                            ).start();
+                            );
                             messageFrames = null;
                         }
                         continue;
@@ -185,21 +190,23 @@ class WsReceiver {
                     case OP_CLOSE:  // close handshake
                         if (conn.isOpen()) {
                             conn.status.remotely = true;
-                            conn.sendFrame(OP_CLOSE, framePayload, framePayload.length);
+                            // send the op code and, if present, the status code
+                            conn.sendFrame(OP_CLOSE, framePayload
+                                    ,Math.min(framePayload.length, 2));
+                            // extract status code and reason
                             if (framePayload.length > 1) {
                                 conn.status.code = ((framePayload[0] & 0xFF) << 8)
                                         + (framePayload[1] & 0xFF);
-                                conn.status.reason = new String(framePayload,
-                                        2, framePayload.length - 2,
-                                        "UTF-8"
+                                conn.status.reason = new String(framePayload
+                                        ,2 ,framePayload.length - 2
+                                        ,"UTF-8"
                                 );
-                            }
-                            if (conn.isOpen()) {
+                            } else {
                                 conn.status.code = WsStatus.NO_STATUS;
                             }
                         }
                         conn.status.wasClean = true;
-                        return true;
+                        break;
                     default:
                         throw new ProtocolException("Unsupported opcode");
                 }
@@ -209,27 +216,25 @@ class WsReceiver {
                     try {
                         conn.sendFrame(OP_PING, PING_PAYLOAD, PING_PAYLOAD.length);
                     } catch (IOException ex) {
-                        conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e);
                         break;
                     }
                 } else {
-                    conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e);
+                    conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, "Timeout", e);
                     break;
                 }
             } catch (ProtocolException e) {
-                conn.closeDueTo(WsStatus.PROTOCOL_ERROR, e);
+                conn.closeDueTo(WsStatus.PROTOCOL_ERROR, e.getMessage(), e);
                 break;
             } catch (Exception e) {
-                conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e);
+                conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e.getMessage(), e);
                 break;
             } catch (Error e) {
                 e.printStackTrace();
-                conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e);
+                conn.closeDueTo(WsStatus.INTERNAL_ERROR, "Internal error", e);
                 break;
             }
         }
         messageFrames = null;
-        return false;
     }
 
 }
