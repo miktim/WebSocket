@@ -1,6 +1,7 @@
 3.4.3
   - returned to the synchronous onMessage call. Message queue capacity = 3
   - fixed a connection dirty client closure bug, but in some cases this is normal
+  - Android problems with plain connections to localhost have not been fixed
   
 3.4.2
   - the bug that caused the Android API 30 read timeout has been fixed
