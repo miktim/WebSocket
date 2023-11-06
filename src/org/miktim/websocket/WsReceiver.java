@@ -190,6 +190,7 @@ class WsReceiver extends Thread{
                     case OP_CLOSE:  // close handshake
                         if (conn.isOpen()) {
                             conn.status.remotely = true;
+                            conn.socket.setSoTimeout(conn.wsp.handshakeSoTimeout);
                             // send the op code and, if present, the status code
                             conn.sendFrame(OP_CLOSE, framePayload
                                     ,Math.min(framePayload.length, 2));

@@ -17,7 +17,7 @@ Overview:
 
   Class WebSocket:
     Constant:
-      static String VERSION = "3.4.3";
+      static String VERSION = "3.4.4";
     Constructors:
       WebSocket() throws NoSuchAlgorithmException; // check if SHA1 exists
       WebSocket(InetAddress bindAddr)
