@@ -14,7 +14,8 @@ public class IDNsExample {
 
     public static URI idnsURI(String uri) throws URISyntaxException {
 // https://stackoverflow.com/questions/9607903/get-domain-name-from-given-url
-        Pattern pattern = Pattern.compile("^(([^:/?#]+):)?(//(([^@]+)@)?([^:/?#]*))?(.*)?$");
+        Pattern pattern = Pattern.compile(
+                "^(([^:/?#]+):)?(//(([^@]+)@)?([^:/?#]*))?(.*)(\\?([^#]*))?(#(.*))?$");
         Matcher matcher = pattern.matcher(uri);
         matcher.find();
         String host = null;
@@ -30,6 +31,7 @@ public class IDNsExample {
     public static void main(String[] args) throws Exception {
         String[] uris = new String[]{
             "",
+            "https:google.com",
             "wss://域名.cn:8080/路径/",
             "ws://域名.cn:8080",
             "wss://域名.cn",

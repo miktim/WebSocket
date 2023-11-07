@@ -32,16 +32,19 @@ import javax.net.ssl.SSLSocket;
 
 public class WsConnection extends Thread {
 
+    public static final int MESSAGE_QUEUE_CAPACITY = 3;
     private static final String SERVER_AGENT = "WsLite/" + WebSocket.VERSION;
 
     final Socket socket;
-    WsHandler handler;
+    private WsHandler handler;
     private final boolean isSecure; // SSL connection
     private final boolean isClientSide;
     private URI requestURI;
     private String subProtocol = null; // handshaked WebSocket subprotocol
     final WsParameters wsp;
     final WsStatus status = new WsStatus();
+    InputStream inStream;
+    OutputStream outStream;
     List<WsConnection> connections = null; // list of connections to a websocket or listener
 
     // sending data in binary format or UTF-8 encoded text
@@ -251,11 +254,6 @@ public class WsConnection extends Thread {
         this.wsp = wsp;
     }
 
-    InputStream inStream;
-    OutputStream outStream;
-    
-    public static final int MESSAGE_QUEUE_CAPACITY = 3;
-
     @Override
     public void run() {
         connections.add(this);
@@ -306,9 +304,6 @@ public class WsConnection extends Thread {
             }
             if(is == null) continue;
             handler.onMessage(this, is, is.isText());
-            try {
-                is.close();
-            } catch (IOException e){}
         }
         messageQueue.clear();
     }

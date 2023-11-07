@@ -117,6 +117,9 @@ Overview:
     // and can be closed in the usual way
 
   Class WsConnection extends Thread:
+    Constant:
+      MESSAGE_QUEUE_CAPACITY = 3 
+    // queue overflow leads to an error and connection closure
     Methods:
       void send(InputStream is, boolean isUTF8Text) throws IOException; 
     // input stream of binary data or UTF-8 encoded text
@@ -132,18 +135,18 @@ Overview:
     // - incoming messages are available until the closing handshake completed.
       void setHandler(WsHandler newHandler); 
     // calls onClose in the old handler, then calls onOpen in the new handler
-      WsStatus getStatus();
-      String getSubProtocol(); // returns null or handshaked WebSocket subprotocol
+      WsConnection[] listConnections() // the client side returns only itself 
       boolean isClientSide();  // returns true for client connections 
       boolean isOpen();     // WebSocket connection is open
-      boolean isSecure();   // is SSL/TLS connection
+      boolean isSecure();   // is TLS connection
       String getSSLSessionProtocol() // returns SSL protocol or null
-      String getPeerHost(); // returns remote host name
+      WsStatus getStatus();
+      String getSubProtocol(); // returns null or handshaked WebSocket subprotocol
+      String getPeerHost(); // returns remote host name or null
       int getPort()      // returns connected port
       String getPath();  // returns http request path or null
       String getQuery(); // returns http request query or null
       WsParameters getParameters();
-      WsConnection[] listConnections() // the client side returns only itself 
 
   Class WsStatus:
     Parameters:
