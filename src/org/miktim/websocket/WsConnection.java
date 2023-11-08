@@ -298,7 +298,7 @@ public class WsConnection extends Thread {
         WsInputStream is;
         while(receiver.isAlive()) {
             try {
-                is = messageQueue.poll(1000L,TimeUnit.MILLISECONDS);
+                is = messageQueue.poll(500L,TimeUnit.MILLISECONDS);
             } catch (InterruptedException ex) {
                 continue;
             }
@@ -479,52 +479,50 @@ public class WsConnection extends Thread {
 
     synchronized void sendFrame(int opFrame, byte[] payload, int payloadLen)
             throws IOException {
-        if (!isOpen()) {
-            throw new SocketException("Socket is not open");
+        if (!isOpen()) { //
+            throw new SocketException("WebSocket is not open");
         }
-// client MUST mask the payload, server - OPTIONAL
+// client MUST mask payload, server MUST NOT        
         boolean masked = this.isClientSide;
-        byte[] frame = new byte[14 + payloadLen]; //hopefully initialized with zeros
+        byte[] header = new byte[14]; //hopefully initialized with zeros
 
-        frame[0] = (byte) opFrame;
+        header[0] = (byte) opFrame;
         int headerLen = 2;
+
         int tempLen = payloadLen;
-        if (payloadLen < 126) {
-            frame[1] = (byte) (payloadLen);
-        } else if (payloadLen < 0x10000) {
-            frame[1] = (byte) 126;
-            frame[2] = (byte) (tempLen >>> 8);
-            frame[3] = (byte) tempLen;
+        if (tempLen < 126) {
+            header[1] = (byte) (tempLen);
+        } else if (tempLen < 0x10000) {
+            header[1] = (byte) 126;
+            header[2] = (byte) (tempLen >>> 8);
+            header[3] = (byte) tempLen;
             headerLen += 2;
         } else {
-            frame[1] = (byte) 127;
+            header[1] = (byte) 127;
             headerLen += 4; // skip 4 zero bytes of 64bit payload length
             for (int i = 3; i > 0; i--) {
-                frame[headerLen + i] = (byte) (tempLen & 0xFF);
+                header[headerLen + i] = (byte) (tempLen & 0xFF);
                 tempLen >>>= 8;
             }
             headerLen += 4;
         }
-        
-        byte[] mask = WsReceiver.EMPTY_PAYLOAD;
-        if (masked) {
-            frame[1] |= WsReceiver.MASKED_DATA;
-            mask = randomBytes(4);
-            System.arraycopy(mask, 0, frame, headerLen, 4);
-            headerLen += 4;
-        }
-        
-        System.arraycopy(payload, 0, frame, headerLen, payloadLen);
-
-        if (masked) {
-            umaskPayload(mask, frame, headerLen, payloadLen);
-        }
-        
         try {
-            outStream.write(frame, 0, headerLen + payloadLen);
+            if (masked) {
+                header[1] |= WsReceiver.MASKED_DATA;
+                byte[] mask = randomBytes(4);
+                System.arraycopy(mask, 0, header, headerLen, 4);
+                headerLen += 4;
+                byte[] maskedPayload = payload.clone();
+                umaskPayload(mask, maskedPayload, 0, payloadLen);
+                outStream.write(header, 0, headerLen);
+                outStream.write(maskedPayload, 0, payloadLen);
+            } else {
+                outStream.write(header, 0, headerLen);
+                outStream.write(payload, 0, payloadLen);
+            }
             outStream.flush();
         } catch (IOException e) {
-            closeDueTo(WsStatus.ABNORMAL_CLOSURE,"Write failed",e);
+            this.status.code = WsStatus.ABNORMAL_CLOSURE;
             throw e;
         }
     }

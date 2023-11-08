@@ -1,4 +1,3 @@
-Android problems with plain connections to localhost have not been fixed
 
 3.4.4
   - closing onMessage input stream after exiting handler;

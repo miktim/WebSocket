@@ -127,7 +127,9 @@ class WsReceiver extends Thread {
         }
 // exit 
         messageFrames = null;
-        ((Thread) conn).interrupt();
+// TODO: wake up connection        
+        messageQueue.clear();
+//        ((Thread) conn).interrupt();
     }
 
     void readHeader(int b2) throws IOException {
