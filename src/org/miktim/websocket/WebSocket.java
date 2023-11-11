@@ -48,7 +48,7 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class WebSocket {
 
-    public static String VERSION = "3.4.4";
+    public static String VERSION = "3.4.5";
     private InetAddress bindAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
     private final List<WsListener> listeners = Collections.synchronizedList(new ArrayList<WsListener>());

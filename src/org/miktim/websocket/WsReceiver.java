@@ -104,7 +104,7 @@ class WsReceiver extends Thread {
                 if (conn.isOpen() && conn.wsp.pingEnabled && !pingFrameSent) {
                     pingFrameSent = true;
                     try {
-                        conn.sendFrame(OP_PING, PING_PAYLOAD, PING_PAYLOAD.length);
+                        conn.sendControlFrame(OP_PING, PING_PAYLOAD, PING_PAYLOAD.length);
                     } catch (IOException ex) {
                         conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e.getMessage(), e);
                         break; // exit 
@@ -217,7 +217,7 @@ class WsReceiver extends Thread {
             }
             case OP_PING:
                 if (conn.isOpen()) {
-                    conn.sendFrame(OP_PONG, framePayload, framePayload.length);
+                    conn.sendControlFrame(OP_PONG, framePayload, framePayload.length);
                 }
                 return true;
             case OP_CLOSE:  // close handshake
@@ -225,7 +225,7 @@ class WsReceiver extends Thread {
                     conn.status.remotely = true;
                     conn.socket.setSoTimeout(conn.wsp.handshakeSoTimeout);
                     // send approval
-                    conn.sendFrame(OP_CLOSE, framePayload, framePayload.length);                    // extract status code and reason
+                    conn.sendControlFrame(OP_CLOSE, framePayload, framePayload.length);                    // extract status code and reason
                     if (framePayload.length > 1) {
                         conn.status.code = ((framePayload[0] & 0xFF) << 8)
                                 + (framePayload[1] & 0xFF);

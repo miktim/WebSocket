@@ -43,8 +43,6 @@ public class WsConnection extends Thread {
     private String subProtocol = null; // handshaked WebSocket subprotocol
     final WsParameters wsp;
     final WsStatus status = new WsStatus();
-    InputStream inStream;
-    OutputStream outStream;
     List<WsConnection> connections = null; // list of connections to a websocket or listener
 
     // sending data in binary format or UTF-8 encoded text
@@ -217,7 +215,7 @@ public class WsConnection extends Thread {
                 payloadLen = 2 + byteReason.length;
             }
             try {
-                sendFrame(WsReceiver.OP_CLOSE, payload, payloadLen);
+                sendControlFrame(WsReceiver.OP_CLOSE, payload, payloadLen);
                 status.code = code; // disable output
                 status.remotely = false;
                 socket.setSoTimeout(wsp.handshakeSoTimeout);
@@ -254,6 +252,9 @@ public class WsConnection extends Thread {
         this.wsp = wsp;
     }
 
+    InputStream inStream;
+    OutputStream outStream;
+
     @Override
     public void run() {
         connections.add(this);
@@ -265,7 +266,9 @@ public class WsConnection extends Thread {
             handler.onError(this, status.error);
         }
         handler.onClose(this, getStatus());
-        if(!isClientSide) closeSocket();
+        if (!isClientSide) {
+            closeSocket();
+        }
         connections.remove(this);
     }
 
@@ -288,7 +291,7 @@ public class WsConnection extends Thread {
             return false;
         }
     }
-    
+
     ArrayBlockingQueue<WsInputStream> messageQueue;
 
     void waitMessages(int queueCapacity) {
@@ -296,13 +299,15 @@ public class WsConnection extends Thread {
         WsReceiver receiver = new WsReceiver(this, messageQueue);
         receiver.start();
         WsInputStream is;
-        while(receiver.isAlive()) {
+        while (receiver.isAlive()) {
             try {
-                is = messageQueue.poll(500L,TimeUnit.MILLISECONDS);
+                is = messageQueue.poll(500L, TimeUnit.MILLISECONDS);
             } catch (InterruptedException ex) {
                 continue;
             }
-            if(is == null) continue;
+            if (is == null) {
+                continue;
+            }
             handler.onMessage(this, is, is.isText());
         }
         messageQueue.clear();
@@ -477,6 +482,11 @@ public class WsConnection extends Thread {
         }
     }
 
+    void sendControlFrame(int opFrame, byte[] payload, int payloadLen)
+            throws IOException {
+        sendFrame(opFrame, Arrays.copyOf(payload, payloadLen), payloadLen);
+    }
+
     synchronized void sendFrame(int opFrame, byte[] payload, int payloadLen)
             throws IOException {
         if (!isOpen()) { //
@@ -506,20 +516,18 @@ public class WsConnection extends Thread {
             }
             headerLen += 4;
         }
+        
+        if (masked) {
+            header[1] |= WsReceiver.MASKED_DATA;
+            byte[] mask = randomBytes(4);
+            System.arraycopy(mask, 0, header, headerLen, 4);
+            headerLen += 4;
+            umaskPayload(mask, payload, 0, payloadLen);
+        }
+
         try {
-            if (masked) {
-                header[1] |= WsReceiver.MASKED_DATA;
-                byte[] mask = randomBytes(4);
-                System.arraycopy(mask, 0, header, headerLen, 4);
-                headerLen += 4;
-                byte[] maskedPayload = payload.clone();
-                umaskPayload(mask, maskedPayload, 0, payloadLen);
-                outStream.write(header, 0, headerLen);
-                outStream.write(maskedPayload, 0, payloadLen);
-            } else {
-                outStream.write(header, 0, headerLen);
-                outStream.write(payload, 0, payloadLen);
-            }
+            outStream.write(header, 0, headerLen);
+            outStream.write(payload, 0, payloadLen);
             outStream.flush();
         } catch (IOException e) {
             this.status.code = WsStatus.ABNORMAL_CLOSURE;

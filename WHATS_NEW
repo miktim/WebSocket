@@ -1,3 +1,5 @@
+3.4.5
+  - optimized data sending
 
 3.4.4
   - closing onMessage input stream after exiting handler;
