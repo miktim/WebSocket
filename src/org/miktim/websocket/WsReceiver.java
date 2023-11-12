@@ -225,7 +225,9 @@ class WsReceiver extends Thread {
                     conn.status.remotely = true;
                     conn.socket.setSoTimeout(conn.wsp.handshakeSoTimeout);
                     // send approval
-                    conn.sendControlFrame(OP_CLOSE, framePayload, framePayload.length);                    // extract status code and reason
+                    conn.sendControlFrame(OP_CLOSE,
+                            framePayload, framePayload.length);
+                    // extract status code and reason
                     if (framePayload.length > 1) {
                         conn.status.code = ((framePayload[0] & 0xFF) << 8)
                                 + (framePayload[1] & 0xFF);

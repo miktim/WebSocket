@@ -37,7 +37,7 @@ public class HttpHead {
         return sb.deleteCharAt(sb.length() - 1).toString();
     }
 
-    private final TreeMap<String, String> head = new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
+    private final TreeMap<String, String> head = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
 
     public HttpHead() {
     }
@@ -68,7 +68,9 @@ public class HttpHead {
     }
 
     public HttpHead setValues(String key, String[] values) {
-        if (values == null) return this;
+        if (values == null) {
+            return this;
+        }
         return set(key, join(values, ','));
     }
 
@@ -97,8 +99,8 @@ public class HttpHead {
     public Map<String, String> headMap() {
         return head;
     }
-    
-    String readLine(InputStream is) throws IOException {
+
+    String readHeaderLine(InputStream is) throws IOException {
         byte[] bb = new byte[1024];
         int i = 0;
         int b = is.read();
@@ -106,13 +108,14 @@ public class HttpHead {
             bb[i++] = (byte) b;
             b = is.read();
         }
-        return (new String(bb, 0, i)).replace("\r", "");
+        if (b == '\n' && bb[i - 1] == '\r') {
+            return new String(bb, 0, i - 1); // header line MUST ended CRLF
+        }
+        throw new ProtocolException();
     }
-    
+
     public HttpHead read(InputStream is) throws IOException {
-//        BufferedReader br = new BufferedReader(
-//                new InputStreamReader(is));
-        String line = readLine(is);
+        String line = readHeaderLine(is);
 //        if (line.startsWith("\u0016\u0003\u0003")) {
 //            throw new javax.net.ssl.SSLHandshakeException("Plain socket");
 //        }
@@ -124,7 +127,7 @@ public class HttpHead {
         set(START_LINE, line);
         String key = null;
         while (true) {
-            line = readLine(is);
+            line = readHeaderLine(is);
             if (line == null || line.isEmpty()) {
                 break;
             }
