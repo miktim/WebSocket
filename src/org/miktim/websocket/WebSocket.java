@@ -1,15 +1,14 @@
 /*
  * WebSocket. MIT (c) 2020-2023 miktim@mail.ru
  *
- * Creates ServerSocket/Socket (bind, connect).
  * Creates and starts listener/connection threads.
  *
  * Release notes:
- * - Java SE 7+, Android compatible;
+ * - Java SE 6+, Android compatible;
  * - RFC-6455: https://tools.ietf.org/html/rfc6455 ;
  * - supported WebSocket version: 13;
  * - WebSocket extensions not supported;
- * - supports plain socket/TLS connections;
+ * - supports cleartext/TLS connections;
  * - stream-based messaging.
  *
  * Created: 2020-06-06
@@ -55,7 +54,6 @@ public class WebSocket {
     private File keyStoreFile = null;
     private String keyStorePassword = null;
 
-    //   private String keyStoreAlgorithm = "BNC"; // "SunX509"
     public WebSocket() throws NoSuchAlgorithmException {
         MessageDigest.getInstance("SHA-1"); // check algorithm exists
     }
@@ -78,10 +76,9 @@ public class WebSocket {
         System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
 
-    public void setKeyFile(File keyfile, String password) {//, String algorithm) {
+    public void setKeyFile(File keyfile, String password) {
         keyStoreFile = keyfile;
         keyStorePassword = password;
-//        keyStoreAlgorithm = algorithm;
     }
 
     public void resetKeyFile() {
