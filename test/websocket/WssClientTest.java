@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.miktim.websocket.WsConnection;
-import org.miktim.websocket.WsHandler;
 import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsStatus;
@@ -49,7 +48,7 @@ public class WssClientTest {
         }
 //        WebSocket.setTrustStore("/nofile", "");
 
-        WsHandler clientHandler = new WsHandler() {
+        WsConnection.EventHandler clientHandler = new WsConnection.EventHandler() {
             @Override
             public void onOpen(WsConnection con, String subp) {
                 ws_log("Connected. " + con.getSSLSessionProtocol()
@@ -152,11 +151,10 @@ public class WssClientTest {
         WsParameters wsp = new WsParameters()
                 .setConnectionSoTimeout(10000, true)
                 .setMaxMessageLength(MAX_MESSAGE_LENGTH); // ping
-//        wsp.setSSLParameters(null);
         wsp.getSSLParameters().setProtocols(new String[]{"TLSv1.2"});
 ////        wsp.setPayloadLength(fragmentTest.length()/2); // not work!
-        ws_log("\r\nWssClient "
-                + WebSocket.VERSION + " test"
+        ws_log("\r\nWssClientTest "
+                + WebSocket.VERSION
                 + "\r\nTrying to connect to " + REMOTE_CONNECTION
                 + "\r\nTest will be terminated after "
                 + (WEBSOCKET_SHUTDOWN_TIMEOUT / 1000) + " seconds"

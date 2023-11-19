@@ -1,4 +1,11 @@
+4.0.0
+  - the objects are named according to their purpose;
+  - improved exceptions handling: "message too big", "message queue overflow";
+  - one more test added;
+  - International Domain Names (IDNs) support added
+
 3.4.5
+  - fixed bug with reading the HTTP header;
   - optimized data sending
 
 3.4.4
@@ -18,8 +25,8 @@
   - listener/connection: optimize exception handling
 
 3.4.0a
-  - fixed bugs when preparing TLS
-  - added the Ws parameter maxMessageLength;
+  - fixed bugs when preparing TLS connections;
+  - added the Ws parameter maxMessageLength
 
 3.3.2a
 The package has been significantly redesigned:

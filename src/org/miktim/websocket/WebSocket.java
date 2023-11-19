@@ -1,7 +1,7 @@
 /*
  * WebSocket. MIT (c) 2020-2023 miktim@mail.ru
  *
- * Creates and starts listener/connection threads.
+ * Creates and starts server/connection threads.
  *
  * Release notes:
  * - Java SE 6+, Android compatible;
@@ -35,6 +35,8 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -47,10 +49,10 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class WebSocket {
 
-    public static String VERSION = "3.4.5";
+    public static String VERSION = "4.0.0";
     private InetAddress bindAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
-    private final List<WsListener> listeners = Collections.synchronizedList(new ArrayList<WsListener>());
+    private final List<WsServer> servers = Collections.synchronizedList(new ArrayList<WsServer>());
     private File keyStoreFile = null;
     private String keyStorePassword = null;
 
@@ -75,6 +77,24 @@ public class WebSocket {
         System.setProperty("javax.net.ssl.keyStore", jksFile);
         System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
+    
+// convert host name to International Domain Names (IDN) format and create URI
+    public static URI idnURI(String uri) throws URISyntaxException {
+// Supported uri format: [scheme:][//[user-info@]host][:port][/path][?query][#fragment]
+// https://stackoverflow.com/questions/9607903/get-domain-name-from-given-url
+        Pattern pattern = Pattern.compile(
+                "^(([^:/?#]+):)?(//(([^@]+)@)?([^:/?#]*))?(.*)(\\?([^#]*))?(#(.*))?$");
+        Matcher matcher = pattern.matcher(uri);
+        matcher.find();
+        String host = null;
+        if (matcher.groupCount() > 5) {
+            host = matcher.group(6); // extract host from uri
+        }
+        if (host != null) {
+            uri = uri.replace(host, java.net.IDN.toASCII(host));
+        }
+        return new URI(uri);
+    }
 
     public void setKeyFile(File keyfile, String password) {
         keyStoreFile = keyfile;
@@ -94,14 +114,14 @@ public class WebSocket {
         return connections.toArray(new WsConnection[0]);
     }
 
-    public WsListener[] listListeners() {
-        return listeners.toArray(new WsListener[0]);
+    public WsServer[] listServers() {
+        return servers.toArray(new WsServer[0]);
     }
 
     public void closeAll(String closeReason) {
-// close WebSocket listeners/connections 
-        for (WsListener listener : listListeners()) {
-            listener.close(closeReason);
+// close WebSocket servers/connections 
+        for (WsServer server : listServers()) {
+            server.close(closeReason);
         }
         for (WsConnection conn : listConnections()) {
             conn.close(WsStatus.GOING_AWAY, closeReason);
@@ -112,17 +132,17 @@ public class WebSocket {
         closeAll("");
     }
 
-    public WsListener listen(int port, WsHandler handler, WsParameters wsp)
+    public WsServer Server(int port, WsConnection.EventHandler handler, WsParameters wsp)
             throws IOException, GeneralSecurityException {
-        return startListener(port, handler, false, wsp);
+        return createServer(port, handler, false, wsp);
     }
 
-    public WsListener listenSafely(int port, WsHandler handler, WsParameters wsp)
+    public WsServer SecureServer(int port, WsConnection.EventHandler handler, WsParameters wsp)
             throws IOException, GeneralSecurityException {
-        return startListener(port, handler, true, wsp);
+        return createServer(port, handler, true, wsp);
     }
 
-    synchronized WsListener startListener(int port, WsHandler handler, boolean isSecure, WsParameters wsp)
+    synchronized WsServer createServer(int port, WsConnection.EventHandler handler, boolean isSecure, WsParameters wsp)
             throws IOException, GeneralSecurityException {
         if (handler == null || wsp == null) {
             throw new NullPointerException();
@@ -156,11 +176,10 @@ public class WebSocket {
         }
 
         serverSocket.setSoTimeout(0);
-        WsListener listener = 
-                new WsListener(serverSocket, handler, isSecure, wsp);
-        listener.listeners = listeners;
-        listener.start();
-        return listener;
+        WsServer server = 
+                new WsServer(serverSocket, handler, isSecure, wsp);
+        server.servers = servers;
+        return server;
     }
 
 // https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/sockets/server/ClassFileServer.java
@@ -203,13 +222,14 @@ public class WebSocket {
         return ctx;
     }
 
-    synchronized public WsConnection connect(String uri, WsHandler handler, WsParameters wsp)
+    synchronized public WsConnection connect(String uri, 
+            WsConnection.EventHandler handler, WsParameters wsp)
             throws URISyntaxException, IOException, GeneralSecurityException {
         if (uri == null || handler == null || wsp == null) {
             throw new NullPointerException();
         }
         wsp = wsp.deepClone();
-        URI requestURI = new URI(uri);
+        URI requestURI = idnURI(uri);
         String scheme = requestURI.getScheme();
         String host = requestURI.getHost();
         if (host == null || scheme == null) {

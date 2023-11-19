@@ -1,5 +1,5 @@
 /*
- * WsParameters. Common listener/connection parameters, MIT (c) 2020-2023 miktim@mail.ru
+ * WsParameters. Common server/connection parameters, MIT (c) 2020-2023 miktim@mail.ru
  *
  * Created: 2021-01-29
  */
@@ -7,14 +7,13 @@ package org.miktim.websocket;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 
 public class WsParameters {
 
-    public static final int MIN_PAYLOAD_BUFFER_LENGTH = 126;
-    public static final int MIN_MESSAGE_LENGTH = 256;
+    public static final int MIN_PAYLOAD_BUFFER_LENGTH = 125;
+    public static final int MIN_MESSAGE_LENGTH = 1024;
 
     String[] subProtocols = null; // WebSocket subprotocol[s] in preferred order
     int handshakeSoTimeout = 4000; // millis, TLS and WebSocket open/close handshake timeout
@@ -22,7 +21,7 @@ public class WsParameters {
     boolean pingEnabled = true; // if false, connection terminate by connectionSoTimeout
     int payloadBufferLength = 32768; // bytes. Outgoing payload length, incoming buffer length. 
     int backlog = -1; // maximum number of pending connections on the server socket (system default)
-    long maxMessageLength = 1048576L; // 1 mib
+    long maxMessageLength = 1048576L; // 1 MiB
     SSLParameters sslParameters = null;  // TLS parameters
 
     public WsParameters() {
@@ -36,7 +35,7 @@ public class WsParameters {
     }
 
     // deep clone
-    public WsParameters deepClone() {
+    synchronized WsParameters deepClone() {
         WsParameters clon = new WsParameters();
         clon.subProtocols = cloneArray(subProtocols);
         clon.handshakeSoTimeout = handshakeSoTimeout;
@@ -62,11 +61,18 @@ public class WsParameters {
         return clon;
     }
 
-    String[] cloneArray(String[] array) {
-        return (array == null ? null : (String[]) Arrays.copyOf(array, array.length));
+    static <T> T[] cloneArray(T[] array) {
+        return (array == null ? null : Arrays.copyOf(array, array.length));
     }
 
     public WsParameters setSubProtocols(String[] subps) {
+        if (subps == null || subps.length == 0) {
+            subps = null;
+        } else {
+            for (int i = 0; i < subps.length; i++) {
+                subps[i] = String.valueOf(subps[i]).trim();
+            }
+        }
         subProtocols = subps;
         return this;
     }

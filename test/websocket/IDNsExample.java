@@ -31,7 +31,7 @@ public class IDNsExample {
     public static void main(String[] args) throws Exception {
         String[] uris = new String[]{
             "",
-            "https:google.com",
+            "https://google.com",
             "wss://域名.cn:8080/路径/",
             "ws://域名.cn:8080",
             "wss://域名.cn",

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  WsListener test, MIT (c) 2020-2023 miktim@mail.ru
+  WsServer test, MIT (c) 2020-2023 miktim@mail.ru
 -->
 <html>
     <head>
@@ -10,7 +10,7 @@
     </head>
     <body>
         <div>WsListener test<br><br></div>
-        <!-- listener throws error 1002 (Protocol Error) -->
+        <!-- server throws error 1002 (Protocol Error) -->
         <script src="http://localhost:8080/this_request_must_fail.js"></script>
         <script>
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
@@ -22,10 +22,11 @@
             var tests = [
                 'unknown WebSocket subprotocol (1006 expected)',
                 'closing WebSocket by browser (1000 expected)',
-                'closing WebSocket by listener (1000 expected)',
+                'closing WebSocket by server (1000 expected)',
                 'waiting message too big (1009 expected)',
-                'ping, waiting for listener shutdown (1001 expected)'
+                'ping, waiting for server shutdown (1001 expected)'
             ];
+            var expected = [1006,1000,1000,1009,1001];
             var webSocket;
             var subProtocols = ["superPooperChat"];//["superChat", "chat"];
             try {
@@ -81,8 +82,10 @@
                     }
                     show('onclose: ' + event.code
                             + ':"' + event.reason
-                            + '":' + (event.wasClean ? "clean":"dirty")
-                            + ':' + event.target.url + '<br>');
+                            + '":' + (event.wasClean ? 'clean':'dirty')
+                            + ':' + event.target.url + '<br>'
+                            + (event.code === expected[testNo] ? "OK" : "Failed!")
+                            + '<br>');
 
                     subProtocols = subProtocols.concat(["chat", "superChat"]);
                     subProtocols.unshift(subProtocols[2]); // rotate

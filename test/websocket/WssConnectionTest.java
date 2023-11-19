@@ -8,9 +8,8 @@ import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.miktim.websocket.WsConnection;
-import org.miktim.websocket.WsHandler;
 import org.miktim.websocket.WebSocket;
-import org.miktim.websocket.WsListener;
+import org.miktim.websocket.WsServer;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsStatus;
 
@@ -38,9 +37,9 @@ public class WssConnectionTest {
         int port = 8443;
         String remoteAddr = REMOTE_HOST + ":" + port;
 
-        WsHandler handler = new WsHandler() {
+        WsConnection.EventHandler handler = new WsConnection.EventHandler() {
             String makeLogPrefix(WsConnection con) {
-                return (con.isClientSide() ? "Client:" : "Listener:")
+                return (con.isClientSide() ? "Client:" : "Server side:")
                         + con.getSubProtocol();
             }
 
@@ -51,7 +50,7 @@ public class WssConnectionTest {
                         + " SecureProtocol: " + con.getSSLSessionProtocol());
                 try {
                     con.send(con.isClientSide()
-                            ? "Привет, Листенер! " : "Hello, Client! ");
+                            ? "Привет, Сервер! " : "Hello, Client! ");
                 } catch (IOException e) {
                     ws_log(makeLogPrefix(con) + " onOPEN: " + makePath(con)
                             + " send error: " + e + " " + con.getStatus());
@@ -67,14 +66,9 @@ public class WssConnectionTest {
 
             @Override
             public void onError(WsConnection con, Throwable e) {
-                if (con == null) {
-                    ws_log("Listener CRASHED! " + e);
-                    e.printStackTrace();
-                } else {
                     ws_log(makeLogPrefix(con) + " onERROR: "
                             + makePath(con) + " " + e + " " + con.getStatus());
 //                e.printStackTrace();
-                }
             }
 
             @Override
@@ -141,7 +135,8 @@ public class WssConnectionTest {
         WsParameters lwsp = new WsParameters(); // listener parameters
         lwsp.setConnectionSoTimeout(1000, true); // ping
         lwsp.setSubProtocols("1,2,3,4,5".split(","));
-        final WsListener wsListener = webSocket.listenSafely(port, handler, lwsp);
+        final WsServer wsServer = 
+                webSocket.SecureServer(port, handler, lwsp).launch();
 
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
@@ -152,23 +147,23 @@ public class WssConnectionTest {
                 timer.cancel();
             }
         }, WEBSOCKET_SHUTDOWN_TIMEOUT);
-        ws_log("\r\nWssConnection (v"
-                + WebSocket.VERSION + ") test"
+        ws_log("\r\nWssConnectionTest "
+                + WebSocket.VERSION 
                 + "\r\nIncoming maxMessageLength: " + MAX_MESSAGE_LENGTH
                 + "\r\nClient try to connect to " + remoteAddr
                 + "\r\nWebSocket will be closed after "
                 + (WEBSOCKET_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
-        WsParameters cwsp1 = new WsParameters();
-        cwsp1.setSubProtocols("1,2,3,4,5".split(","));
-        webSocket.connect("wss://" + remoteAddr + "/тест", handler, cwsp1);
-        cwsp1.setSubProtocols("2,3,4,5".split(","));
-        webSocket.connect("wss://" + remoteAddr + "/", handler, cwsp1);
-        cwsp1.setSubProtocols("3,4,5".split(","));
-        webSocket.connect("wss://" + remoteAddr + "/тест", handler, cwsp1);
-        cwsp1.setSubProtocols("4,5".split(","));
-        webSocket.connect("wss://" + remoteAddr + "?параметр=значение", handler, cwsp1);
-        webSocket.connect("ws://" + remoteAddr + "/must_fail", handler, cwsp1);
+        WsParameters cwsp = new WsParameters();
+        cwsp.setSubProtocols("1,2,3,4,5".split(","));
+        webSocket.connect("wss://" + remoteAddr + "/тест", handler, cwsp);
+        cwsp.setSubProtocols("2,3,4,5".split(","));
+        webSocket.connect("wss://" + remoteAddr + "/", handler, cwsp);
+        cwsp.setSubProtocols("3,4,5".split(","));
+        webSocket.connect("wss://" + remoteAddr + "/тест", handler, cwsp);
+        cwsp.setSubProtocols("4,5".split(","));
+        webSocket.connect("wss://" + remoteAddr + "?параметр=значение", handler, cwsp);
+        webSocket.connect("ws://" + remoteAddr + "/must_fail", handler, cwsp);
     }
 
 }
