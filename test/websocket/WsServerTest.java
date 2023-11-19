@@ -26,7 +26,7 @@ public class WsServerTest implements WsConnection.EventHandler{
     }
 
     public static void main(String[] args) throws Exception {
-        String path = "."; // WsListenerTest.html file path
+        String path = "."; //
         if (args.length > 0) {
             path = args[0];
         }
@@ -48,7 +48,7 @@ public class WsServerTest implements WsConnection.EventHandler{
             }
         }, TEST_SHUTDOWN_TIMEOUT);
 
-        ws_log("\r\nWsListenerTest "
+        ws_log("\r\nWsServerTest "
                 + WebSocket.VERSION
                 + "\r\nIncoming maxMessageLength: " + MAX_MESSAGE_LENGTH
                 + "\r\nWebSocket subProtocols: " + WEBSOCKET_SUBPROTOCOLS
@@ -58,7 +58,7 @@ public class WsServerTest implements WsConnection.EventHandler{
 // call the default browser
         /* Android
         Intent browserIntent = new Intent(Intent.ACTION_VIEW,
-                Uri.parse("file:///android_asset/WsListenerTest.html"));
+                Uri.parse("file:///android_asset/WsServerTest.html"));
         startActivity(browserIntent);
          */
 // /* Desktop 

@@ -54,14 +54,14 @@ public class WsStressTest {
                     } else if (subp.equals("3")) {
 // there is nothing to do, wait for a timeout                         
                     } else if (subp.equals("4")) {
-// listener interrupt
+// server interrupt
                         conn.send((conn.isClientSide()
-                                ? "Hello, listener!" : "Hello, client!"));
+                                ? "Hello, server!" : "Hello, client!"));
                     }
                 } catch (IOException e) {
                     ws_log(String.format("[%s] %s send Error %s",
                             conn.getSubProtocol(),
-                            (conn.isClientSide() ? "Client" : "Listener handler"),
+                            (conn.isClientSide() ? "Client" : "Server side"),
                             e.toString()
                     ));
                 }
@@ -91,7 +91,7 @@ public class WsStressTest {
                             conn.send(is, isText);
                         }
                     } else if (subp.equals("4")) {
-// terminate listener                    
+// terminate server                    
                         if (conn.isOpen()) {
                             conn.send(is, isText);
                         }
@@ -100,7 +100,7 @@ public class WsStressTest {
                 } catch (IOException e) {
                     ws_log(String.format("[%s] %s onMessage send error %s",
                             subp,
-                            (conn.isClientSide() ? "Client" : "Listener handler"),
+                            (conn.isClientSide() ? "Client" : "Server side"),
                             e.toString()));
                 }
 
@@ -108,7 +108,7 @@ public class WsStressTest {
 
         };
         
-        final WsParameters wsp = new WsParameters() // client/listener parameters
+        final WsParameters wsp = new WsParameters() // client/server parameters
                 .setSubProtocols("0,1,2,3,4,5,6,7,8,9".split(","))
                 //               .setMaxMessageLength(2000)
                 .setPayloadBufferLength(0);// min payload length
@@ -132,7 +132,7 @@ public class WsStressTest {
                 + (WEBSOCKET_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
 
-        ws_log("0. Try connecting via TLS to a cleartext listener:");
+        ws_log("0. Try connecting via TLS to a cleartext server:");
         WsConnection conn = webSocket.connect("wss://localhost:" + PORT, handler, wsp);
         conn.join();
         
@@ -158,7 +158,7 @@ public class WsStressTest {
         conn = webSocket.connect(ADDRESS, handler, wsp);
         conn.join();
 
-        ws_log("\r\n4. Try interrupt listener:");
+        ws_log("\r\n4. Try interrupt server:");
         wsp.setSubProtocols(new String[]{"4"});
         webSocket.connect(ADDRESS, handler, wsp);
         webSocket.connect(ADDRESS, handler, wsp);
