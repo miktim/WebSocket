@@ -21,7 +21,7 @@ Overview:
     Creates and starts connections/servers.
 
     Constant:
-      static String VERSION = "4.0.0";
+      static String VERSION = "4.0.1";
 
     Constructors:
       WebSocket() throws NoSuchAlgorithmException; // check if SHA1 exists
@@ -46,12 +46,12 @@ Overview:
       WsServer SecureServer(int port, WsConnection.EventHandler handler, WsParameters wsp)
          throws IOException, GeneralSecurityException;
         - creates TLS connections server
-        Servers are created using a "dumb" server handler. You can set your own
-        handler or start the server immediately.
+        Servers are created using a "dumb" server handler. 
+        You can set your own handler or start the server immediately.
 
       WsConnection connect(String uri, WsConnection.EventHandler handler, WsParameters wsp)
          throws URISyntaxException, IOException, GeneralSecurityException;
-        - creates and starts client connection;
+        - creates and starts a client connection;
         - uri's scheme (ws: | wss:) and host are required,
           user-info@ and #fragment - ignored
 
@@ -62,43 +62,13 @@ Overview:
         - close all created servers/connections, code 1001 (GOING_AWAY)
       void closeAll(String closeReason); // close code 1001 (GOING_AWAY)
 
-  Class WsParameters:
-    Constructor:
-      WsParameters();
-
-    Methods:
-      WsParameters setSubProtocols(String[] subps); 
-        - set WebSocket subProtocols in preferred order
-      String[] getSubProtocols(); // null is default
-      WsParameters setHandshakeSoTimeout(int millis);
-        - TLS and WebSocket open/close handshake timeout
-      int getHandshakeSoTimeout();
-      WsParameters setConnectionSoTimeout(int millis, boolean pingEnabled)
-        - data exchange timeout
-      int getConnectionSoTimeout();
-      boolean isPingEnabled(); // enabled by default
-      WsParameters setPayloadBufferLength(int len); 
-        - outgoing messages max payload length, min len = 125 bytes
-      int getPayloadBufferLength();
-      WsParameters setMaxMessageLength(int len); 
-        - incoming messages max length. If exceeded, the connection 
-          will be terminated with the MESSAGE_TOO_BIG status code
-      int getMaxMessageLength(); // default: 1 MiB
-      WsParameters setSSLParameters(SSLParameters sslParms);
-        - javax.net.ssl.SSLParameters used:
-          Protocols, CipherSuites, NeedClientAut, WantClientAuth
-      SSLParameters getSSLParameters();
-
-      WsParameters setBacklog(int num);
-        - maximum number of pending connections on the ServerSocket 
-      int getBacklog(); // default value is -1: system depended
-
   Class WsServer extends Thread:
     Methods:
       void setHandler(WsServer.EventHandler handler);
       void start(); // start server
+      WsServer launch(); // start server
       boolean isOpen();
-      boolean isInterrupted();
+      boolean isInterrupted(); // ServerSocket error or interrupt
       boolean isSecure();
       int getPort();
         - returns the port number on which this socket is listening.
@@ -106,7 +76,6 @@ Overview:
         - returns ServerSocket bind address or null
       WsParameters getParameters();
       WsConnection[] listConnections();
-      WsServer launch(); // start server
       void close(); 
       void close(String closeReason);
         - close methods also closes all associated connections (code GOING_AWAY)
@@ -117,10 +86,12 @@ Overview:
   Interface WsServer.EventHandler:
     Methods:
       void onStart(WsServer server);
-      boolean onConnection(WsServer server, WsConnection conn);
-        - called BEFORE connection handshake;
+
+      boolean onAccept(WsServer server, WsConnection conn);
+        - called BEFORE WebSocket connection handshake;
         - the returned value of true means approval of the connection,
           the value of false means rejection
+
       void onStop(WsServer server, Exception error);
         - the error is null or a ServerSocket exception if occured
 
@@ -160,7 +131,6 @@ Overview:
       WsParameters getParameters();
 
   Interface WsConnection.EventHandler:
-    Connection events handler.
     There are two scenarios for handling events:
         - onError - onClose, when the SSL/WebSocket handshake failed;
         - onOpen - [onMessage - onMessage - ...] - [onError] - onClose.
@@ -178,6 +148,37 @@ Overview:
         - large incoming messages may throw an OutOfMemoryError;
 
       void onClose(WsConnection conn, WsStatus closeStatus);
+
+  Class WsParameters:
+    Constructor:
+      WsParameters();
+
+    Methods:
+      WsParameters setSubProtocols(String[] subps); 
+        - set WebSocket subProtocols in preferred order
+      String[] getSubProtocols(); // null is default
+      WsParameters setHandshakeSoTimeout(int millis);
+        - TLS and WebSocket open/close handshake timeout
+      int getHandshakeSoTimeout();
+      WsParameters setConnectionSoTimeout(int millis, boolean pingEnabled)
+        - data exchange timeout
+      int getConnectionSoTimeout();
+      boolean isPingEnabled(); // enabled by default
+      WsParameters setPayloadBufferLength(int len); 
+        - outgoing messages max payload length, min len = 125 bytes
+      int getPayloadBufferLength();
+      WsParameters setMaxMessageLength(int len); 
+        - incoming messages max length. If exceeded, the connection 
+          will be terminated with the MESSAGE_TOO_BIG status code
+      int getMaxMessageLength(); // default: 1 MiB
+      WsParameters setSSLParameters(SSLParameters sslParms);
+        - javax.net.ssl.SSLParameters used:
+          Protocols, CipherSuites, NeedClientAut, WantClientAuth
+      SSLParameters getSSLParameters();
+
+      WsParameters setBacklog(int num);
+        - maximum number of pending connections on the ServerSocket 
+      int getBacklog(); // default value is -1: system depended
 
   Class WsStatus:
     Parameters:

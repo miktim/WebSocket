@@ -222,7 +222,8 @@ public final class WsConnection extends Thread {
                 }
                 try {
                     sendControlFrame(WsListener.OP_CLOSE, payload, payloadLen);
-                    socket.shutdownOutput();
+// TODO: removed code Android API 23-
+//                    socket.shutdownOutput();
                     status.code = code; // disable output
                     status.remotely = false;
                     socket.setSoTimeout(wsp.handshakeSoTimeout);
@@ -475,13 +476,13 @@ public final class WsConnection extends Thread {
     }
 
     void closeSocket() {
-        if (this.isSocketOpen()) {
+//        if (this.isSocketOpen()) {
             try {
                 this.socket.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
+//        }
     }
 
     void closeDueTo(int closeCode, String reason, Throwable e) {

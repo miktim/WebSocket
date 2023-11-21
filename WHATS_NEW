@@ -1,7 +1,14 @@
+4.0.1
+  - server handler changed;
+  - synchronization optimized;
+  - fixed Android API23- bug 
+    UnsupportedOperationException: at javax.net.ssl.SSLSocket.shutdownOutput
+
 4.0.0
   - the objects are named according to their purpose;
   - improved exceptions handling: "message too big", "message queue overflow";
   - one more test added;
+  - server event handler added;
   - International Domain Names (IDNs) support added
 
 3.4.5

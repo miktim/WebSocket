@@ -15,7 +15,8 @@ import org.miktim.websocket.WsStatus;
 public class WsStressTest {
 
 //    static final int MAX_MESSAGE_LENGTH = 1000000; // 1MB
-    static final int WEBSOCKET_SHUTDOWN_TIMEOUT = 5000; // 5 sec 
+    static final int MAX_CLIENT_CONNECTIONS = 3; // allowed by server
+    static final int TEST_SHUTDOWN_TIMEOUT = 5000; // 5 sec 
     static final int PORT = 8080;
     static final String ADDRESS = "ws://localhost:" + PORT;
 
@@ -71,7 +72,7 @@ public class WsStressTest {
             public void onClose(WsConnection conn, WsStatus status) {
                 ws_log(String.format("[%s] %s onClose %s%s",
                         (conn.getSubProtocol() == null ? "0" : conn.getSubProtocol()),
-                        (conn.isClientSide() ? "Client" : "Listener handler"),
+                        (conn.isClientSide() ? "Client" : "Server side"),
                         status.toString(),
                         (status.error != null ? " Error " + status.error.toString() : "")
                 ));
@@ -108,13 +109,33 @@ public class WsStressTest {
 
         };
         
+        WsServer.EventHandler serverHandler = new WsServer.EventHandler() {
+            @Override
+            public void onStart(WsServer server) {
+               ws_log("Server started");
+            }
+
+            @Override
+            public boolean onAccept(WsServer server, WsConnection conn) {
+                return server.listConnections().length < MAX_CLIENT_CONNECTIONS;
+            }
+
+            @Override
+            public void onStop(WsServer server, Exception e) {
+                if(server.isInterrupted()) 
+                    ws_log("Server interrupted" + (e != null ? " Error " + e : ""));
+                else ws_log("Server closed");
+            }
+        };
+                
         final WsParameters wsp = new WsParameters() // client/server parameters
                 .setSubProtocols("0,1,2,3,4,5,6,7,8,9".split(","))
                 //               .setMaxMessageLength(2000)
                 .setPayloadBufferLength(0);// min payload length
 
-        final WsServer wsServer = webSocket.Server(PORT, handler, wsp);
-        wsServer.start();
+        final WsServer wsServer = webSocket.Server(PORT, handler, wsp)
+                .setHandler(serverHandler).launch();
+//        wsServer.start();
         
         final Timer timer = new Timer(true);
         timer.schedule(new TimerTask() {
@@ -123,13 +144,14 @@ public class WsStressTest {
                 webSocket.closeAll("Time is over!");
                 timer.cancel();
             }
-        }, WEBSOCKET_SHUTDOWN_TIMEOUT);
+        }, TEST_SHUTDOWN_TIMEOUT);
 
         ws_log("\r\nWsStressTest "
                 + WebSocket.VERSION
                 + "\r\nClient try to connect to " + ADDRESS
+                + "\r\nClients allowed by server " + MAX_CLIENT_CONNECTIONS
                 + "\r\nTest will be terminated after "
-                + (WEBSOCKET_SHUTDOWN_TIMEOUT / 1000) + " seconds"
+                + (TEST_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
 
         ws_log("0. Try connecting via TLS to a cleartext server:");
@@ -160,11 +182,9 @@ public class WsStressTest {
 
         ws_log("\r\n4. Try interrupt server:");
         wsp.setSubProtocols(new String[]{"4"});
-        webSocket.connect(ADDRESS, handler, wsp);
-        webSocket.connect(ADDRESS, handler, wsp);
-        webSocket.connect(ADDRESS, handler, wsp);
-        webSocket.connect(ADDRESS, handler, wsp);
-        sleep(500);
+        for(int i = 0; i < MAX_CLIENT_CONNECTIONS + 2; i++)
+            webSocket.connect(ADDRESS, handler, wsp);
+        sleep(200);
         wsServer.interrupt();
 
     }

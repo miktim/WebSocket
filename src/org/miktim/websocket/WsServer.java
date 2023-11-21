@@ -40,16 +40,18 @@ public class WsServer extends Thread {
         }
 
         @Override
-        public boolean onConnection(WsServer server, WsConnection conn) {
+        public boolean onAccept(WsServer server, WsConnection conn) {
             return true;
         }
 
         @Override
         public void onStop(WsServer server, Exception error) {
-            if(error == null) return;
+            if (error == null) {
+                return;
+            }
             error.printStackTrace();
         }
-        
+
     };
 
     WsServer(ServerSocket ss, WsConnection.EventHandler h, boolean secure, WsParameters wsp) {
@@ -82,12 +84,12 @@ public class WsServer extends Thread {
     public WsParameters getParameters() {
         return wsp;
     }
-    
+
     public WsServer launch() {
         this.start();
         return this;
     }
-    
+
     public void close() {
         close(null);
     }
@@ -106,7 +108,7 @@ public class WsServer extends Thread {
             closeServerSocket();
         }
     }
-    
+
     synchronized public WsServer setHandler(WsServer.EventHandler handler) {
         this.handler = handler;
         return this;
@@ -137,9 +139,12 @@ public class WsServer extends Thread {
                         = new WsConnection(socket, connectionHandler, isSecure, wsp);
                 socket.setSoTimeout(wsp.handshakeSoTimeout);
                 conn.connections = this.connections;
-                if(handler.onConnection(this, conn))
-                conn.start();
-            } catch (Exception e) {
+                if (handler.onAccept(this, conn)) {
+                    conn.start();
+                } else {
+                    conn.closeSocket();
+                }
+            } catch (IOException e) {
                 if (isOpen()) {
                     error = e;
                     interrupt();
@@ -162,7 +167,7 @@ public class WsServer extends Thread {
 
         void onStart(WsServer server);
 
-        boolean onConnection(WsServer server, WsConnection conn);
+        boolean onAccept(WsServer server, WsConnection conn);
 
         void onStop(WsServer server, Exception error);
     }
