@@ -40,7 +40,7 @@ Overview:
         - set keyStore file (server) or trustStore file (client connection)
       void resetKeyFile()
 
-      WsServer Server(int port, WsConnection.EventHandler, WsParameters wsp)
+      WsServer Server(int port, WsConnection.EventHandler handler, WsParameters wsp)
          throws IOException, GeneralSecurityException; 
         - creates cleartext connections server
  
