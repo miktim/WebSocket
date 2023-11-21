@@ -30,6 +30,7 @@ Overview:
 
     Methods:
       static URI idnURI(String uri) throws URISyntaxException;
+        - converts host name as defined by RFC3490 and creates URI
       static void setKeyStore(String keyFilePath, String password); 
         - set system  properties javax.net.ssl.keyStore/keyStorePassword
       static void setTrustStore(String keyFilePath, String password);
@@ -64,7 +65,7 @@ Overview:
 
   Class WsServer extends Thread:
     Methods:
-      void setHandler(WsServer.EventHandler handler);
+      WsServer setHandler(WsServer.EventHandler handler);
       void start(); // start server
       WsServer launch(); // start server
       boolean isOpen();
@@ -90,7 +91,7 @@ Overview:
       boolean onAccept(WsServer server, WsConnection conn);
         - called BEFORE WebSocket connection handshake;
         - the returned value of true means approval of the connection,
-          the value of false means rejection
+          the value of false means the closure of the client connection
 
       void onStop(WsServer server, Exception error);
         - the error is null or a ServerSocket exception if occured
