@@ -133,10 +133,6 @@ public class WsStressTest {
                 //               .setMaxMessageLength(2000)
                 .setPayloadBufferLength(0);// min payload length
 
-        final WsServer wsServer = webSocket.Server(PORT, handler, wsp)
-                .setHandler(serverHandler).launch();
-//        wsServer.start();
-        
         final Timer timer = new Timer(true);
         timer.schedule(new TimerTask() {
             @Override
@@ -149,10 +145,13 @@ public class WsStressTest {
         ws_log("\r\nWsStressTest "
                 + WebSocket.VERSION
                 + "\r\nClient try to connect to " + ADDRESS
-                + "\r\nClients allowed by server " + MAX_CLIENT_CONNECTIONS
+                + "\r\nConnections allowed by server " + MAX_CLIENT_CONNECTIONS
                 + "\r\nTest will be terminated after "
                 + (TEST_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
+        
+        final WsServer wsServer = webSocket.Server(PORT, handler, wsp)
+                .setHandler(serverHandler).launch();
 
         ws_log("0. Try connecting via TLS to a cleartext server:");
         WsConnection conn = webSocket.connect("wss://localhost:" + PORT, handler, wsp);

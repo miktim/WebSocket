@@ -191,5 +191,5 @@ Overview:
 
 Usage examples see in:
   ./test/websocket/WssConnectionTest.java
-  ./test/websocket/WsListenerTest.java
+  ./test/websocket/WsServerTest.java
   ./test/websocket/WssClientTest.java
