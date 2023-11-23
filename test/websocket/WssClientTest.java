@@ -16,8 +16,8 @@ import org.miktim.websocket.WsStatus;
 public class WssClientTest {
 
     static final int MAX_MESSAGE_LENGTH = 10000; //
-    static final int WEBSOCKET_SHUTDOWN_TIMEOUT = 150000; //milliseconds 
-    static final String REMOTE_CONNECTION = "wss://websocketstest.com:443/service";//
+    static final int TEST_SHUTDOWN_TIMEOUT = 10000; //milliseconds 
+    static final String REMOTE_URI = "wss://websocketstest.com:443/service";//
 
     static String fragmentTest = randomString(512);
     static int counter = 0;
@@ -155,20 +155,20 @@ public class WssClientTest {
 ////        wsp.setPayloadLength(fragmentTest.length()/2); // not work!
         ws_log("\r\nWssClientTest "
                 + WebSocket.VERSION
-                + "\r\nTrying to connect to " + REMOTE_CONNECTION
+                + "\r\nTrying to connect to " + REMOTE_URI
                 + "\r\nTest will be terminated after "
-                + (WEBSOCKET_SHUTDOWN_TIMEOUT / 1000) + " seconds"
+                + (TEST_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
         final WsConnection wsConnection
-                = webSocket.connect(REMOTE_CONNECTION, clientHandler, wsp);
+                = webSocket.connect(REMOTE_URI, clientHandler, wsp);
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                wsConnection.close(WsStatus.GOING_AWAY, "Timeout");
+                wsConnection.close(WsStatus.GOING_AWAY, "Time is over!");
                 timer.cancel();
             }
-        }, WEBSOCKET_SHUTDOWN_TIMEOUT);
+        }, TEST_SHUTDOWN_TIMEOUT);
 
     }
 

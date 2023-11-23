@@ -16,7 +16,7 @@ import org.miktim.websocket.WsStatus;
 public class WssConnectionTest {
 
     static final int MAX_MESSAGE_LENGTH = 1000000; //~1MB
-    static final int WEBSOCKET_SHUTDOWN_TIMEOUT = 10000; //10 sec 
+    static final int TEST_SHUTDOWN_TIMEOUT = 10000; //10 sec 
     static final String REMOTE_HOST = "localhost";//"192.168.1.106";
 
     static void ws_log(String msg) {
@@ -122,39 +122,34 @@ public class WssConnectionTest {
 
         final WebSocket webSocket = new WebSocket();
 
-//*** Listener and client must use the same self-signed certificate
-
-// Android:
-//        String keyFile = (new File(getCacheDir(),"testkeys")).getCanonicalPath();
-// Desktop:
+//*** Server and client must use the same self-signed certificate
         String keyFile = (new File(path, "testkeys")).getCanonicalPath();
 //
-        WebSocket.setKeyStore(keyFile, "passphrase"); // for listener
+        WebSocket.setKeyStore(keyFile, "passphrase"); // for server
         WebSocket.setTrustStore(keyFile, "passphrase"); // for client
 
-        WsParameters lwsp = new WsParameters(); // listener parameters
-        lwsp.setConnectionSoTimeout(1000, true); // ping
-        lwsp.setSubProtocols("1,2,3,4,5".split(","));
+        WsParameters swsp = new WsParameters(); // server parameters
+        swsp.setConnectionSoTimeout(1000, true); // ping
+        swsp.setSubProtocols("1,2,3,4,5".split(","));
         final WsServer wsServer = 
-                webSocket.SecureServer(port, handler, lwsp).launch();
+                webSocket.SecureServer(port, handler, swsp).launch();
 
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-//                wsListener.close();
                 webSocket.closeAll("Time is over!");
                 timer.cancel();
             }
-        }, WEBSOCKET_SHUTDOWN_TIMEOUT);
+        }, TEST_SHUTDOWN_TIMEOUT);
         ws_log("\r\nWssConnectionTest "
                 + WebSocket.VERSION 
                 + "\r\nIncoming maxMessageLength: " + MAX_MESSAGE_LENGTH
                 + "\r\nClient try to connect to " + remoteAddr
                 + "\r\nWebSocket will be closed after "
-                + (WEBSOCKET_SHUTDOWN_TIMEOUT / 1000) + " seconds"
+                + (TEST_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
-        WsParameters cwsp = new WsParameters();
+        WsParameters cwsp = new WsParameters(); // client parameters
         cwsp.setSubProtocols("1,2,3,4,5".split(","));
         webSocket.connect("wss://" + remoteAddr + "/тест", handler, cwsp);
         cwsp.setSubProtocols("2,3,4,5".split(","));

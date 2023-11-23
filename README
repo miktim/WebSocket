@@ -21,7 +21,7 @@ Overview:
     Creates and starts connections/servers.
 
     Constant:
-      static String VERSION = "4.0.1";
+      static String VERSION = "4.1.0";
 
     Constructors:
       WebSocket() throws NoSuchAlgorithmException; // check if SHA1 exists

@@ -93,9 +93,10 @@ public final class WsConnection extends Thread {
             handler.onClose(this, status);
             handler = newHandler;
             newHandler.onOpen(this, subProtocol);
-        } else
+        } else {
             handler = newHandler;
-    }    
+        }
+    }
 
     public WsParameters getParameters() {
         return wsp;
@@ -244,7 +245,7 @@ public final class WsConnection extends Thread {
     }
 
     // WebSocket server connection constructor
-    WsConnection(Socket s, EventHandler h, boolean secure, WsParameters wsp ) {
+    WsConnection(Socket s, EventHandler h, boolean secure, WsParameters wsp) {
         this.isClientSide = false;
         this.socket = s;
         this.handler = h;
@@ -283,22 +284,24 @@ public final class WsConnection extends Thread {
     OutputStream outStream;
 
     private boolean waitConnection() {
-        try {
-            inStream = new BufferedInputStream(socket.getInputStream());
-            outStream = new BufferedOutputStream(socket.getOutputStream());
-            if (isClientSide) {
-                handshakeServer();
-            } else {
-                handshakeClient();
+        synchronized (status) {
+            try {
+                inStream = new BufferedInputStream(socket.getInputStream());
+                outStream = new BufferedOutputStream(socket.getOutputStream());
+                if (isClientSide) {
+                    handshakeServer();
+                } else {
+                    handshakeClient();
+                }
+                socket.setSoTimeout(wsp.connectionSoTimeout);
+                status.code = WsStatus.IS_OPEN;
+                return true;
+            } catch (Exception e) {
+                status.reason = "Handshake failed";
+                status.error = e;
+                status.code = WsStatus.PROTOCOL_ERROR;
+                return false;
             }
-            socket.setSoTimeout(wsp.connectionSoTimeout);
-            status.code = WsStatus.IS_OPEN;
-            return true;
-        } catch (Exception e) {
-            status.reason = "Handshake failed";
-            status.error = e;
-            status.code = WsStatus.PROTOCOL_ERROR;
-            return false;
         }
     }
 
@@ -477,11 +480,11 @@ public final class WsConnection extends Thread {
 
     void closeSocket() {
 //        if (this.isSocketOpen()) {
-            try {
-                this.socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        try {
+            this.socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 //        }
     }
 
