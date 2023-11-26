@@ -11,7 +11,7 @@ Release notes:
   - supports Internationalized Domain Names (IDNs);
   - incoming WebSocket messages are represented by input streams.
   
-The ./dist/websocket jar file was built using JDK 1.8.0 with the target JDK 6
+The jar ./dist/websocket file was generated with debugging info using JDK1.8.0 for target JDK 6
 
 package org.miktim.websocket
 
@@ -25,9 +25,8 @@ Overview:
 
     Constructors:
       WebSocket() throws NoSuchAlgorithmException; // check if SHA1 exists
-      WebSocket(InetAddress bindAddr)
-         throws SocketException, NoSuchAlgorithmException;
-        - sets servers/connectios binding address
+      WebSocket(InetAddress bindAddr) throws SocketException, NoSuchAlgorithmException;
+        - sets servers/connections binding address
 
     Methods:
       static URI idnURI(String uri) throws URISyntaxException;
@@ -63,8 +62,10 @@ Overview:
       void closeAll(); 
       void closeAll(String closeReason);
         - closes all active servers/connections, code 1001 (GOING_AWAY)
+        
 
   Class WsServer extends Thread:
+  
     Methods:
       WsServer setHandler(WsServer.EventHandler handler);
       void start(); // starts server
@@ -83,11 +84,10 @@ Overview:
       void close(); 
       void close(String closeReason);
         - close methods also closes all associated connections (code GOING_AWAY)
-
       void interrupt();
-        - interrupts the server, associated connections stay alive and can be
-          closed in the usual way
+        - interrupts the server, associated connections stay alive and can be closed in the usual way
 
+        
   Interface WsServer.EventHandler:
     Methods:
       void onStart(WsServer server);
@@ -99,6 +99,7 @@ Overview:
 
       void onStop(WsServer server, Exception error);
         - error is a ServerSocket exception or null
+
 
   Class WsConnection extends Thread:
     Constant:
@@ -122,8 +123,7 @@ Overview:
       WsConnection[] listConnections() // the client connection returns only itself 
       String getSSLSessionProtocol() // returns SSL protocol or null
       WsStatus getStatus();
-        - returns the connection status,
-          syncs with the establishment of the connection
+        - returns the connection status, syncs with the completion of the open handshake
       String getSubProtocol(); // returns null or handshaked WebSocket subprotocol
       String getPeerHost(); // returns remote host name or null
       int getPort()      // returns connected port
@@ -133,17 +133,17 @@ Overview:
 
       void close(); // closes connection with status code 1005 (NO_STATUS)
       void close(int statusCode, String reason); 
-        - the status code outside 1000-4999 will be replaced with 1005 (NO_STATUS),
-          the reason is ignored;
+        - the status code outside 1000-4999 will be replaced with 1005 (NO_STATUS), the reason is ignored;
         - a reason that is longer than 123 BYTES is truncated;
         - the method blocks outgoing messages (sending methods throw IOException);
         - isOpen() returns false;
         - incoming messages are available until the closing handshake completed.
         
+
   Interface WsConnection.EventHandler:
     There are two scenarios for handling events:
-        - onError - onClose, when the SSL/WebSocket handshake failed;
-        - onOpen - [onMessage - onMessage - ...] - [onError] - onClose.
+      - onError - onClose, when the SSL/WebSocket handshake failed;
+      - onOpen - [onMessage - onMessage - ...] - [onError] - onClose.
 
     Methods:
       void onOpen(WsConnection conn, String subProtocol);
@@ -151,6 +151,7 @@ Overview:
     
       void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text);
         - the message is an InputStream of binary data or UTF-8 encoded text;
+        - the available() method returns the total number of bytes in the stream;
         - exiting the handler closes the stream (not connection!).
 
       void onError(WsConnection conn, Throwable e);
@@ -158,6 +159,7 @@ Overview:
         - large incoming messages may throw an OutOfMemoryError;
 
       void onClose(WsConnection conn, WsStatus closeStatus);
+      
 
   Class WsParameters:
     WebSocket connection parameters
@@ -180,17 +182,18 @@ Overview:
         - sets outgoing messages max payload length, min len = 125 bytes
       int getPayloadBufferLength();
       WsParameters setMaxMessageLength(int len); 
-        - sets incoming messages max length. If exceeded, the connection 
-          will be terminated with the MESSAGE_TOO_BIG status code
+        - sets incoming messages max length. If exceeded, the connection will be terminated with the MESSAGE_TOO_BIG status code
       int getMaxMessageLength(); // default: 1 MiB
       WsParameters setSSLParameters(SSLParameters sslParms);
-        - sets javax.net.ssl.SSLParameters used:
+        - sets javax.net.ssl.SSLParameters;
+        - SSLParameters used by server:
           Protocols, CipherSuites, NeedClientAut, WantClientAuth
-      SSLParameters getSSLParameters();
+      SSLParameters getSSLParameters(); // defaults from the SSLContext 
 
       WsParameters setBacklog(int num);
         - maximum number of pending connections on the ServerSocket 
       int getBacklog(); // default value is -1: system depended
+      
 
   Class WsStatus:
     Connection status
@@ -201,6 +204,7 @@ Overview:
       boolean wasClean; // WebSocket closing handshake completed cleanly
       boolean remotely; // closed remotely
       Throwable error;  // closing exception or null
+      
 
 Usage examples see in:
   ./test/websocket/WssConnectionTest.java
