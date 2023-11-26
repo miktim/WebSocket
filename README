@@ -2,7 +2,7 @@
 
 Release notes:
   - small and easy to use;
-  - Java SE 6+/Android compatible (see WebSocket-Android-Test repo:
+  - Java SE 6+/Android 4.1+ compatible (see WebSocket-Android-Test repo:
     https://github.com/miktim/WebSocket-Android-Test ).
   - in accordance with RFC6455: https://datatracker.ietf.org/doc/html/rfc6455/ ;
   - supported WebSocket version: 13;
@@ -18,7 +18,7 @@ package org.miktim.websocket
 Overview:
 
   Class WebSocket:
-    Creates and starts connections/servers.
+    Servers and client connections creator.
 
     Constant:
       static String VERSION = "4.1.0";
@@ -27,18 +27,21 @@ Overview:
       WebSocket() throws NoSuchAlgorithmException; // check if SHA1 exists
       WebSocket(InetAddress bindAddr)
          throws SocketException, NoSuchAlgorithmException;
+        - sets servers/connectios binding address
 
     Methods:
       static URI idnURI(String uri) throws URISyntaxException;
-        - converts host name as defined by RFC3490 and creates URI
+        - converts the host name to the IDN form as defined in RFC3490
+          and creates a URI
+          
       static void setKeyStore(String keyFilePath, String password); 
-        - set system  properties javax.net.ssl.keyStore/keyStorePassword
+        - sets system properties javax.net.ssl.keyStore/keyStorePassword
       static void setTrustStore(String keyFilePath, String password);
-        - set system properties javax.net.ssl.trustStore/trustStorePassword
+        - sets system properties javax.net.ssl.trustStore/trustStorePassword
 
       void setKeyFile(File keyfile, String password);
-        - set keyStore file (server) or trustStore file (client connection)
-      void resetKeyFile()
+        - sets keyStore file (server) or trustStore file (client connection)
+      void resetKeyFile();
 
       WsServer Server(int port, WsConnection.EventHandler handler, WsParameters wsp)
          throws IOException, GeneralSecurityException; 
@@ -57,31 +60,35 @@ Overview:
           user-info@ and #fragment - ignored
 
       InetAddress getBindAddress();
-      WsServer[] listServers();
-      WsConnection[] listConnections();
+      WsServer[] listServers(); // lists active servers
+      WsConnection[] listConnections(); // lists active connections
+      
       void closeAll(); 
-        - close all created servers/connections, code 1001 (GOING_AWAY)
-      void closeAll(String closeReason); // close code 1001 (GOING_AWAY)
+      void closeAll(String closeReason);
+        - closes all active servers/connections, code 1001 (GOING_AWAY)
 
   Class WsServer extends Thread:
     Methods:
       WsServer setHandler(WsServer.EventHandler handler);
-      void start(); // start server
-      WsServer launch(); // start server
-      boolean isOpen();
-      boolean isInterrupted(); // ServerSocket error or interrupt
-      boolean isSecure();
+      void start(); // starts server
+      WsServer launch(); // starts server
+      
+      boolean isOpen(); // returns the open state
+      boolean isInterrupted(); // returns the interruption state
+      boolean isSecure(); // is secure server
       int getPort();
         - returns the port number on which this socket is listening.
       InetAddress getBindAddress();
-        - returns ServerSocket bind address or null
-      WsParameters getParameters();
-      WsConnection[] listConnections();
+        - returns the ServerSocket binding address or null
+      WsParameters getParameters(); // returns connection parameters
+      WsConnection[] listConnections(); // returns a list of active connections
+
       void close(); 
       void close(String closeReason);
         - close methods also closes all associated connections (code GOING_AWAY)
+
       void interrupt();
-        - server interupted, associated connections stay alive and can be
+        - interrupts the server, associated connections stay alive and can be
           closed in the usual way
 
   Interface WsServer.EventHandler:
@@ -94,7 +101,7 @@ Overview:
           the value of false means the closure of the client connection
 
       void onStop(WsServer server, Exception error);
-        - the error is null or a ServerSocket exception if occured
+        - error is a ServerSocket exception or null
 
   Class WsConnection extends Thread:
     Constant:
@@ -103,27 +110,23 @@ Overview:
 
     Methods:
       void send(InputStream is, boolean isUTF8Text) throws IOException; 
-        - is - input stream of binary data or UTF-8 encoded text
+        - is: input stream of binary data or UTF-8 encoded text
       void send(String message) throws IOException; // send text
       void send(byte[] message) throws IOException; // send binary data
-      void close(); // close without status code (NO_STATUS)
-      void close(int statusCode, String reason); 
-        - the status code outside 1000-4999 will be replaced with 1005 (NO_STATUS),
-          the reason is ignored;
-        - a reason that is longer than 123 BYTES is truncated;
-        - the method blocks outgoing messages (sending methods throw IOException);
-        - isOpen() returns false;
-        - incoming messages are available until the closing handshake completed.
+      
       boolean isClientSide();  // returns true for client connections 
       boolean isOpen();     // WebSocket connection is open
       boolean isSecure();   // is TLS connection
 
       void setHandler(WsConnection.EventHandler newHandler); 
-        - calls onClose in the old handler, then calls onOpen in the new handler
+        - calls onClose in the old handler,
+          then calls onOpen in the new handler
 
-      WsConnection[] listConnections() // the client side returns only itself 
+      WsConnection[] listConnections() // the client connection returns only itself 
       String getSSLSessionProtocol() // returns SSL protocol or null
       WsStatus getStatus();
+        - returns the connection status,
+          syncs with the establishment of the connection
       String getSubProtocol(); // returns null or handshaked WebSocket subprotocol
       String getPeerHost(); // returns remote host name or null
       int getPort()      // returns connected port
@@ -131,6 +134,15 @@ Overview:
       String getQuery(); // returns http request query or null
       WsParameters getParameters();
 
+      void close(); // closes connection with status code 1005 (NO_STATUS)
+      void close(int statusCode, String reason); 
+        - the status code outside 1000-4999 will be replaced with 1005 (NO_STATUS),
+          the reason is ignored;
+        - a reason that is longer than 123 BYTES is truncated;
+        - the method blocks outgoing messages (sending methods throw IOException);
+        - isOpen() returns false;
+        - incoming messages are available until the closing handshake completed.
+        
   Interface WsConnection.EventHandler:
     There are two scenarios for handling events:
         - onError - onClose, when the SSL/WebSocket handshake failed;
@@ -151,29 +163,31 @@ Overview:
       void onClose(WsConnection conn, WsStatus closeStatus);
 
   Class WsParameters:
+    WebSocket connection parameters
+    
     Constructor:
       WsParameters();
 
     Methods:
       WsParameters setSubProtocols(String[] subps); 
-        - set WebSocket subProtocols in preferred order
+        - sets WebSocket subProtocols in preferred order
       String[] getSubProtocols(); // null is default
       WsParameters setHandshakeSoTimeout(int millis);
-        - TLS and WebSocket open/close handshake timeout
+        - sets TLS and WebSocket open/close handshake timeout
       int getHandshakeSoTimeout();
       WsParameters setConnectionSoTimeout(int millis, boolean pingEnabled)
-        - data exchange timeout
+        - sets data exchange timeout
       int getConnectionSoTimeout();
       boolean isPingEnabled(); // enabled by default
       WsParameters setPayloadBufferLength(int len); 
-        - outgoing messages max payload length, min len = 125 bytes
+        - sets outgoing messages max payload length, min len = 125 bytes
       int getPayloadBufferLength();
       WsParameters setMaxMessageLength(int len); 
-        - incoming messages max length. If exceeded, the connection 
+        - sets incoming messages max length. If exceeded, the connection 
           will be terminated with the MESSAGE_TOO_BIG status code
       int getMaxMessageLength(); // default: 1 MiB
       WsParameters setSSLParameters(SSLParameters sslParms);
-        - javax.net.ssl.SSLParameters used:
+        - sets javax.net.ssl.SSLParameters used:
           Protocols, CipherSuites, NeedClientAut, WantClientAuth
       SSLParameters getSSLParameters();
 
@@ -182,6 +196,8 @@ Overview:
       int getBacklog(); // default value is -1: system depended
 
   Class WsStatus:
+    Connection status
+    
     Parameters:
       int code;         // closing code (1000-4999)
       String reason;    // closing reason (max length 123 BYTES)
