@@ -43,18 +43,15 @@ Overview:
         - sets keyStore file (server) or trustStore file (client connection)
       void resetKeyFile();
 
-      WsServer Server(int port, WsConnection.EventHandler handler, WsParameters wsp)
-         throws IOException, GeneralSecurityException; 
+      WsServer Server(int port, WsConnection.EventHandler handler, WsParameters wsp) throws IOException, GeneralSecurityException; 
         - creates cleartext connections server
  
-      WsServer SecureServer(int port, WsConnection.EventHandler handler, WsParameters wsp)
-         throws IOException, GeneralSecurityException;
+      WsServer SecureServer(int port, WsConnection.EventHandler handler, WsParameters wsp) throws IOException, GeneralSecurityException;
         - creates TLS connections server
         Servers are created using a "dumb" server handler. 
         You can set your own handler or start the server immediately.
 
-      WsConnection connect(String uri, WsConnection.EventHandler handler, WsParameters wsp)
-         throws URISyntaxException, IOException, GeneralSecurityException;
+      WsConnection connect(String uri, WsConnection.EventHandler handler, WsParameters wsp) throws URISyntaxException, IOException, GeneralSecurityException;
         - creates and starts a client connection;
         - uri's scheme (ws: | wss:) and host are required,
           user-info@ and #fragment - ignored
