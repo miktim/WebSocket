@@ -21,7 +21,7 @@ Overview:
     Servers and client connections creator.
 
     Constant:
-      static String VERSION = "4.1.0";
+      static String VERSION = "4.1.1";
 
     Constructors:
       WebSocket() throws NoSuchAlgorithmException; // check if SHA1 exists
@@ -72,7 +72,9 @@ Overview:
       WsServer launch(); // starts server
       
       boolean isOpen(); // returns the open state
-      boolean isInterrupted(); // returns the interruption state
+      boolean isInterrupted(); 
+        - returns true if the server was interrupted by a command or due to a server socket exception
+      Exception getError(); // returns server socket exception or null
       boolean isSecure(); // is secure server
       int getPort();
         - returns the port number on which this socket is listening.
@@ -198,7 +200,7 @@ Overview:
   Class WsStatus:
     Connection status
     
-    Parameters:
+    Properties:
       int code;         // closing code (1000-4999)
       String reason;    // closing reason (max length 123 BYTES)
       boolean wasClean; // WebSocket closing handshake completed cleanly

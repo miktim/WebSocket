@@ -49,7 +49,7 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class WebSocket {
 
-    public static String VERSION = "4.1.0";
+    public static String VERSION = "4.1.1";
     private InetAddress bindAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
     private final List<WsServer> servers = Collections.synchronizedList(new ArrayList<WsServer>());

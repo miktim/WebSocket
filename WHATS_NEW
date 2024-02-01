@@ -1,3 +1,6 @@
+4.1.1
+  - WsServer: fixed server closure after an interruption or ServerSocket error
+
 4.1.0
   - the GetStatus function of the connection is synchronized with
     the WebSocket handshake

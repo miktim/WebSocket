@@ -1,5 +1,5 @@
 /*
- * WsServer. WebSocket Server, MIT (c) 2020-2023 miktim@mail.ru
+ * WsServer. WebSocket Server, MIT (c) 2020-2024 miktim@mail.ru
  *
  * Accepts sockets, creates and starts connection threads.
  *
@@ -24,7 +24,6 @@ public class WsServer extends Thread {
 
     private int status = IS_CLOSED;
 
-    private String closeReason = null;
     private Exception error = null;
     private final boolean isSecure;
     private final WsParameters wsp;
@@ -34,7 +33,8 @@ public class WsServer extends Thread {
     private final List<WsConnection> connections
             = Collections.synchronizedList(new ArrayList<WsConnection>());
 
-    private EventHandler handler = new EventHandler() {
+// 'dumb' handler    
+    private EventHandler serverHandler = new EventHandler() {
         @Override
         public void onStart(WsServer server) {
         }
@@ -46,12 +46,10 @@ public class WsServer extends Thread {
 
         @Override
         public void onStop(WsServer server, Exception error) {
-            if (error == null) {
-                return;
+            if (error != null) {
+                error.printStackTrace();
             }
-            error.printStackTrace();
         }
-
     };
 
     WsServer(ServerSocket ss, WsConnection.EventHandler h, boolean secure, WsParameters wsp) {
@@ -73,6 +71,10 @@ public class WsServer extends Thread {
         return status == IS_INTERRUPTED;
     }
 
+    public Exception getError() {
+        return error;
+    }
+
     public int getPort() {
         return serverSocket.getLocalPort();
     }
@@ -90,15 +92,24 @@ public class WsServer extends Thread {
         return this;
     }
 
+    public WsConnection[] listConnections() {
+        return connections.toArray(new WsConnection[0]);
+    }
+
     public void close() {
         close(null);
     }
 
     synchronized public void close(String closeReason) {
-        if (isOpen()) {
-            this.closeReason = closeReason;
+        if (status != IS_CLOSED) {
             status = IS_CLOSED;
             closeServerSocket();
+
+// close associated connections
+            for (WsConnection connection : listConnections()) {
+                connection.close(WsStatus.GOING_AWAY, closeReason);
+            }
+            servers.remove(this);
         }
     }
 
@@ -110,7 +121,7 @@ public class WsServer extends Thread {
     }
 
     synchronized public WsServer setHandler(WsServer.EventHandler handler) {
-        this.handler = handler;
+        this.serverHandler = handler;
         return this;
     }
 
@@ -118,19 +129,20 @@ public class WsServer extends Thread {
         try {
             serverSocket.close();
         } catch (IOException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
         }
     }
-
-    public WsConnection[] listConnections() {
-        return connections.toArray(new WsConnection[0]);
+    
+    @Override
+    public void start() {
+        servers.add(this); // add to WebSocket server list
+        status = IS_OPEN;
+        serverHandler.onStart(this);
+        super.start();
     }
 
     @Override
     public void run() {
-        servers.add(this); // add to creator list
-        status = IS_OPEN;
-        handler.onStart(this);
         while (isOpen()) {
             try {
 // serverSocket SO_TIMEOUT = 0 by WebSocket creator
@@ -139,7 +151,7 @@ public class WsServer extends Thread {
                         = new WsConnection(socket, connectionHandler, isSecure, wsp);
                 socket.setSoTimeout(wsp.handshakeSoTimeout);
                 conn.connections = this.connections;
-                if (handler.onAccept(this, conn)) {
+                if (serverHandler.onAccept(this, conn)) {
                     conn.start();
                 } else {
                     conn.closeSocket();
@@ -152,15 +164,7 @@ public class WsServer extends Thread {
                 break;
             }
         }
-        Thread.currentThread().setPriority(MAX_PRIORITY);
-        // close associated connections
-        if (!isInterrupted()) {
-            for (WsConnection connection : listConnections()) {
-                connection.close(WsStatus.GOING_AWAY, this.closeReason);
-            }
-            servers.remove(this);
-        }
-        handler.onStop(this, error);
+        serverHandler.onStop(this, error);
     }
 
     public interface EventHandler {
