@@ -175,7 +175,7 @@ public final class WsConnection extends Thread {
         try {
             byte[] buf = new byte[wsp.payloadBufferLength];
             int len = 0;
-            while ((len = this.readFully(is, buf, 0, buf.length)) == buf.length) {
+            while ((len = readFully(is, buf, 0, buf.length)) == buf.length) {
                 sendFrame(op, buf, buf.length);
                 op = WsListener.OP_CONTINUATION;
             }
@@ -361,7 +361,7 @@ public final class WsConnection extends Thread {
         if (requestedSubps == null) {
             return true;
         }
-        if (requestedSubps != null && wsp.subProtocols != null) {
+        if (wsp.subProtocols != null) {
             for (String agreedSubp : requestedSubps) {
                 for (String subp : wsp.subProtocols) {
                     if (agreedSubp.equals(subp)) {

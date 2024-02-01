@@ -109,7 +109,7 @@ public class WsServer extends Thread {
             for (WsConnection connection : listConnections()) {
                 connection.close(WsStatus.GOING_AWAY, closeReason);
             }
-            servers.remove(this);
+            servers.remove(this); // remove from WebSocket server list
         }
     }
 
@@ -134,15 +134,10 @@ public class WsServer extends Thread {
     }
     
     @Override
-    public void start() {
+    public void run() {
         servers.add(this); // add to WebSocket server list
         status = IS_OPEN;
         serverHandler.onStart(this);
-        super.start();
-    }
-
-    @Override
-    public void run() {
         while (isOpen()) {
             try {
 // serverSocket SO_TIMEOUT = 0 by WebSocket creator
