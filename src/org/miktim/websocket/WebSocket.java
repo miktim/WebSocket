@@ -1,5 +1,5 @@
 /*
- * WebSocket. MIT (c) 2020-2023 miktim@mail.ru
+ * WebSocket. MIT (c) 2020-2024 miktim@mail.ru
  *
  * Creates and starts server/connection threads.
  *
@@ -49,7 +49,7 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class WebSocket {
 
-    public static String VERSION = "4.1.1";
+    public static String VERSION = "4.1.2";
     private InetAddress bindAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
     private final List<WsServer> servers = Collections.synchronizedList(new ArrayList<WsServer>());

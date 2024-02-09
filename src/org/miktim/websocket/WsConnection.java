@@ -1,5 +1,5 @@
 /*
- * WsConnection. WebSocket client/server connection, MIT (c) 2020-2023 miktim@mail.ru
+ * WsConnection. WebSocket client/server connection, MIT (c) 2020-2024 miktim@mail.ru
  *
  * SSL/WebSocket handshaking. Messaging. Events handling.
  *
@@ -168,9 +168,6 @@ public final class WsConnection extends Thread {
      */
     private synchronized void syncSend(InputStream is, boolean isText)
             throws IOException {
-        if (!isOpen()) {
-            throw new SocketException("WebSocket is closed");
-        }
         int op = isText ? WsListener.OP_TEXT : WsListener.OP_BINARY;
         try {
             byte[] buf = new byte[wsp.payloadBufferLength];
@@ -200,15 +197,16 @@ public final class WsConnection extends Thread {
 
     public void close(int code, String reason) {
         synchronized (status) {
-            if (isOpen()) {
+            if (status.code == WsStatus.IS_OPEN) {
                 code = (code < 1000 || code > 4999) ? WsStatus.NO_STATUS : code;
                 byte[] payload = new byte[125];
                 byte[] byteReason = new byte[0];
-                int payloadLen = 2;
+                int payloadLen = 0;
                 int byteReasonLen = 0;
-                payload[0] = (byte) (code >>> 8);
-                payload[1] = (byte) (code & 0xFF);
                 if (code != WsStatus.NO_STATUS) {
+                    payload[0] = (byte) (code >>> 8);
+                    payload[1] = (byte) (code & 0xFF);
+                    payloadLen = 2;
                     try {
 // TODO: removed code Android API 19 to API 16 here and further               
 //                    byteReason = (reason == null ? "" : reason)
@@ -331,12 +329,11 @@ public final class WsConnection extends Thread {
         HttpHead requestHead = (new HttpHead()).read(inStream);
         String[] parts = requestHead.get(HttpHead.START_LINE).split(" ");
         this.requestURI = new URI(parts[1]);
-        String upgrade = requestHead.get("Upgrade");
         String key = requestHead.get("Sec-WebSocket-Key");
 
         HttpHead responseHead = (new HttpHead()).set("Server", SERVER_AGENT);
         if (parts[0].equals("GET")
-                && upgrade != null && upgrade.equals("websocket")
+                && requestHead.get("Upgrade").toLowerCase().equals("websocket")
                 && key != null
                 && setSubprotocol(
                         requestHead.getValues("Sec-WebSocket-Protocol"), responseHead)) {
@@ -405,6 +402,8 @@ public final class WsConnection extends Thread {
         HttpHead responseHead = (new HttpHead()).read(inStream);
         this.subProtocol = responseHead.get("Sec-WebSocket-Protocol");
         if (!(responseHead.get(HttpHead.START_LINE).split(" ")[1].equals("101")
+                && responseHead.get("Upgrade").toLowerCase().equals("websocket")
+                && responseHead.get("Sec-WebSocket-Extensions") == null
                 && responseHead.get("Sec-WebSocket-Accept").equals(sha1Hash(key))
                 && checkSubprotocol())) {
             status.remotely = false;
@@ -502,39 +501,42 @@ public final class WsConnection extends Thread {
 
     void sendFrame(int opFrame, byte[] payload, int payloadLen)
             throws IOException {
-// client MUST mask payload, server MUST NOT        
-        boolean masked = this.isClientSide;
-        byte[] header = new byte[14]; //hopefully initialized with zeros
-
-        header[0] = (byte) opFrame;
-        int headerLen = 2;
-
-        int tempLen = payloadLen;
-        if (tempLen < 126) {
-            header[1] = (byte) (tempLen);
-        } else if (tempLen < 0x10000) {
-            header[1] = (byte) 126;
-            header[2] = (byte) (tempLen >>> 8);
-            header[3] = (byte) tempLen;
-            headerLen += 2;
-        } else {
-            header[1] = (byte) 127;
-            headerLen += 4; // skip 4 zero bytes of 64bit payload length
-            for (int i = 3; i > 0; i--) {
-                header[headerLen + i] = (byte) (tempLen & 0xFF);
-                tempLen >>>= 8;
-            }
-            headerLen += 4;
-        }
-
-        if (masked) {
-            header[1] |= WsListener.MASKED_DATA;
-            byte[] mask = randomBytes(4);
-            System.arraycopy(mask, 0, header, headerLen, 4);
-            headerLen += 4;
-            umaskPayload(mask, payload, 0, payloadLen);
-        }
         synchronized (outStream) {
+            if (status.code != WsStatus.IS_OPEN) {
+                throw new SocketException("WebSocket is closed");
+            }
+// client MUST mask payload, server MUST NOT        
+            boolean masked = this.isClientSide;
+            byte[] header = new byte[14]; //hopefully initialized with zeros
+
+            header[0] = (byte) opFrame;
+            int headerLen = 2;
+
+            int tempLen = payloadLen;
+            if (tempLen < 126) {
+                header[1] = (byte) (tempLen);
+            } else if (tempLen < 0x10000) {
+                header[1] = (byte) 126;
+                header[2] = (byte) (tempLen >>> 8);
+                header[3] = (byte) tempLen;
+                headerLen += 2;
+            } else {
+                header[1] = (byte) 127;
+                headerLen += 4; // skip 4 zero bytes of 64bit payload length
+                for (int i = 3; i > 0; i--) {
+                    header[headerLen + i] = (byte) (tempLen & 0xFF);
+                    tempLen >>>= 8;
+                }
+                headerLen += 4;
+            }
+
+            if (masked) {
+                header[1] |= WsListener.MASKED_DATA;
+                byte[] mask = randomBytes(4);
+                System.arraycopy(mask, 0, header, headerLen, 4);
+                headerLen += 4;
+                umaskPayload(mask, payload, 0, payloadLen);
+            }
             try {
                 outStream.write(header, 0, headerLen);
                 outStream.write(payload, 0, payloadLen);

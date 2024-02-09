@@ -1,3 +1,6 @@
+4.1.2
+  - WsConnection: fixed WebSocket opening/closing handshake
+
 4.1.1
   - WsServer: fixed server closure after an interruption or ServerSocket error
 
