@@ -1,5 +1,6 @@
 4.1.2
-  - WsConnection: fixed WebSocket opening/closing handshake
+  - WsConnection: fixed WebSocket opening/closing handshake;
+  - catch connection handler exceptions. 
 
 4.1.1
   - WsServer: fixed server closure after an interruption or ServerSocket error

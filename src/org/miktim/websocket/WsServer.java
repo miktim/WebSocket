@@ -142,10 +142,10 @@ public class WsServer extends Thread {
             try {
 // serverSocket SO_TIMEOUT = 0 by WebSocket creator
                 Socket socket = serverSocket.accept();
+                socket.setSoTimeout(wsp.handshakeSoTimeout);
                 WsConnection conn
                         = new WsConnection(socket, connectionHandler, isSecure, wsp);
-                socket.setSoTimeout(wsp.handshakeSoTimeout);
-                conn.connections = this.connections;
+                conn.connections = this.connections; // set ref to connections list
                 if (serverHandler.onAccept(this, conn)) {
                     conn.start();
                 } else {

@@ -16,7 +16,7 @@ public class WsParameters {
     public static final int MIN_MESSAGE_LENGTH = 1024;
 
     String[] subProtocols = null; // WebSocket subprotocol[s] in preferred order
-    int handshakeSoTimeout = 4000; // millis, TLS and WebSocket open/close handshake timeout
+    int handshakeSoTimeout = 2000; // millis, TLS and WebSocket open/close handshake timeout
     int connectionSoTimeout = 4000; // millis, data exchange timeout
     boolean pingEnabled = true; // if false, connection terminate by connectionSoTimeout
     int payloadBufferLength = 32768; // bytes. Outgoing payload length, incoming buffer length. 

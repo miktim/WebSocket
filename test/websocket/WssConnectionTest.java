@@ -7,6 +7,8 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.miktim.websocket.WsConnection;
 import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsServer;
@@ -140,6 +142,10 @@ public class WssConnectionTest {
             public void run() {
                 webSocket.closeAll("Time is over!");
                 timer.cancel();
+                try {
+                    Thread.sleep(6000);
+                } catch (InterruptedException ex) {
+                }
             }
         }, TEST_SHUTDOWN_TIMEOUT);
         ws_log("\r\nWssConnectionTest "

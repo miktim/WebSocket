@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  WsServer test, MIT (c) 2020-2023 miktim@mail.ru
+  WsServer test, MIT (c) 2020-2024 miktim@mail.ru
 -->
 <html>
     <head>
@@ -59,7 +59,7 @@
                         else
                             event.target.close(1000,"Closed by browser");
                     } else if (url.endsWith('3')) { //message too big
-                        lastMsgLength = event.data.length;
+                        lastMsgLength = new Blob([event.data]).size;//event.data.length;
                         lastMsgStartEnd =
                                 event.data.substring(0, 40) +
                                 ' ... ' +
@@ -78,7 +78,7 @@
 // event: .code .reason .wasClean
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
                     if (event.target.url.endsWith("3")) {
-                        show((lastMsgLength * 2) + " chars sent: " + lastMsgStartEnd);
+                        show((lastMsgLength * 2) + " bytes sent: " + lastMsgStartEnd);
                     }
                     show('onclose: ' + event.code
                             + ':"' + event.reason

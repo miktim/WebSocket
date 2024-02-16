@@ -110,10 +110,8 @@ public final class WsConnection extends Thread {
             }
             if (isSecure) {
                 return ((SSLSocket) socket).getSession().getPeerHost();
-//            }
 // TODO: removed code Android API 19 to API 16
-
-//          else {
+//            } else {
 //                return ((InetSocketAddress) socket.getRemoteSocketAddress()).getHostString();
             }
         } catch (Exception e) {
@@ -195,6 +193,8 @@ public final class WsConnection extends Thread {
         close(WsStatus.NO_STATUS, "");
     }
 
+    final Timer closingTimer = new Timer(true); // daemon timer
+
     public void close(int code, String reason) {
         synchronized (status) {
             if (status.code == WsStatus.IS_OPEN) {
@@ -220,20 +220,20 @@ public final class WsConnection extends Thread {
                     payloadLen += byteReasonLen;
                 }
                 try {
+                    socket.setSoTimeout(wsp.handshakeSoTimeout);
                     sendControlFrame(WsListener.OP_CLOSE, payload, payloadLen);
 // TODO: removed code Android API 23-
 //                    socket.shutdownOutput();
                     status.code = code; // disable output
                     status.remotely = false;
-                    socket.setSoTimeout(wsp.handshakeSoTimeout);
                     status.reason = new String(byteReason, 0, byteReasonLen, "UTF-8");
-                } catch (IOException e) {
+                } catch (Exception e) {
                     closeSocket();
                     return;
                 }
             }
-// force closing socket            
-            (new Timer(true)).schedule(new TimerTask() { // daemon timer
+// force closing socket 
+            closingTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
                     closeSocket();
@@ -264,15 +264,20 @@ public final class WsConnection extends Thread {
     @Override
     public void run() {
         connections.add(this);
-        if (waitConnection()) {
-            this.handler.onOpen(this, subProtocol);
-            waitMessages(MESSAGE_QUEUE_CAPACITY);
-        }
-        if (status.error != null) {
-            handler.onError(this, status.error);
-        }
-        handler.onClose(this, getStatus());
-        if (!isClientSide) {
+        try {
+            if (waitConnection()) {
+                this.handler.onOpen(this, subProtocol);
+                waitMessages(MESSAGE_QUEUE_CAPACITY);
+            }
+            if (status.error != null) {
+                handler.onError(this, status.error);
+            }
+            handler.onClose(this, getStatus());
+            if (!isClientSide) {
+                closeSocket();
+            }
+        } catch (Throwable e) { // connection handler exception
+            e.printStackTrace();
             closeSocket();
         }
         connections.remove(this);
@@ -307,10 +312,10 @@ public final class WsConnection extends Thread {
 
     void waitMessages(int queueCapacity) {
         messageQueue = new ArrayBlockingQueue<WsInputStream>(queueCapacity);
-        WsListener receiver = new WsListener(this, messageQueue);
-        receiver.start();
+        WsListener listener = new WsListener(this, messageQueue);
+        listener.start();
         WsInputStream is;
-        while (receiver.isAlive()) {
+        while (listener.isAlive()) {
             try {
                 is = messageQueue.poll(500L, TimeUnit.MILLISECONDS);
             } catch (InterruptedException ex) {
@@ -333,16 +338,17 @@ public final class WsConnection extends Thread {
 
         HttpHead responseHead = (new HttpHead()).set("Server", SERVER_AGENT);
         if (parts[0].equals("GET")
-                && requestHead.get("Upgrade").toLowerCase().equals("websocket")
                 && key != null
+                && requestHead.get("Upgrade").toLowerCase().equals("websocket")
+                && requestHead.get("Sec-WebSocket-Version").equals("13")
                 && setSubprotocol(
-                        requestHead.getValues("Sec-WebSocket-Protocol"), responseHead)) {
+                        requestHead.getValues("Sec-WebSocket-Protocol"),
+                        responseHead)) {
             responseHead
                     .set(HttpHead.START_LINE, "HTTP/1.1 101 Upgrade")
                     .set("Upgrade", "websocket")
                     .set("Connection", "Upgrade,keep-alive")
                     .set("Sec-WebSocket-Accept", sha1Hash(key))
-                    .set("Sec-WebSocket-Version", "13")
                     .write(outStream);
         } else {
             responseHead
@@ -369,7 +375,7 @@ public final class WsConnection extends Thread {
                 }
             }
         }
-        return false;
+        return true;
     }
 
     private void handshakeServer()
@@ -412,12 +418,12 @@ public final class WsConnection extends Thread {
     }
 
     private boolean checkSubprotocol() {
-        if (this.subProtocol == null && wsp.subProtocols == null) {
+        if (this.subProtocol == null) {
             return true; // 
         }
-        if (this.subProtocol != null && wsp.subProtocols != null) {
+        if (wsp.subProtocols != null) {
             for (String subp : wsp.subProtocols) {
-                if (subp.equals(this.subProtocol)) { //
+                if (this.subProtocol.equals(subp)) { //
                     return true;
                 }
             }
@@ -481,8 +487,9 @@ public final class WsConnection extends Thread {
 //        if (this.isSocketOpen()) {
         try {
             this.socket.close();
+            closingTimer.cancel();
         } catch (IOException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
         }
 //        }
     }

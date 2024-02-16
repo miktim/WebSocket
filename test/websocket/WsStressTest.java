@@ -41,6 +41,10 @@ public class WsStressTest {
 
             @Override
             public void onOpen(WsConnection conn, String subp) {
+                if(subp == null) {
+                    conn.close(WsStatus.POLICY_VIOLATION,"Subprotocol required");
+                    return;
+                }    
                 try {
                     if (subp.equals("1") && conn.isClientSide()) {
 // message too big                        
@@ -123,7 +127,9 @@ public class WsStressTest {
             @Override
             public void onStop(WsServer server, Exception e) {
                 if(server.isInterrupted()) 
-                    ws_log("Server interrupted" + (e != null ? " Error " + e : ""));
+                    ws_log("Server interrupted. Active connections: "
+                            + server.listConnections().length
+                            + (e != null ? " Error " + e : ""));
                 else ws_log("Server closed");
             }
         };
@@ -181,7 +187,7 @@ public class WsStressTest {
 
         ws_log("\r\n4. " + MAX_CLIENT_CONNECTIONS + " connections are allowed:");
         wsp.setSubProtocols(new String[]{"4"});
-        for(int i = 0; i < MAX_CLIENT_CONNECTIONS + 2; i++)
+        for(int i = 0; i < MAX_CLIENT_CONNECTIONS * 2; i++)
             webSocket.connect(ADDRESS, handler, wsp);
         sleep(200);
         ws_log("\r\n5. Interrupt server:");

@@ -112,14 +112,14 @@ class WsListener extends Thread {
                         break; // exit 
                     }
                 } else {
-                    conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, "Timeout", e);
+                    conn.closeDueTo(WsStatus.GOING_AWAY, "Timeout", e);
                     break; // exit
                 }
             } catch (ProtocolException e) {
                 conn.closeDueTo(WsStatus.PROTOCOL_ERROR, e.getMessage(), e);
                 break;
             } catch (IllegalStateException e) { // message queue overflow 
-                conn.closeDueTo(WsStatus.INTERNAL_ERROR, e.getMessage(), e);
+                conn.closeDueTo(WsStatus.POLICY_VIOLATION, e.getMessage(), e);
 //                break;
             } catch (Exception e) {
                 conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e.getMessage(), e);
