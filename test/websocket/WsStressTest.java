@@ -41,10 +41,10 @@ public class WsStressTest {
 
             @Override
             public void onOpen(WsConnection conn, String subp) {
-                if(subp == null) {
-                    conn.close(WsStatus.POLICY_VIOLATION,"Subprotocol required");
+                if (subp == null) {
+                    conn.close(WsStatus.POLICY_VIOLATION, "Subprotocol required");
                     return;
-                }    
+                }
                 try {
                     if (subp.equals("1") && conn.isClientSide()) {
 // message too big                        
@@ -112,28 +112,34 @@ public class WsStressTest {
             }
 
         };
-        
+
         WsServer.EventHandler serverHandler = new WsServer.EventHandler() {
             @Override
             public void onStart(WsServer server) {
-               ws_log("Server started");
+                ws_log("Server started");
             }
 
             @Override
             public boolean onAccept(WsServer server, WsConnection conn) {
-                return server.listConnections().length < MAX_CLIENT_CONNECTIONS;
+                if (server.listConnections().length < MAX_CLIENT_CONNECTIONS) {
+                    return true;
+                }
+                ws_log("Connection rejected.");
+                return false;
             }
 
             @Override
             public void onStop(WsServer server, Exception e) {
-                if(server.isInterrupted()) 
+                if (server.isInterrupted()) {
                     ws_log("Server interrupted. Active connections: "
                             + server.listConnections().length
                             + (e != null ? " Error " + e : ""));
-                else ws_log("Server closed");
+                } else {
+                    ws_log("Server closed");
+                }
             }
         };
-                
+
         final WsParameters wsp = new WsParameters() // client/server parameters
                 .setSubProtocols("0,1,2,3,4,5,6,7,8,9".split(","))
                 //               .setMaxMessageLength(2000)
@@ -155,14 +161,14 @@ public class WsStressTest {
                 + "\r\nTest will be terminated after "
                 + (TEST_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
-        
+
         final WsServer wsServer = webSocket.Server(PORT, handler, wsp)
                 .setHandler(serverHandler).launch();
 
         ws_log("0. Connecting via TLS to a cleartext server:");
         WsConnection conn = webSocket.connect("wss://localhost:" + PORT, handler, wsp);
         conn.join();
-        
+
         ws_log("\r\n0. Unsupported WebSocket subProtocol");
         wsp.setSubProtocols(new String[]{"10"});
         conn = webSocket.connect(ADDRESS, handler, wsp);
@@ -187,8 +193,9 @@ public class WsStressTest {
 
         ws_log("\r\n4. " + MAX_CLIENT_CONNECTIONS + " connections are allowed:");
         wsp.setSubProtocols(new String[]{"4"});
-        for(int i = 0; i < MAX_CLIENT_CONNECTIONS * 2; i++)
+        for (int i = 0; i < MAX_CLIENT_CONNECTIONS * 2; i++) {
             webSocket.connect(ADDRESS, handler, wsp);
+        }
         sleep(200);
         ws_log("\r\n5. Interrupt server:");
         wsServer.interrupt();

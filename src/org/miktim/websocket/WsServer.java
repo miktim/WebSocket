@@ -109,7 +109,7 @@ public class WsServer extends Thread {
             for (WsConnection connection : listConnections()) {
                 connection.close(WsStatus.GOING_AWAY, closeReason);
             }
-            servers.remove(this); // remove from WebSocket server list
+            servers.remove(this); // remove from the list of WebSocket servers
         }
     }
 
@@ -135,7 +135,7 @@ public class WsServer extends Thread {
     
     @Override
     public void run() {
-        servers.add(this); // add to WebSocket server list
+        servers.add(this); // add to the list of WebSocket servers
         status = IS_OPEN;
         serverHandler.onStart(this);
         while (isOpen()) {
@@ -145,13 +145,14 @@ public class WsServer extends Thread {
                 socket.setSoTimeout(wsp.handshakeSoTimeout);
                 WsConnection conn
                         = new WsConnection(socket, connectionHandler, isSecure, wsp);
-                conn.connections = this.connections; // set ref to connections list
+// set a link to the list of connections to the server
+                conn.connections = this.connections; 
                 if (serverHandler.onAccept(this, conn)) {
                     conn.start();
                 } else {
                     conn.closeSocket();
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 if (isOpen()) {
                     error = e;
                     interrupt();

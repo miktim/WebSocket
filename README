@@ -21,7 +21,7 @@ Overview:
     Servers and client connections creator.
 
     Constant:
-      static String VERSION = "4.1.2";
+      static String VERSION = "4.1.3";
 
     Constructors:
       WebSocket() throws NoSuchAlgorithmException; // check if SHA1 exists
@@ -38,8 +38,9 @@ Overview:
       static void setTrustStore(String keyFilePath, String password);
         - sets system properties javax.net.ssl.trustStore/trustStorePassword
 
-      void setKeyFile(File keyfile, String password);
-        - sets keyStore file (server) or trustStore file (client connection)
+      void setKeyFile(File storeFile, String storePassword);
+        - use a keyStore file (server) or a trustStore file (client)
+          without changing the system properties
       void resetKeyFile();
 
       WsServer Server(int port, WsConnection.EventHandler handler, WsParameters wsp) throws IOException, GeneralSecurityException; 
@@ -53,6 +54,7 @@ Overview:
       WsConnection connect(String uri, WsConnection.EventHandler handler, WsParameters wsp) throws URISyntaxException, IOException, GeneralSecurityException;
         - creates and starts a client connection;
         - uri's scheme (ws: | wss:) and host are required,
+          :port, /path and ?query are optional,
           user-info@ and #fragment - ignored
 
       InetAddress getBindAddress();
@@ -126,7 +128,7 @@ Overview:
       WsConnection[] listConnections() // the client connection returns only itself 
       String getSSLSessionProtocol() // returns SSL protocol or null
       WsStatus getStatus();
-        - returns the connection status, syncs with a WebSocket connection
+        - returns the connection status, syncs with a client WebSocket handshake
       String getSubProtocol(); // returns null or handshaked WebSocket subprotocol
       String getPeerHost(); // returns remote host name or null
       int getPort()      // returns connected port
@@ -157,8 +159,7 @@ Overview:
     
       void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text);
         - the message is an InputStream of binary data or UTF-8 encoded text;
-        - the available() method returns the total number of bytes in the stream;
-        - exiting the handler closes the stream (not connection!).
+        - the available() method returns the total number of bytes in the stream.
 
       void onError(WsConnection conn, Throwable e);
         - any exception closes the WebSocket connection;

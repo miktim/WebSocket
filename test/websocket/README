@@ -10,6 +10,7 @@ Testing:
 
 Certificates (localhost self-signed, both expired!):
   From https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/index.html
-    - testkeys ("passphrase"), Java 7+ (PKCS#12 algorithm)
+    - testkeys ("passphrase"), Java 7+ (type JKS)
   Self-made:
-    - localhost.jks ("password"), Java 8+ (PKCS#12 algorithm)
+    - localhost.jks ("password"), Java 8+ (type PKCS#12)
+    - android.jks ("qwerty") converted from BKS (type JKS)

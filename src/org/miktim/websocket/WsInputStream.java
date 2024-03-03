@@ -10,22 +10,22 @@ import java.util.ArrayDeque;
 
 public class WsInputStream extends InputStream {
 
-        ArrayDeque<byte[]> frames; // Queue?
-        byte[] frame = new byte[0];
+        ArrayDeque<byte[]> payloads; // Queue?
+        byte[] payload = new byte[0];
         boolean isText;
         int iByte = 0;
         long available;
 
-        WsInputStream(ArrayDeque<byte[]> frames, long messageLen, boolean isText) {
+        WsInputStream(ArrayDeque<byte[]> payloads, long messageLen, boolean isText) {
             super();
-            this.frames = frames;
+            this.payloads = payloads;
             this.isText = isText;
             available = messageLen;
         }
 
         private boolean getFrame() {
-            if (frames.size() > 0) {
-                frame = frames.poll();
+            if (payloads.size() > 0) {
+                payload = payloads.poll();
                 iByte = 0;
                 return true;
             }
@@ -44,9 +44,9 @@ public class WsInputStream extends InputStream {
         @Override
         public int read() {//throws IOException {
             do {
-                if (iByte < frame.length) {
+                if (iByte < payload.length) {
                     available--;
-                    return ((int) frame[iByte++]) & 0xFF;
+                    return ((int) payload[iByte++]) & 0xFF;
                 }
             } while (getFrame());
             return -1; // end of message
@@ -54,8 +54,8 @@ public class WsInputStream extends InputStream {
 
         @Override
         public void close() throws IOException {
-            frames.clear();
-            frame = new byte[0];
+            payloads.clear();
+            payload = new byte[0];
         }
     }
 

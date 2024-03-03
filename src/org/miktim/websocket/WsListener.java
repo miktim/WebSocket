@@ -11,12 +11,12 @@ import java.net.ProtocolException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 class WsListener extends Thread {
 
     final private WsConnection conn;
-    final private ArrayBlockingQueue<WsInputStream> messageQueue;
+    final private BlockingQueue<WsInputStream> messageQueue;
 
     private int opData = OP_FINAL; // data frame opcode
     private final byte[] payloadMask = new byte[8]; // mask & temp buffer for payloadLength
@@ -24,9 +24,9 @@ class WsListener extends Thread {
     private long messageLength;
     private boolean pingFrameSent = false;
     private boolean maskedPayload;
-    private ArrayDeque<byte[]> messageFrames = null;
+    private ArrayDeque<byte[]> messagePayloads = null;
 
-    WsListener(WsConnection conn, ArrayBlockingQueue<WsInputStream> messageQueue) {
+    WsListener(WsConnection conn, BlockingQueue<WsInputStream> messageQueue) {
         this.conn = conn;
         this.messageQueue = messageQueue;
     }
@@ -76,7 +76,7 @@ class WsListener extends Thread {
                         if ((opData & OP_FINAL) != 0) {
                             opData = b1;
                             if (conn.isOpen()) {
-                                messageFrames = new ArrayDeque<byte[]>();
+                                messagePayloads = new ArrayDeque<byte[]>();
                             }
                             messageLength = 0L;
                             dataFrame();
@@ -124,17 +124,18 @@ class WsListener extends Thread {
             } catch (Exception e) {
                 conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e.getMessage(), e);
                 break;
-            } catch (Error e) {
-                e.printStackTrace();
-                conn.closeDueTo(WsStatus.INTERNAL_ERROR, "Internal error", e);
-                break;
+//            } catch (Error e) {
+//                e.printStackTrace();
+//                conn.closeDueTo(WsStatus.INTERNAL_ERROR, "Internal error", e);
+//                break;
             }
         }
 // exit 
-        messageFrames = null;
-// TODO?: wake up connection/interrupt onMessage        
-        messageQueue.clear();
-//        ((Thread) conn).interrupt();
+        messagePayloads = null;
+//        messageQueue.clear();
+        if (messageQueue.remainingCapacity() > 0) {
+            messageQueue.add(new WsInputStream(null, -1, false));
+        }
     }
 
     void readHeader(int b2) throws IOException {
@@ -171,20 +172,20 @@ class WsListener extends Thread {
         if (messageLength > conn.wsp.maxMessageLength) {
             IOException e = new IOException("Message too big");
             conn.closeDueTo(WsStatus.MESSAGE_TOO_BIG, e.getMessage(), e);
-            messageFrames = null;
+            messagePayloads = null;
         }
-        if (messageFrames == null) {
+        if (messagePayloads == null) {
             skipPayload();
             return false;
         }
-        messageFrames.add(readPayload());
+        messagePayloads.add(readPayload());
         if ((opData & OP_FINAL) != 0) {
             messageQueue.add(new WsInputStream(
-                    new ArrayDeque<byte[]>(messageFrames),
+                    new ArrayDeque<byte[]>(messagePayloads),
                     messageLength,
                     (opData & OP_TEXT) != 0)
             );
-            messageFrames = null;
+            messagePayloads = null;
         }
         return true;
     }

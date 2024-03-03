@@ -7,8 +7,6 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.miktim.websocket.WsConnection;
 import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsServer;
@@ -125,10 +123,11 @@ public class WssConnectionTest {
         final WebSocket webSocket = new WebSocket();
 
 //*** Server and client must use the same self-signed certificate
-        String keyFile = (new File(path, "testkeys")).getCanonicalPath();
-//
-        WebSocket.setKeyStore(keyFile, "passphrase"); // for server
-        WebSocket.setTrustStore(keyFile, "passphrase"); // for client
+        String storeFileName = "android.jks";
+        String password = "qwerty";
+        String keyFile = (new File(path, storeFileName)).getCanonicalPath();
+        WebSocket.setKeyStore(keyFile, password); // for server
+        WebSocket.setTrustStore(keyFile, password); // for client
 
         WsParameters swsp = new WsParameters(); // server parameters
         swsp.setConnectionSoTimeout(1000, true); // ping

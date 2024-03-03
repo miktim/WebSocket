@@ -49,7 +49,7 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class WebSocket {
 
-    public static String VERSION = "4.1.2";
+    public static String VERSION = "4.1.3";
     private InetAddress bindAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
     private final List<WsServer> servers = Collections.synchronizedList(new ArrayList<WsServer>());
@@ -77,7 +77,7 @@ public class WebSocket {
         System.setProperty("javax.net.ssl.keyStore", jksFile);
         System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
-    
+
 // convert host name to International Domain Names (IDN) format and create URI
     public static URI idnURI(String uri) throws URISyntaxException {
 // Supported uri format: [scheme:][//[user-info@]host][:port][/path][?query][#fragment]
@@ -96,9 +96,9 @@ public class WebSocket {
         return new URI(uri);
     }
 
-    public void setKeyFile(File keyfile, String password) {
-        keyStoreFile = keyfile;
-        keyStorePassword = password;
+    public void setKeyFile(File storeFile, String storePassword) {
+        keyStoreFile = storeFile;
+        keyStorePassword = storePassword;
     }
 
     public void resetKeyFile() {
@@ -176,8 +176,8 @@ public class WebSocket {
         }
 
         serverSocket.setSoTimeout(0);
-        WsServer server = 
-                new WsServer(serverSocket, handler, isSecure, wsp);
+        WsServer server
+                = new WsServer(serverSocket, handler, isSecure, wsp);
         server.servers = servers;
         return server;
     }
@@ -194,27 +194,22 @@ public class WebSocket {
 
         String ksPassphrase = this.keyStorePassword;
         File ksFile = this.keyStoreFile;
-//            if (ksFile == null) {
-//                ksPassphrase = System.getProperty("javax.net.ssl.keyStorePassword");
-//                ksFile = new File(System.getProperty("javax.net.ssl.keyStore"));
-//            }
         char[] passphrase = ksPassphrase.toCharArray();
 
         ctx = SSLContext.getInstance("TLS");
         kmf = KeyManagerFactory.getInstance(
                 KeyManagerFactory.getDefaultAlgorithm()); // java:"SunX509", android:"PKIX"
-        ks = KeyStore.getInstance(KeyStore.getDefaultType()); // android: BKS, java: JKS
+        ks = KeyStore.getInstance(KeyStore.getDefaultType()); // "JKS", "BKS"
         FileInputStream ksFis = new FileInputStream(ksFile);
-        ks.load(ksFis, passphrase);
+        ks.load(ksFis, passphrase); // store password
         ksFis.close();
-        kmf.init(ks, passphrase);
-
-        TrustManagerFactory tmf = TrustManagerFactory.getInstance(
-                TrustManagerFactory.getDefaultAlgorithm()
-        );
-        tmf.init(ks);
+        kmf.init(ks, passphrase); // key password
 
         if (isClient) {
+            TrustManagerFactory tmf = TrustManagerFactory.getInstance(
+                    TrustManagerFactory.getDefaultAlgorithm()); // "PKIX", ""
+            tmf.init(ks);
+
             ctx.init(null, tmf.getTrustManagers(), new SecureRandom());
         } else {
             ctx.init(kmf.getKeyManagers(), null, null);
@@ -222,7 +217,7 @@ public class WebSocket {
         return ctx;
     }
 
-    synchronized public WsConnection connect(String uri, 
+    synchronized public WsConnection connect(String uri,
             WsConnection.EventHandler handler, WsParameters wsp)
             throws URISyntaxException, IOException, GeneralSecurityException {
         if (uri == null || handler == null || wsp == null) {

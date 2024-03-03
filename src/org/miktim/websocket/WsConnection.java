@@ -26,8 +26,6 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.TimeUnit;
-
 import javax.net.ssl.SSLSocket;
 
 public final class WsConnection extends Thread {
@@ -193,8 +191,6 @@ public final class WsConnection extends Thread {
         close(WsStatus.NO_STATUS, "");
     }
 
-    final Timer closingTimer = new Timer(true); // daemon timer
-
     public void close(int code, String reason) {
         synchronized (status) {
             if (status.code == WsStatus.IS_OPEN) {
@@ -227,22 +223,25 @@ public final class WsConnection extends Thread {
                     status.code = code; // disable output
                     status.remotely = false;
                     status.reason = new String(byteReason, 0, byteReasonLen, "UTF-8");
+// force closing socket 
+                    (new Timer(true)).schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            closeSocket();
+                        }
+                    }, wsp.handshakeSoTimeout);
+                    if (status.error != null) {
+                        handler.onError(this, status.error);
+                    }
                 } catch (Exception e) {
                     closeSocket();
-                    return;
+                    e.printStackTrace();
                 }
             }
-// force closing socket 
-            closingTimer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    closeSocket();
-                }
-            }, wsp.handshakeSoTimeout);
         }
     }
 
-    // WebSocket server connection constructor
+    // WebSocket server side connection constructor
     WsConnection(Socket s, EventHandler h, boolean secure, WsParameters wsp) {
         this.isClientSide = false;
         this.socket = s;
@@ -267,18 +266,19 @@ public final class WsConnection extends Thread {
         try {
             if (waitConnection()) {
                 this.handler.onOpen(this, subProtocol);
-                waitMessages(MESSAGE_QUEUE_CAPACITY);
-            }
-            if (status.error != null) {
-                handler.onError(this, status.error);
+                if (status.error != null) {
+                    handler.onError(this, status.error); // also called from closeDueTo
+                } else {
+                    waitMessages();
+                }
             }
             handler.onClose(this, getStatus());
             if (!isClientSide) {
                 closeSocket();
             }
-        } catch (Throwable e) { // connection handler exception
-            e.printStackTrace();
+        } catch (Exception e) { // connection handler exception
             closeSocket();
+            e.printStackTrace();
         }
         connections.remove(this);
     }
@@ -308,25 +308,23 @@ public final class WsConnection extends Thread {
         }
     }
 
-    ArrayBlockingQueue<WsInputStream> messageQueue;
+    ArrayBlockingQueue<WsInputStream> messageQueue
+            = new ArrayBlockingQueue<WsInputStream>(MESSAGE_QUEUE_CAPACITY, true);
 
-    void waitMessages(int queueCapacity) {
-        messageQueue = new ArrayBlockingQueue<WsInputStream>(queueCapacity);
+    void waitMessages() {
         WsListener listener = new WsListener(this, messageQueue);
         listener.start();
         WsInputStream is;
-        while (listener.isAlive()) {
+        while (messageQueue.size() > 0 || listener.isAlive()) {
             try {
-                is = messageQueue.poll(500L, TimeUnit.MILLISECONDS);
+                is = messageQueue.take();
+                if (is.available() < 0) {
+                    break;
+                }
+                handler.onMessage(this, is, is.isText());
             } catch (InterruptedException ex) {
-                continue;
             }
-            if (is == null) {
-                continue;
-            }
-            handler.onMessage(this, is, is.isText());
         }
-        messageQueue.clear();
     }
 
     private void handshakeClient()
@@ -484,14 +482,11 @@ public final class WsConnection extends Thread {
     }
 
     void closeSocket() {
-//        if (this.isSocketOpen()) {
         try {
             this.socket.close();
-            closingTimer.cancel();
         } catch (IOException e) {
 //            e.printStackTrace();
         }
-//        }
     }
 
     void closeDueTo(int closeCode, String reason, Throwable e) {
