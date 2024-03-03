@@ -234,7 +234,7 @@ public final class WsConnection extends Thread {
                     }, wsp.handshakeSoTimeout);
                 } catch (Exception e) {
                     closeSocket();
-                    e.printStackTrace();
+//                    e.printStackTrace();
                 }
             }
         }
