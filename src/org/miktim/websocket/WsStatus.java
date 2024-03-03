@@ -36,7 +36,7 @@ public final class WsStatus {
     WsStatus() {
     }
 
-    synchronized WsStatus deepClone() {
+    WsStatus deepClone() {
         WsStatus clone = new WsStatus();
         clone.code = code;
         clone.reason = reason;

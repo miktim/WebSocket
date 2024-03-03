@@ -46,7 +46,6 @@ public class WssClientTest {
         if (args.length > 0) {
             path = args[0];
         }
-//        WebSocket.setTrustStore("/nofile", "");
 
         WsConnection.EventHandler clientHandler = new WsConnection.EventHandler() {
             @Override
@@ -150,7 +149,7 @@ public class WssClientTest {
         final WebSocket webSocket = new WebSocket();
         WsParameters wsp = new WsParameters()
                 .setConnectionSoTimeout(10000, true)
-                .setMaxMessageLength(MAX_MESSAGE_LENGTH); // ping
+                .setMaxMessageLength(MAX_MESSAGE_LENGTH); 
         wsp.getSSLParameters().setProtocols(new String[]{"TLSv1.2"});
 ////        wsp.setPayloadLength(fragmentTest.length()/2); // not work!
         ws_log("\r\nWssClientTest "

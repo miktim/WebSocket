@@ -64,7 +64,9 @@ public final class WsConnection extends Thread {
     }
 
     public WsStatus getStatus() {
-        return status.deepClone();
+        synchronized (status) {
+            return status.deepClone();
+        }
     }
 
     public boolean isOpen() {
@@ -230,9 +232,6 @@ public final class WsConnection extends Thread {
                             closeSocket();
                         }
                     }, wsp.handshakeSoTimeout);
-                    if (status.error != null) {
-                        handler.onError(this, status.error);
-                    }
                 } catch (Exception e) {
                     closeSocket();
                     e.printStackTrace();
@@ -268,7 +267,8 @@ public final class WsConnection extends Thread {
                 this.handler.onOpen(this, subProtocol);
                 waitMessages();
             } else {
-                handler.onError(this, status.error); // also called from close
+ // also called from closeDueTo                
+                handler.onError(this, status.error);
             }
             handler.onClose(this, getStatus());
             if (!isClientSide) {
@@ -491,6 +491,13 @@ public final class WsConnection extends Thread {
         if (isOpen()) {
             status.error = e;
             close(closeCode, reason);
+            if (e != null) {
+                try {
+                handler.onError(this, status.error);
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                }
+            }
         }
     }
 
