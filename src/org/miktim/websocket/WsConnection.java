@@ -266,11 +266,9 @@ public final class WsConnection extends Thread {
         try {
             if (waitConnection()) {
                 this.handler.onOpen(this, subProtocol);
-                if (status.error != null) {
-                    handler.onError(this, status.error); // also called from closeDueTo
-                } else {
-                    waitMessages();
-                }
+                waitMessages();
+            } else {
+                handler.onError(this, status.error); // also called from close
             }
             handler.onClose(this, getStatus());
             if (!isClientSide) {
