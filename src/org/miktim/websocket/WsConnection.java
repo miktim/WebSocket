@@ -90,9 +90,13 @@ public final class WsConnection extends Thread {
 
     public synchronized void setHandler(EventHandler newHandler) {
         if (isOpen()) {
-            handler.onClose(this, status);
-            handler = newHandler;
-            newHandler.onOpen(this, subProtocol);
+            try {
+                handler.onClose(this, status);
+                handler = newHandler;
+                newHandler.onOpen(this, subProtocol);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         } else {
             handler = newHandler;
         }
@@ -110,7 +114,7 @@ public final class WsConnection extends Thread {
             }
             if (isSecure) {
                 return ((SSLSocket) socket).getSession().getPeerHost();
-// TODO: removed code Android API 19 to API 16
+// TODO: downgrade Android API 19 to API 16
 //            } else {
 //                return ((InetSocketAddress) socket.getRemoteSocketAddress()).getHostString();
             }
@@ -206,7 +210,7 @@ public final class WsConnection extends Thread {
                     payload[1] = (byte) (code & 0xFF);
                     payloadLen = 2;
                     try {
-// TODO: removed code Android API 19 to API 16 here and further               
+// TODO: downgrade Android API 19 to API 16 here and further               
 //                    byteReason = (reason == null ? "" : reason)
 //                      .getBytes(StandardCharsets.UTF_8);
                         byteReason = (reason == null ? "" : reason).getBytes("UTF-8");
@@ -218,13 +222,13 @@ public final class WsConnection extends Thread {
                     payloadLen += byteReasonLen;
                 }
                 try {
-                    socket.setSoTimeout(wsp.handshakeSoTimeout);
-                    sendControlFrame(WsListener.OP_CLOSE, payload, payloadLen);
-// TODO: removed code Android API 23-
-//                    socket.shutdownOutput();
-                    status.code = code; // disable output
                     status.remotely = false;
                     status.reason = new String(byteReason, 0, byteReasonLen, "UTF-8");
+                    socket.setSoTimeout(wsp.handshakeSoTimeout);
+                    sendControlFrame(WsListener.OP_CLOSE, payload, payloadLen);
+// TODO: downgrade Android API 23 to API 16
+//                    socket.shutdownOutput();
+                    status.code = code; // disable output
 // force closing socket 
                     (new Timer(true)).schedule(new TimerTask() {
                         @Override
@@ -233,6 +237,7 @@ public final class WsConnection extends Thread {
                         }
                     }, wsp.handshakeSoTimeout);
                 } catch (Exception e) {
+                    status.code = code;
                     closeSocket();
 //                    e.printStackTrace();
                 }
@@ -267,7 +272,7 @@ public final class WsConnection extends Thread {
                 this.handler.onOpen(this, subProtocol);
                 waitMessages();
             } else {
- // also called from closeDueTo                
+                // also called from closeDueTo                
                 handler.onError(this, status.error);
             }
             handler.onClose(this, getStatus());
@@ -493,7 +498,7 @@ public final class WsConnection extends Thread {
             close(closeCode, reason);
             if (e != null) {
                 try {
-                handler.onError(this, status.error);
+                    handler.onError(this, status.error);
                 } catch (Throwable t) {
                     t.printStackTrace();
                 }

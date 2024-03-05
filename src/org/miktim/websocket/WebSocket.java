@@ -167,7 +167,7 @@ public class WebSocket {
                 ((SSLServerSocket) serverSocket).setEnabledProtocols(sslp.getProtocols());
                 ((SSLServerSocket) serverSocket).setWantClientAuth(sslp.getWantClientAuth());
                 ((SSLServerSocket) serverSocket).setEnabledCipherSuites(sslp.getCipherSuites());
-// TODO: removed code Android API 24 to API 16
+// TODO: downgrade Android API 24 to API 16
 
 //            ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
             }

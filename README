@@ -2,7 +2,7 @@
 
 Release notes:
   - small and easy to use;
-  - 100% Java SE 6+/Android 4.1+ compatible (see WebSocket-Android-Test repo:
+  - 100% Java SE 6+/Android 4+ compatible (see WebSocket-Android-Test repo:
     https://github.com/miktim/WebSocket-Android-Test );
   - in accordance with RFC6455: https://datatracker.ietf.org/doc/html/rfc6455/ ;
   - supported WebSocket version: 13;
@@ -76,7 +76,8 @@ Overview:
       boolean isOpen(); // returns the open state
       boolean isSecure(); // is secure server
       boolean isInterrupted(); 
-        - returns true if the server was interrupted by a method or due to a server socket exception
+        - returns true if the server was interrupted by a method
+          or due to a server socket exception
       Exception getError(); // returns server socket exception or null
       int getPort();
         - returns the port number on which this server socket is listening.
@@ -89,7 +90,8 @@ Overview:
       void close(String closeReason);
         - close methods also closes all associated connections (code GOING_AWAY)
       void interrupt();
-        - interrupts the server, associated connections stay alive and can be closed in the usual way
+        - interrupts the server, associated connections stay alive
+          and can be closed in the usual way
 
         
   Interface WsServer.EventHandler:
@@ -138,7 +140,8 @@ Overview:
 
       void close(); // closes connection with status code 1005 (NO_STATUS)
       void close(int statusCode, String reason); 
-        - the status code outside 1000-4999 will be replaced with 1005 (NO_STATUS), the reason is ignored;
+        - the status code outside 1000-4999 will be replaced with 1005 (NO_STATUS),
+          the reason is ignored;
         - a reason that is longer than 123 BYTES is truncated;
         - the method blocks outgoing messages (sending methods throw IOException);
         - isOpen() returns false;
@@ -163,7 +166,7 @@ Overview:
 
       void onError(WsConnection conn, Throwable e);
         - any exception closes the WebSocket connection;
-        - large incoming messages may throw an OutOfMemoryError;
+        - large incoming messages may throw an OutOfMemoryError
 
       void onClose(WsConnection conn, WsStatus closeStatus);
       
