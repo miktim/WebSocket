@@ -21,12 +21,27 @@ public class WsStressTest {
     static final String ADDRESS = "ws://localhost:" + PORT;
 
     static void ws_log(String msg) {
-        System.out.println(msg);
+        System.out.println(String.valueOf(msg));
     }
 
     static String makePath(WsConnection conn) {
         return conn.getPath()
                 + (conn.getQuery() == null ? "" : "?" + conn.getQuery());
+    }
+
+    static void testResult(WsConnection conn, int code) {
+        if (conn.getStatus().code == code)
+            ws_log("OK");
+        else
+            ws_log("Failed!");
+    }
+    
+    static void joinAll(WebSocket webSocket) throws InterruptedException {
+        WsServer server = webSocket.listServers()[0];
+        for(WsConnection conn : webSocket.listConnections())
+            conn.join();
+        for(WsConnection conn : server.listConnections())
+            conn.join();
     }
 
     public static void main(String[] args) throws Exception {
@@ -124,7 +139,7 @@ public class WsStressTest {
                 if (server.listConnections().length < MAX_CLIENT_CONNECTIONS) {
                     return true;
                 }
-                ws_log("Connection rejected.");
+                ws_log("Server onAccept: Connection rejected.");
                 return false;
             }
 
@@ -149,6 +164,7 @@ public class WsStressTest {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
+                ws_log("\r\nTime is over! Test completed.\r\n");
                 webSocket.closeAll("Time is over!");
                 timer.cancel();
             }
@@ -165,38 +181,46 @@ public class WsStressTest {
         final WsServer wsServer = webSocket.Server(PORT, handler, wsp)
                 .setHandler(serverHandler).launch();
 
-        ws_log("0. Connecting via TLS to a cleartext server:");
+        ws_log("0. Connecting via TLS to a cleartext server (1002 expected):");
         WsConnection conn = webSocket.connect("wss://localhost:" + PORT, handler, wsp);
         conn.join();
+        testResult(conn,1002);
 
-        ws_log("\r\n0. Unsupported WebSocket subProtocol");
+        ws_log("\r\n0. Unsupported WebSocket subProtocol (1008 expected)");
         wsp.setSubProtocols(new String[]{"10"});
         conn = webSocket.connect(ADDRESS, handler, wsp);
-        conn.join();
-
-        ws_log("\r\n1. Message too big");
+        joinAll(webSocket);
+        testResult(conn,1008);
+        
+        ws_log("\r\n1. Message too big (1009 expected)");
         wsp.setSubProtocols(new String[]{"1"});
         conn = webSocket.connect(ADDRESS, handler, wsp);
-        conn.join();
+        joinAll(webSocket);
+        testResult(conn,1009);
 
-        ws_log("\r\n2. Message queue overflow:");
+        ws_log("\r\n2. Message queue overflow (1008 expected):");
         wsp.setSubProtocols(new String[]{"2"})
                 .setPayloadBufferLength(wsp.getMaxMessageLength()); // min
         conn = webSocket.connect(ADDRESS, handler, wsp);
-        conn.join();
-
-        ws_log("\r\n3. Connection timeout:");
+        joinAll(webSocket);
+        testResult(conn,1008);
+       
+        ws_log("\r\n3. Connection timeout (1001 expected):");
         wsp.setSubProtocols(new String[]{"3"})
                 .setConnectionSoTimeout(400, false);
         conn = webSocket.connect(ADDRESS, handler, wsp);
-        conn.join();
-
+        joinAll(webSocket);
+        testResult(conn,1001);
+        
         ws_log("\r\n4. " + MAX_CLIENT_CONNECTIONS + " connections are allowed:");
         wsp.setSubProtocols(new String[]{"4"});
         for (int i = 0; i < MAX_CLIENT_CONNECTIONS * 2; i++) {
             webSocket.connect(ADDRESS, handler, wsp);
         }
         sleep(200);
+        if(webSocket.listConnections().length == MAX_CLIENT_CONNECTIONS)
+            ws_log("OK");
+        
         ws_log("\r\n5. Interrupt server:");
         wsServer.interrupt();
 
