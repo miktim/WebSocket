@@ -25,7 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ArrayBlockingQueue;
 import javax.net.ssl.SSLSocket;
 
 public final class WsConnection extends Thread {
@@ -265,13 +265,8 @@ public final class WsConnection extends Thread {
     }
 
     @Override
-    public void start() {
-        connections.add(this);
-        super.start();
-    }
-    
-    @Override
     public void run() {
+        connections.add(this);
         try {
             if (waitConnection()) {
                 this.handler.onOpen(this, subProtocol);
@@ -316,11 +311,11 @@ public final class WsConnection extends Thread {
         }
     }
 
-    final LinkedBlockingDeque<WsInputStream> messageQueue
-            = new LinkedBlockingDeque<WsInputStream>(MESSAGE_QUEUE_CAPACITY);
+    ArrayBlockingQueue<WsInputStream> messageQueue
+            = new ArrayBlockingQueue<WsInputStream>(MESSAGE_QUEUE_CAPACITY, true);
 
     void waitMessages() {
-        WsListener listener = new WsListener(this);
+        WsListener listener = new WsListener(this, messageQueue);
         listener.start();
         WsInputStream is;
         while (messageQueue.size() > 0 || listener.isAlive()) {

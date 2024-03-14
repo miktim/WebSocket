@@ -11,10 +11,12 @@ import java.net.ProtocolException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.concurrent.BlockingQueue;
 
 class WsListener extends Thread {
 
     final private WsConnection conn;
+    final private BlockingQueue<WsInputStream> messageQueue;
 
     private int opData = OP_FINAL; // data frame opcode
     private final byte[] payloadMask = new byte[8]; // mask & temp buffer for payloadLength
@@ -24,8 +26,9 @@ class WsListener extends Thread {
     private boolean maskedPayload;
     private ArrayDeque<byte[]> messagePayloads = null;
 
-    WsListener(WsConnection conn) {
+    WsListener(WsConnection conn, BlockingQueue<WsInputStream> messageQueue) {
         this.conn = conn;
+        this.messageQueue = messageQueue;
     }
 
     static final int OP_FINAL = 0x80;
@@ -121,16 +124,17 @@ class WsListener extends Thread {
             } catch (Exception e) {
                 conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e.getMessage(), e);
                 break;
-            } catch (Error e) {
-                e.printStackTrace();
-                conn.closeDueTo(WsStatus.INTERNAL_ERROR, "Internal error", e);
-                break;
+//            } catch (Error e) {
+//                e.printStackTrace();
+//                conn.closeDueTo(WsStatus.INTERNAL_ERROR, "Internal error", e);
+//                break;
             }
         }
 // exit 
         messagePayloads = null;
-        if (conn.messageQueue.remainingCapacity() > 0) {
-            conn.messageQueue.add(new WsInputStream(null, -1, false));
+//        messageQueue.clear();
+        if (messageQueue.remainingCapacity() > 0) {
+            messageQueue.add(new WsInputStream(null, -1, false));
         }
     }
 
@@ -176,7 +180,7 @@ class WsListener extends Thread {
         }
         messagePayloads.add(readPayload());
         if ((opData & OP_FINAL) != 0) {
-            conn.messageQueue.add(new WsInputStream(
+            messageQueue.add(new WsInputStream(
                     new ArrayDeque<byte[]>(messagePayloads),
                     messageLength,
                     (opData & OP_TEXT) != 0)
