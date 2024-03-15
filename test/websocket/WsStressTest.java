@@ -165,7 +165,7 @@ public class WsStressTest {
             @Override
             public void run() {
                 ws_log("\r\nTime is over! Test completed.\r\n");
-                webSocket.closeAll("Time is over!");
+                webSocket.listServers()[0].close("Time is over!");
                 timer.cancel();
             }
         }, TEST_SHUTDOWN_TIMEOUT);

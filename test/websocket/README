@@ -13,4 +13,7 @@ Certificates (localhost self-signed, both expired!):
     - testkeys ("passphrase"), Java 7+ (type JKS)
   Self-made:
     - localhost.jks ("password"), Java 8+ (type PKCS#12)
-    - android.jks ("qwerty") converted from BKS (type JKS)
+    - android.jks ("qwerty") converted from BKS-V1 (type JKS)
+
+Cerificate creation see:
+  https://github.com/miktim/WebSocket-Android-Test/tree/main/certificates

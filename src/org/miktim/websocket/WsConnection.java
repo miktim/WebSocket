@@ -226,8 +226,6 @@ public final class WsConnection extends Thread {
                     status.reason = new String(byteReason, 0, byteReasonLen, "UTF-8");
                     socket.setSoTimeout(wsp.handshakeSoTimeout);
                     sendControlFrame(WsListener.OP_CLOSE, payload, payloadLen);
-// TODO: downgrade Android API 23 to API 16
-//                    socket.shutdownOutput();
                     status.code = code; // disable output
 // force closing socket 
                     (new Timer(true)).schedule(new TimerTask() {
@@ -236,6 +234,8 @@ public final class WsConnection extends Thread {
                             closeSocket();
                         }
                     }, wsp.handshakeSoTimeout);
+// TODO: ???downgrade Android API 23 to API 16
+                    socket.shutdownOutput();
                 } catch (Exception e) {
                     status.code = code;
                     closeSocket();

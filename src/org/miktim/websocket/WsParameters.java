@@ -47,9 +47,9 @@ public class WsParameters {
         SSLParameters sslp = sslParameters;
         if (sslp != null) {
 // Android API 16
-            clon.sslParameters.setCipherSuites(cloneArray(sslp.getCipherSuites()));
+            clon.sslParameters.setCipherSuites(sslp.getCipherSuites());
+            clon.sslParameters.setProtocols(sslp.getProtocols());
             clon.sslParameters.setNeedClientAuth(sslp.getNeedClientAuth());
-            clon.sslParameters.setProtocols(cloneArray(sslp.getProtocols()));
             clon.sslParameters.setWantClientAuth(sslp.getWantClientAuth());
 // TODO: downgrade Android API 24 to API 16
 
