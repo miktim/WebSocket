@@ -234,8 +234,8 @@ public final class WsConnection extends Thread {
                             closeSocket();
                         }
                     }, wsp.handshakeSoTimeout);
-// TODO: ???downgrade Android API 23 to API 16
-                    socket.shutdownOutput();
+// ???
+//                    socket.shutdownOutput();
                 } catch (Exception e) {
                     status.code = code;
                     closeSocket();
@@ -559,7 +559,6 @@ public final class WsConnection extends Thread {
                 outStream.write(payload, 0, payloadLen);
                 outStream.flush();
             } catch (IOException e) {
-                this.status.code = WsStatus.ABNORMAL_CLOSURE;
                 throw e;
             }
         }

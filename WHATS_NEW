@@ -9,6 +9,10 @@
 4.2.0 TODO
   - add setParameters() method to the server/connection instances
 
+4.1.4
+  - fixed send() exception handling;
+  - fixed 4.1.3 last push mistake.
+ 
 4.1.3
   - WsConnection: asynchronous onError call;
   - WsConnection, WsListener: improved message waiting;
