@@ -151,7 +151,10 @@ public class WssClientTest {
                 .setConnectionSoTimeout(10000, true)
                 .setMaxMessageLength(MAX_MESSAGE_LENGTH); 
         wsp.getSSLParameters().setProtocols(new String[]{"TLSv1.2"});
-////        wsp.setPayloadLength(fragmentTest.length()/2); // not work!
+// the site does not accept fragmented messages        
+//        wsp.setPayloadBufferLength(fragmentTest.length()/2); // code 1005
+//        wsp.setPayloadBufferLength(fragmentTest.length()); // code 1005
+//        wsp.setPayloadBufferLength(300); // code 1005
         ws_log("\r\nWssClientTest "
                 + WebSocket.VERSION
                 + "\r\nTrying to connect to " + REMOTE_URI
