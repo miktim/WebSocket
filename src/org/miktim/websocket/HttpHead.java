@@ -1,19 +1,20 @@
 /*
- * HttpHead. Read/write/store HTTP message head. MIT (c) 2020-2021 miktim@mail.ru
+ * HttpHead. Read/write/store HTTP message head. MIT (c) 2020-2023 miktim@mail.ru
  *
  * Notes:
  *  - the header names (keys) ara case-insensitive;
  *  - multiple values are stored on a comma separated string;
  *  - the request/status line of the HTTP message head is accessed using the START_LINE constant.
  *
+ * 2023-10:
+ * - functions join, getValues, setValues added
+ *
  * Created: 2020-11-19
  */
 package org.miktim.websocket;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.ProtocolException;
 import java.util.ArrayList;
@@ -25,7 +26,18 @@ public class HttpHead {
 
     public static final String START_LINE = "http-message-head-start-line";
 
-    private final TreeMap<String, String> head = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    public static String join(Object[] array, char delimiter) {
+        if (array == null || array.length == 0) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Object obj : array) {
+            sb.append(obj).append(delimiter);
+        }
+        return sb.deleteCharAt(sb.length() - 1).toString();
+    }
+
+    private final TreeMap<String, String> head = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
 
     public HttpHead() {
     }
@@ -55,13 +67,31 @@ public class HttpHead {
         return head.get(key);
     }
 
+    public HttpHead setValues(String key, String[] values) {
+        if (values == null) {
+            return this;
+        }
+        return set(key, join(values, ','));
+    }
+
+    public String[] getValues(String key) {
+        if (!containsKey(key)) {
+            return null;
+        }
+        String[] values = head.get(key).split(",");
+        for (int i = 0; i < values.length; i++) {
+            values[i] = values[i].trim();
+        }
+        return values;
+    }
+
     public boolean containsKey(String key) {
         return head.containsKey(key);
     }
 
 // Returns list of header names    
     public List<String> nameList() {
-        List<String> names = new ArrayList<>(head.keySet());
+        List<String> names = new ArrayList<String>(head.keySet());
         names.remove(HttpHead.START_LINE);
         return names;
     }
@@ -70,10 +100,22 @@ public class HttpHead {
         return head;
     }
 
+    String readHeaderLine(InputStream is) throws IOException {
+        byte[] bb = new byte[1024];
+        int i = 0;
+        int b = is.read();
+        while (b != '\n' && b != -1) {
+            bb[i++] = (byte) b;
+            b = is.read();
+        }
+        if (b == '\n' && bb[i - 1] == '\r') {
+            return new String(bb, 0, i - 1); // header line MUST ended CRLF
+        }
+        throw new ProtocolException();
+    }
+
     public HttpHead read(InputStream is) throws IOException {
-        BufferedReader br = new BufferedReader(
-                new InputStreamReader(is));
-        String line = br.readLine();
+        String line = readHeaderLine(is);
 //        if (line.startsWith("\u0016\u0003\u0003")) {
 //            throw new javax.net.ssl.SSLHandshakeException("Plain socket");
 //        }
@@ -85,7 +127,7 @@ public class HttpHead {
         set(START_LINE, line);
         String key = null;
         while (true) {
-            line = br.readLine();
+            line = readHeaderLine(is);
             if (line == null || line.isEmpty()) {
                 break;
             }

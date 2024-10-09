@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.miktim.websocket.WsConnection;
-import org.miktim.websocket.WsHandler;
 import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsStatus;
@@ -17,8 +16,8 @@ import org.miktim.websocket.WsStatus;
 public class WssClientTest {
 
     static final int MAX_MESSAGE_LENGTH = 10000; //
-    static final int WEBSOCKET_SHUTDOWN_TIMEOUT = 15000; //milliseconds 
-    static final String REMOTE_CONNECTION = "wss://websocketstest.com:443/service";//
+    static final int TEST_SHUTDOWN_TIMEOUT = 10000; //milliseconds 
+    static final String REMOTE_URI = "wss://websocketstest.com:443/service";//
 
     static String fragmentTest = randomString(512);
     static int counter = 0;
@@ -34,12 +33,12 @@ public class WssClientTest {
 
     static String randomString(int string_length) {
         String chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
-        String randomstring = "";
+        StringBuilder randomstring = new StringBuilder();
         for (int i = 0; i < string_length; i++) {
             int rnum = (int) Math.floor(Math.random() * chars.length());
-            randomstring += chars.substring(rnum, rnum + 1);
+            randomstring.append(chars.charAt(rnum));
         }
-        return randomstring;
+        return randomstring.toString();
     }
 
     public static void main(String[] args) throws Exception {
@@ -48,11 +47,12 @@ public class WssClientTest {
             path = args[0];
         }
 
-        WsHandler clientHandler = new WsHandler() {
+        WsConnection.EventHandler clientHandler = new WsConnection.EventHandler() {
             @Override
             public void onOpen(WsConnection con, String subp) {
-                ws_log("Connected. " + con.getSSLSessionProtocol());
-                WsParameters wsp = con.getParameters(); // debug
+                ws_log("Connected. " + con.getSSLSessionProtocol()
+                + " Peer: " + con.getPeerHost());
+//                WsParameters wsp = con.getParameters(); // debug
             }
 
             @Override
@@ -87,7 +87,6 @@ public class WssClientTest {
                 }
             }
 
-//            @Override
             public void onMessage(WsConnection con, String s) {
                 try {
                     String packet = s;
@@ -100,28 +99,37 @@ public class WssClientTest {
                     } else if (cmd.equals("version")) {
                         if (!response.equals("hybi-draft-13")) {
                             ws_log("Something wrong...");
+                        } else {
+                            ws_log("OK");
                         }
                         counter = 0;
                         ws_send(con, "echo,test message");
                     } else if (cmd.equals("ping")) {
                         if (!response.equals("success")) {
                             ws_log("Failed!");
+                        } else {
+                            ws_log("OK");
                         }
                         counter = 0;
                         ws_send(con, "fragments," + fragmentTest);
                     } else if (cmd.equals("fragments")) {
                         if (!response.equals(fragmentTest)) {
                             ws_log("Failed!");
+                        } else {
+                            ws_log("OK");
                         }
                         counter = 0;
                         ws_send(con, "timer,");
                     } else if (cmd.equals("echo")) {
                         if (!response.equals("test message")) {
                             ws_log("Failed!");
+                        } else {
+                            ws_log("OK");
                         }
                         ws_send(con, "ping,");
                     } else if (cmd.equals("time")) {
                         if (++counter > 4) {
+                            ws_log("OK");
                             con.close(WsStatus.NORMAL_CLOSURE, "Completed");
                         }
                     } else {
@@ -139,26 +147,30 @@ public class WssClientTest {
         };
 
         final WebSocket webSocket = new WebSocket();
-        WsParameters wsp = new WsParameters();
-        wsp.setConnectionSoTimeout(1000, true); // ping 
-//        wsp.setPayloadLength(fragmentTest.length()/2); // not work!
-        webSocket.setParameters(wsp);
-        ws_log("\r\nWssClient (v"
-                + WsConnection.VERSION + ") test"
-                + "\r\nTrying to connect to " + REMOTE_CONNECTION
-                + "\r\nConnection will be closed after "
-                + (WEBSOCKET_SHUTDOWN_TIMEOUT / 1000) + " seconds"
+        WsParameters wsp = new WsParameters()
+                .setConnectionSoTimeout(10000, true)
+                .setMaxMessageLength(MAX_MESSAGE_LENGTH); 
+        wsp.getSSLParameters().setProtocols(new String[]{"TLSv1.2"});
+// the site does not accept fragmented messages        
+//        wsp.setPayloadBufferLength(fragmentTest.length()/2); // code 1005
+//        wsp.setPayloadBufferLength(fragmentTest.length()); // code 1005
+//        wsp.setPayloadBufferLength(300); // code 1005
+        ws_log("\r\nWssClientTest "
+                + WebSocket.VERSION
+                + "\r\nTrying to connect to " + REMOTE_URI
+                + "\r\nTest will be terminated after "
+                + (TEST_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
         final WsConnection wsConnection
-                = webSocket.connect(REMOTE_CONNECTION, clientHandler);
+                = webSocket.connect(REMOTE_URI, clientHandler, wsp);
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                wsConnection.close(WsStatus.GOING_AWAY, "Timeout");
+                wsConnection.close(WsStatus.GOING_AWAY, "Time is over!");
                 timer.cancel();
             }
-        }, WEBSOCKET_SHUTDOWN_TIMEOUT);
+        }, TEST_SHUTDOWN_TIMEOUT);
 
     }
 

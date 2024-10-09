@@ -1,109 +1,257 @@
 /*
- * WsListener. WebSocket listener, MIT (c) 2020-2021 miktim@mail.ru
+ * WsListener. Provides reading and processing of WebSocket frames, MIT (c) 2020-2023 miktim@mail.ru
  *
- * Accepts sockets, creates and starts connection threads.
- *
- * Created: 2020-03-09
+ * Created: 2021-01-29
  */
 package org.miktim.websocket;
 
-import java.lang.reflect.Array;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.Vector;
-import javax.net.ssl.SSLServerSocket;
+import java.io.EOFException;
+import java.io.IOException;
+import java.net.ProtocolException;
+import java.net.SocketTimeoutException;
+import java.util.ArrayDeque;
+import java.util.Arrays;
 
-public class WsListener extends Thread {
+class WsListener extends Thread {
 
-    private boolean isRunning;
-    private final boolean isSecure;
-    private final WsParameters wsp;
-    private String connectionPrefix; // connection thread name
-    private final ServerSocket serverSocket;
-    private final WsHandler handler;
+    final private WsConnection conn;
 
-    WsListener(ServerSocket ss, WsHandler h, boolean secure, WsParameters wsp)
-            throws Exception {
-        this.serverSocket = ss;
-        this.handler = h;
-        this.isSecure = secure;
-        this.wsp = wsp.clone();
+    private int opData = OP_FINAL; // data frame opcode
+    private final byte[] payloadMask = new byte[8]; // mask & temp buffer for payloadLength
+    private long payloadLength;
+    private long messageLength;
+    private boolean pingFrameSent = false;
+    private boolean maskedPayload;
+    private ArrayDeque<byte[]> messagePayloads = null;
+
+    WsListener(WsConnection conn) {
+        this.conn = conn;
     }
 
-    public boolean isSecure() {
-        return isSecure;
-    }
-
-    public boolean isOpen() {
-        return isRunning;
-    }
-
-    public WsParameters getParameters() {
-        wsp.sslParameters = isSecure
-                ? ((SSLServerSocket) serverSocket).getSSLParameters() : null;
-        return wsp;
-    }
-
-    private String closeReason = null;
-
-    public void close() {
-        Thread.currentThread().setPriority(MAX_PRIORITY);
-        this.isRunning = false;
-        try {
-            serverSocket.close();
-        } catch (Exception e) {
-//            e.printStackTrace();
-        }
-    }
-
-    public void close(String reason) {
-        closeReason = reason;
-        close();
-    }
-
-    public WsConnection[] listConnections() {
-        return listByPrefix(WsConnection.class, connectionPrefix);
-    }
-
-    @SuppressWarnings("unchecked")
-    static <T> T[] listByPrefix(Class<T> c, String prefix) {
-        Vector<T> vector = new Vector<>();
-        Thread[] threads = new Thread[Thread.activeCount()];
-        Thread.enumerate(threads);
-        for (Thread thread : threads) {
-            if (thread.getName().startsWith(prefix)) {
-                vector.add((T) thread);
-            }
-        }
-        return vector.toArray((T[]) Array.newInstance(c, vector.size()));
-    }
+    static final int OP_FINAL = 0x80;
+    static final int OP_CONTINUATION = 0x0;
+    static final int OP_TEXT = 0x1;
+    static final int OP_BINARY = 0x2;
+    static final int OP_TEXT_FINAL = 0x81;
+    static final int OP_BINARY_FINAL = 0x82;
+    static final int OP_CLOSE = 0x88;
+    static final int OP_PING = 0x89;
+    static final int OP_PONG = 0x8A;
+    static final int OP_EXTENSIONS = 0x70;
+    static final int MASKED_DATA = 0x80;
+    static final byte[] PING_PAYLOAD = "PingPong".getBytes();
+    static final byte[] EMPTY_PAYLOAD = new byte[0];
 
     @Override
     public void run() {
-        if (!this.isRunning) {
-            this.isRunning = true;
-            connectionPrefix = "WsConnection-" + this.getId() + "-";
-            while (this.isRunning) {
-                try {
-                    Socket socket = serverSocket.accept();
-                    WsConnection conn
-                            = new WsConnection(socket, handler, isSecure, wsp);
-                    conn.setName(connectionPrefix + conn.getId());
-                    socket.setSoTimeout(wsp.handshakeSoTimeout);
-                    conn.start();
-                } catch (Exception e) {
-                    if (this.isRunning) {
-                        handler.onError(null, e);
-                        this.close();
-                    }
-                    break;
+        conn.status.wasClean = false;
+        while (!conn.status.wasClean) {
+            try {
+                int b1 = conn.inStream.read();
+                int b2 = conn.inStream.read();
+                if ((b1 | b2) == -1) {
+                    throw new EOFException("Unexpected EOF");
                 }
+                if ((b1 & OP_EXTENSIONS) != 0) {
+                    throw new ProtocolException("Unsupported extension");
+                }
+// client MUST mask the data, server - MUST NOT
+                maskedPayload = (b2 & MASKED_DATA) != 0;
+                if (Boolean.compare(conn.isClientSide(), maskedPayload) == 0) {
+                    conn.closeDueTo(WsStatus.PROTOCOL_ERROR, "Mask mismatch",
+                            new ProtocolException());
+                }
+
+                readHeader(b2);
+
+// check frame op sequence
+                switch (b1) {
+                    case OP_BINARY:
+                    case OP_TEXT:
+                    case OP_BINARY_FINAL:
+                    case OP_TEXT_FINAL:
+                        if ((opData & OP_FINAL) != 0) {
+                            opData = b1;
+                            if (conn.isOpen()) {
+                                messagePayloads = new ArrayDeque<byte[]>();
+                            }
+                            messageLength = 0L;
+                            dataFrame();
+                            break;
+                        }
+                    case OP_CONTINUATION:
+                        if ((opData & OP_FINAL) == 0) {
+                            dataFrame();
+                            break;
+                        }
+                    case OP_FINAL:
+                        if ((opData & OP_FINAL) == 0) {
+                            opData |= OP_FINAL;
+                            dataFrame();
+                            break;
+                        }
+                    case OP_CLOSE:
+                    case OP_PING:
+                    case OP_PONG:
+                        controlFrame(b1);
+                        break;
+                    default:
+                        throw new ProtocolException("Unexpected opcode");
+                }
+
+            } catch (SocketTimeoutException e) {
+                if (conn.isOpen() && conn.wsp.pingEnabled && !pingFrameSent) {
+                    pingFrameSent = true;
+                    try {
+                        conn.sendControlFrame(OP_PING, PING_PAYLOAD, PING_PAYLOAD.length);
+                    } catch (IOException ex) {
+                        conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e.getMessage(), e);
+                        break; // exit 
+                    }
+                } else {
+                    conn.closeDueTo(WsStatus.GOING_AWAY, "Timeout", e);
+                    break; // exit
+                }
+            } catch (ProtocolException e) {
+                conn.closeDueTo(WsStatus.PROTOCOL_ERROR, e.getMessage(), e);
+                break;
+            } catch (IllegalStateException e) { // message queue overflow 
+                conn.closeDueTo(WsStatus.POLICY_VIOLATION, e.getMessage(), e);
+//                break;
+            } catch (Exception e) {
+                conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e.getMessage(), e);
+                break;
+            } catch (Error e) {
+                e.printStackTrace();
+                conn.closeDueTo(WsStatus.INTERNAL_ERROR, "Internal error", e);
+                break;
             }
         }
+// exit 
+        messagePayloads = null;
+        if (conn.messageQueue.remainingCapacity() > 0) {
+            conn.messageQueue.add(new WsInputStream(null, -1, false));
+        }
+    }
 
-// close associated connections            
-        for (WsConnection connection : listConnections()) {
-            connection.close(WsStatus.GOING_AWAY, closeReason);
+    void readHeader(int b2) throws IOException {
+// get frame payload length
+        payloadLength = b2 & 0x7F;
+        int toRead = 0;
+        if (payloadLength == 126L) {
+            toRead = 2;
+        } else if (payloadLength == 127L) {
+            toRead = 8;
+        }
+        if (toRead > 0) {
+            if (conn.readFully(conn.inStream, payloadMask, 0, toRead) != toRead) {
+                throw new EOFException("Unexpected EOF");
+            }
+            payloadLength = 0L;
+            for (int i = 0; i < toRead; i++) {
+                payloadLength <<= 8;
+                payloadLength += (payloadMask[i] & 0xFF);
+            }
+        }
+// get payload mask
+        maskedPayload = (b2 & MASKED_DATA) != 0;
+        if (maskedPayload) {
+            toRead = 4;
+            if (conn.readFully(conn.inStream, payloadMask, 0, toRead) != toRead) {
+                throw new EOFException("Unexpected EOF");
+            }
+        }
+    }
+
+    boolean dataFrame() throws IOException, IllegalStateException {
+        messageLength += payloadLength;
+        if (messageLength > conn.wsp.maxMessageLength) {
+            IOException e = new IOException("Message too big");
+            conn.closeDueTo(WsStatus.MESSAGE_TOO_BIG, e.getMessage(), e);
+            messagePayloads = null;
+        }
+        if (messagePayloads == null) {
+            skipPayload();
+            return false;
+        }
+        messagePayloads.add(readPayload());
+        if ((opData & OP_FINAL) != 0) {
+            conn.messageQueue.add(new WsInputStream(
+                    new ArrayDeque<byte[]>(messagePayloads),
+                    messageLength,
+                    (opData & OP_TEXT) != 0)
+            );
+            messagePayloads = null;
+        }
+        return true;
+    }
+
+    byte[] readPayload() throws IOException {
+// read frame payload
+        byte[] framePayload = new byte[(int) payloadLength];
+        if (conn.readFully(conn.inStream, framePayload, 0, (int) payloadLength)
+                != framePayload.length) {
+            throw new EOFException("Unexpected EOF");
+        }
+// unmask frame payload
+        if (maskedPayload) {
+            conn.umaskPayload(payloadMask, framePayload, 0, framePayload.length);
+        }
+        return framePayload;
+    }
+
+    boolean controlFrame(int b1) throws IOException {
+        if (payloadLength > 125L) {
+            throw new ProtocolException("Payload too big");
+        }
+
+        byte[] framePayload = readPayload();
+
+        switch (b1) {
+            case OP_PONG: {
+                if (pingFrameSent
+                        && Arrays.equals(framePayload, PING_PAYLOAD)) {
+                    pingFrameSent = false;
+                    return true;
+                } else {
+                    throw new ProtocolException("Unexpected pong");
+                }
+            }
+            case OP_PING:
+                if (conn.isOpen()) {
+                    conn.sendControlFrame(OP_PONG, framePayload, framePayload.length);
+                }
+                return true;
+            case OP_CLOSE:  // close handshake
+                synchronized (conn.status) {
+                    if (conn.isOpen()) {
+                        conn.status.remotely = true;
+                        conn.socket.setSoTimeout(conn.wsp.handshakeSoTimeout);
+                        // send approval
+                        conn.sendControlFrame(OP_CLOSE,
+                                framePayload, framePayload.length);
+                        // extract status code and reason
+                        if (framePayload.length > 1) {
+                            conn.status.code = ((framePayload[0] & 0xFF) << 8)
+                                    + (framePayload[1] & 0xFF);
+                            conn.status.reason = new String(framePayload,
+                                    2, framePayload.length - 2, "UTF-8");
+                        } else {
+                            conn.status.code = WsStatus.NO_STATUS;
+                        }
+                    }
+                    conn.status.wasClean = true;
+                }
+                return true;
+            default:
+                throw new ProtocolException("Unsupported opcode");
+        }
+
+    }
+
+    void skipPayload() throws IOException {
+        while (payloadLength > 0) {
+            payloadLength -= conn.inStream.skip(payloadLength);
         }
     }
 
