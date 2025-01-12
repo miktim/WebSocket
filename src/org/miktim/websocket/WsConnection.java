@@ -1,5 +1,5 @@
 /*
- * WsConnection. WebSocket client/server connection, MIT (c) 2020-2024 miktim@mail.ru
+ * WsConnection. WebSocket client/server connection, MIT (c) 2020-2025 miktim@mail.ru
  *
  * SSL/WebSocket handshaking. Messaging. Events handling.
  *
@@ -34,7 +34,7 @@ public final class WsConnection extends Thread {
     private static final String SERVER_AGENT = "WsLite/" + WebSocket.VERSION;
 
     final Socket socket;
-    private EventHandler handler;
+    private Handler handler;
     private final boolean isSecure; // SSL connection
     private final boolean isClientSide;
     private URI requestURI;
@@ -88,7 +88,7 @@ public final class WsConnection extends Thread {
                 : connections.toArray(new WsConnection[0]);
     }
 
-    public synchronized void setHandler(EventHandler newHandler) {
+    public synchronized void setHandler(Handler newHandler) {
         if (isOpen()) {
             try {
                 handler.onClose(this, status);
@@ -105,7 +105,11 @@ public final class WsConnection extends Thread {
     public WsParameters getParameters() {
         return wsp;
     }
-
+    
+    public Socket getSocket() {
+        return socket;
+    }
+    
     // Returns remote host name or null
     public String getPeerHost() {
         try {
@@ -246,7 +250,7 @@ public final class WsConnection extends Thread {
     }
 
     // WebSocket server side connection constructor
-    WsConnection(Socket s, EventHandler h, boolean secure, WsParameters wsp) {
+    WsConnection(Socket s, Handler h, boolean secure, WsParameters wsp) {
         this.isClientSide = false;
         this.socket = s;
         this.handler = h;
@@ -255,7 +259,7 @@ public final class WsConnection extends Thread {
     }
 
     // WebSocket client connection constructor
-    WsConnection(Socket s, EventHandler h, URI uri, WsParameters wsp) {
+    WsConnection(Socket s, Handler h, URI uri, WsParameters wsp) {
         this.isClientSide = true;
         this.socket = s;
         this.handler = h;
@@ -574,7 +578,7 @@ public final class WsConnection extends Thread {
 // There are two scenarios for handling connection events:
 // - onError - onClose, when SSL/WebSocket handshake failed;
 // - onOpen - [onMessage - onMessage - ...] - [onError] - onClose.
-    public interface EventHandler {
+    public interface Handler {
 
         public void onOpen(WsConnection conn, String subProtocol);
 //   - the second argument is the negotiated WebSocket subprotocol or null.    
@@ -590,5 +594,6 @@ public final class WsConnection extends Thread {
         public void onClose(WsConnection conn, WsStatus status);
 
     }
-
+    @Deprecated
+    public interface EventHandler extends Handler {} // deprecated
 }

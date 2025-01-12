@@ -37,7 +37,7 @@ public class WssConnectionTest {
         int port = 8443;
         String remoteAddr = REMOTE_HOST + ":" + port;
 
-        WsConnection.EventHandler handler = new WsConnection.EventHandler() {
+        WsConnection.Handler handler = new WsConnection.Handler() {
             String makeLogPrefix(WsConnection con) {
                 return (con.isClientSide() ? "Client:" : "Server side:")
                         + con.getSubProtocol();

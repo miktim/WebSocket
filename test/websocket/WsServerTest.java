@@ -15,7 +15,7 @@ import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsStatus;
 
-public class WsServerTest implements WsConnection.EventHandler{
+public class WsServerTest implements WsConnection.Handler{
 
     public static final int MAX_MESSAGE_LENGTH = 10000000;// bytes
     public static final int TEST_SHUTDOWN_TIMEOUT = 20000;// millis

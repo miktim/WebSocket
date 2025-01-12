@@ -4,10 +4,9 @@
     The available() method will return an estimate of the number
     of bytes that can be read, instead of the total number of bytes
     at the moment.
-  - server handler onAccept: pass an accepted socket instead of 
-    connection instance.
-4.2.0 TODO
-  - add setParameters() method to the server/connection instances
+
+4.2.0
+  - getServerSocket(), getSocket() methods added
 
 4.1.4
   - fixed send() exception handling;
