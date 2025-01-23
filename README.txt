@@ -54,7 +54,7 @@ Overview:
       WsServer SecureServer(int port, WsConnection.Handler handler, WsParameters wsp) throws IOException, GeneralSecurityException;
         - creates TLS connections server
 
-      Servers are created using a default server handler. You can set your own handler or start the server immediately. The default handler's only action is printStackTrace in case of a ServerSocket error.
+      Servers are created using a default server handler. You can set your own handler or start the server immediately. The default handler's only action is printStackTrace when closing the server in case of a ServerSocket error.
 
       WsConnection connect(String uri, WsConnection.Handler handler, WsParameters wsp) throws URISyntaxException, IOException, GeneralSecurityException;
         - creates and starts a client connection;
@@ -110,7 +110,7 @@ Overview:
 
         
   Interface WsServer.Handler:
-    The default handler's only action is printStackTrace in case of a ServerSocket error.
+    The default handler's only action is printStackTrace when closing the server in case of a ServerSocket error.
     
     Methods:
       void onStart(WsServer server);
@@ -202,6 +202,7 @@ Overview:
         - large incoming messages may throw an OutOfMemoryError
 
       void onClose(WsConnection conn, WsStatus closeStatus);
+        - called when WebSocket closing handshake completed or closing time is over (WsParameters HandshakeSoTimeout)
       
 
   Class WsParameters:
@@ -212,22 +213,26 @@ Overview:
 
     Methods:
       WsParameters setSubProtocols(String[] subps); 
-        - sets the WebSocket subprotocol required by the client or supported by the server in the preferred order;
+        - sets the WebSocket subprotocols required by the client (in the preferred order) or supported by the server;
       String[] getSubProtocols();
         - null is default
       WsParameters setHandshakeSoTimeout(int millis);
         - sets a timeout for opening/closing a WebSocket connection
       int getHandshakeSoTimeout();
+        - default: 2000 milliseconds
+
       WsParameters setConnectionSoTimeout(int millis, boolean pingEnabled)
         - sets data exchange timeout;
         - if the timeout is exceeded and ping is disabled, the connection is closed with status code 1001 (GOING_AWAY)
-
       int getConnectionSoTimeout();
+        - default: 4000 milliseconds
       boolean isPingEnabled();
         - enabled by default
-      WsParameters setPayloadBufferLength(int len); 
+
+        WsParameters setPayloadBufferLength(int len);
         - sets the maximum payload length of the outgoing message frames, the minimum length is 125 bytes
       int getPayloadBufferLength();
+        - default: 32 KiB
       WsParameters setMaxMessageLength(int len); 
         - sets incoming messages max length. If exceeded, the connection will be terminated with the 1009 (MESSAGE_TOO_BIG) status code
       int getMaxMessageLength();

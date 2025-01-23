@@ -49,7 +49,7 @@ Overview of the package in the file ./README.txt .
     WebSocket webSocket = new WebSocket();
     // set Java style key store file
     webSocket.setKeyFile(new File("myKeyFile.jks"), "password");
-    // create and start server with "dumb" server handler and default connection parameters
+    // create and start server with default server handler and  connection parameters
     WsServer server = webSocket.SecureServer(8443, handler, new WsParameters()).launch();	
   } (Exception e) {
     e.printStackTrace();
