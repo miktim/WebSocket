@@ -1,4 +1,4 @@
-## Java SE 6+/Android 4.1+ WebSocket client and server package, MIT (c) 2020-2024 @miktim<br/>
+## Java SE 6+/Android 4.1+ WebSocket client and server package, MIT (c) 2020-2025 @miktim<br/>
 ### Release notes:
 
 \- RFC 6455 compliant package ( [https://datatracker.ietf.org/doc/html/rfc6455/](https://datatracker.ietf.org/doc/html/rfc6455/) );  
@@ -9,7 +9,6 @@
 \- WebSocket extensions ( Per-Message Deflate, ... ) are not supported;  
 \- supports cleartext/TLS connections (without tunneling);  
 \- client supports Internationalized Domain Names (IDNs);  
-\- thread safe connections;  
 \- stream-based messaging.    
 
 The ./dist/websocket-... jar file was built with debug info using JDK 1.8 for the target JRE 1.6.  
@@ -22,7 +21,7 @@ Overview of the package in the file ./README.txt .
 ```  
   //... some code
   // create server side connection handler
-  WsConnection.Handler handler = new WsConnection.EventHandler() {
+  WsConnection.Handler handler = new WsConnection.Handler() {
     @Override
     onOpen(WsConnection conn, String subProtocol) {
       conn.send("Hello, Client!");
@@ -63,7 +62,7 @@ Overview of the package in the file ./README.txt .
 ```
   //... some code
   // create client connection handler
-  WsConnection.Handler handler = new WsConnection.EventHandler() {
+  WsConnection.Handler handler = new WsConnection.Handler() {
     @Override
     onOpen(WsConnection conn, String subProtocol) {
       conn.send("Hello, Server!");
