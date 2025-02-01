@@ -15,15 +15,15 @@ package org.miktim.websocket
 
 Overview:
 
-  Class WebSocket - creator of WebSocket servers or client connections;
-  Class WsServer - implements a WebSocket server for cleartext or TLS connections;
-  Interface WsServer.Handler - server event handler;
-  Class WsConnection - implements a WebSocket connection on the server or client side;
-  Interface WsConnection.Handler - connection event handler;
-  Class WsParameters - WebSocket connection creation and execution time parameters;
+  Class WebSocket - creator of WebSocket servers or client connections;  
+  Class WsServer - implements a WebSocket server for cleartext or TLS connections;  
+  Interface WsServer.Handler - server event handler;  
+  Class WsConnection - implements a WebSocket connection on the server or client side;  
+  Interface WsConnection.Handler - connection event handler;  
+  Class WsParameters - WebSocket connection creation and execution time parameters;  
   Class WsStatus - WebSocket connection status.
 
-  Class WebSocket:
+  Class WebSocket:  
     Creator of WebSocket servers or client connections.
 
     Constant:
@@ -74,8 +74,8 @@ Overview:
         - closes all active servers/connections, code 1001 (GOING_AWAY)
         
 
-  Class WsServer extends Thread:
-    This class implements a WebSocket server for cleartext or TLS connections.
+  Class WsServer extends Thread:  
+    This class implements a WebSocket server for cleartext or TLS connections.  
 
     Methods:
       WsServer setHandler(WsServer.Handler handler);
@@ -110,7 +110,7 @@ Overview:
         - interrupts the server, associated connections stay alive and can be closed in the usual way
 
         
-  Interface WsServer.Handler:
+  Interface WsServer.Handler:  
     The default handler's only action is printStackTrace when closing the server in case of a ServerSocket error.
     
     Methods:
@@ -127,7 +127,7 @@ Overview:
         - error is a ServerSocket exception or null
 
 
-  Class WsConnection extends Thread:
+  Class WsConnection extends Thread:  
     Client side or server side connection.
 
     Constant:
@@ -183,10 +183,10 @@ Overview:
         - incoming messages are available until the closing handshake completed.
         
 
-  Interface WsConnection.Handler:
-    There are two scenarios for handling events:
-      - onError - onClose, when the SSL/WebSocket handshake failed;
-      - onOpen - [onMessage - onMessage - ...] - [onError] - onClose.
+  Interface WsConnection.Handler:  
+    There are two scenarios for handling events:  
+      - onError - onClose, when the SSL/WebSocket handshake failed;  
+      - onOpen - [onMessage - onMessage - ...] - [onError] - onClose.  
     The handler's RuntimeException only calls the printStackTrace() function. The connection terminated.
       
     Methods:
@@ -205,8 +205,8 @@ Overview:
         - called when WebSocket closing handshake completed or closing time is over (WsParameters HandshakeSoTimeout)
       
 
-  Class WsParameters:
-    WebSocket connection creation and execution time parameters
+  Class WsParameters:  
+    WebSocket connection creation and execution time parameters  
     
     Constructor:
       WsParameters();
@@ -250,10 +250,10 @@ Overview:
         - default value is -1: system depended
       
 
-  Class WsStatus:
+  Class WsStatus:  
     The status of the WebSocket connection
     
-    Fields:
+    public Fields:
       int code;         // closing code (0, 1000-4999)
       String reason;    // closing reason (max length 123 BYTES)
       boolean wasClean; // WebSocket closing handshake completed cleanly
@@ -261,7 +261,7 @@ Overview:
       Throwable error;  // connection execution exception or null
       
 
-Usage examples see in:
-  ./test/websocket/WssConnectionTest.java
-  ./test/websocket/WsServerTest.java
-  ./test/websocket/WssClientTest.java
+Usage examples see in:  
+  ./test/websocket/WssConnectionTest.java  
+  ./test/websocket/WsServerTest.java  
+  ./test/websocket/WssClientTest.java  
