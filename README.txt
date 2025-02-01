@@ -63,6 +63,7 @@ Overview:
           user-info@ and #fragment - ignored
 
       InetAddress getBindAddress();
+        - returns binding address
       WsServer[] listServers();
         - lists active/interrupted servers.
       WsConnection[] listConnections();
@@ -98,7 +99,7 @@ Overview:
       InetAddress getBindAddress();
         - returns the ServerSocket binding address or null
       WsParameters getParameters();
-        - returns server connection parameters
+        - returns the connection parameters on the server side
       WsConnection[] listConnections();
         - returns the list of active connections
 
@@ -117,10 +118,9 @@ Overview:
         - called when the server is started
 
       boolean onAccept(WsServer server, WsConnection conn);
-        - called BEFORE WebSocket connection handshake;
+        - called when accepting a connection BEFORE WebSocket handshake;
         - the returned value of true means approval of the connection, the value of false means the closure of the client connection;
         - leave method as soon as possible
-
 
       void onStop(WsServer server, Exception error);
         - called when the server is closed or interrupted;
@@ -229,7 +229,7 @@ Overview:
       boolean isPingEnabled();
         - enabled by default
 
-        WsParameters setPayloadBufferLength(int len);
+      WsParameters setPayloadBufferLength(int len);
         - sets the maximum payload length of the outgoing message frames, the minimum length is 125 bytes
       int getPayloadBufferLength();
         - default: 32 KiB
