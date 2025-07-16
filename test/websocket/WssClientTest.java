@@ -47,7 +47,7 @@ public class WssClientTest {
             path = args[0];
         }
 
-        WsConnection.EventHandler clientHandler = new WsConnection.EventHandler() {
+        WsConnection.Handler clientHandler = new WsConnection.Handler() {
             @Override
             public void onOpen(WsConnection con, String subp) {
                 ws_log("Connected. " + con.getSSLSessionProtocol()

@@ -1,5 +1,5 @@
 /*
- * WsServer. WebSocket Server, MIT (c) 2020-2024 miktim@mail.ru
+ * WsServer. WebSocket Server, MIT (c) 2020-2025 miktim@mail.ru
  *
  * Accepts sockets, creates and starts connection threads.
  *
@@ -28,13 +28,13 @@ public class WsServer extends Thread {
     private final boolean isSecure;
     private final WsParameters wsp;
     private final ServerSocket serverSocket;
-    private final WsConnection.EventHandler connectionHandler; // connection handler
+    private final WsConnection.Handler connectionHandler; // connection handler
     List<WsServer> servers = null;
     private final List<WsConnection> connections
             = Collections.synchronizedList(new ArrayList<WsConnection>());
 
 // 'dumb' handler    
-    private EventHandler serverHandler = new EventHandler() {
+    private Handler serverHandler = new Handler() {
         @Override
         public void onStart(WsServer server) {
         }
@@ -52,7 +52,7 @@ public class WsServer extends Thread {
         }
     };
 
-    WsServer(ServerSocket ss, WsConnection.EventHandler h, boolean secure, WsParameters wsp) {
+    WsServer(ServerSocket ss, WsConnection.Handler h, boolean secure, WsParameters wsp) {
         this.serverSocket = ss;
         this.connectionHandler = h;
         this.isSecure = secure;
@@ -86,7 +86,11 @@ public class WsServer extends Thread {
     public WsParameters getParameters() {
         return wsp;
     }
-
+    
+    public ServerSocket getServerSocket() {
+        return serverSocket;
+    }
+    
     public WsServer launch() {
         this.start();
         return this;
@@ -120,7 +124,7 @@ public class WsServer extends Thread {
         }
     }
 
-    synchronized public WsServer setHandler(WsServer.EventHandler handler) {
+    synchronized public WsServer setHandler(WsServer.Handler handler) {
         this.serverHandler = handler;
         return this;
     }
@@ -163,7 +167,7 @@ public class WsServer extends Thread {
         serverHandler.onStop(this, error);
     }
 
-    public interface EventHandler {
+    public interface Handler {
 
         void onStart(WsServer server);
 
@@ -171,4 +175,7 @@ public class WsServer extends Thread {
 
         void onStop(WsServer server, Exception error);
     }
+    @Deprecated
+    public interface EventHandler extends Handler {} 
+
 }

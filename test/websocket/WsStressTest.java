@@ -52,7 +52,7 @@ public class WsStressTest {
 
         final WebSocket webSocket = new WebSocket();
 
-        WsConnection.EventHandler handler = new WsConnection.EventHandler() {
+        WsConnection.Handler handler = new WsConnection.Handler() {
 
             @Override
             public void onOpen(WsConnection conn, String subp) {
@@ -128,7 +128,7 @@ public class WsStressTest {
 
         };
 
-        WsServer.EventHandler serverHandler = new WsServer.EventHandler() {
+        WsServer.Handler serverHandler = new WsServer.Handler() {
             @Override
             public void onStart(WsServer server) {
                 ws_log("Server started");

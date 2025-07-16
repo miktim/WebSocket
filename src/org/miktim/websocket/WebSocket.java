@@ -1,5 +1,5 @@
 /*
- * WebSocket. MIT (c) 2020-2024 miktim@mail.ru
+ * WebSocket. MIT (c) 2020-2025 miktim@mail.ru
  *
  * Creates and starts server/connection threads.
  *
@@ -49,7 +49,7 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class WebSocket {
 
-    public static String VERSION = "4.1.4";
+    public static final String VERSION = "4.2.0";
     private InetAddress bindAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
     private final List<WsServer> servers = Collections.synchronizedList(new ArrayList<WsServer>());
@@ -132,17 +132,17 @@ public class WebSocket {
         closeAll("");
     }
 
-    public WsServer Server(int port, WsConnection.EventHandler handler, WsParameters wsp)
+    public WsServer Server(int port, WsConnection.Handler handler, WsParameters wsp)
             throws IOException, GeneralSecurityException {
         return createServer(port, handler, false, wsp);
     }
 
-    public WsServer SecureServer(int port, WsConnection.EventHandler handler, WsParameters wsp)
+    public WsServer SecureServer(int port, WsConnection.Handler handler, WsParameters wsp)
             throws IOException, GeneralSecurityException {
         return createServer(port, handler, true, wsp);
     }
 
-    synchronized WsServer createServer(int port, WsConnection.EventHandler handler, boolean isSecure, WsParameters wsp)
+    synchronized WsServer createServer(int port, WsConnection.Handler handler, boolean isSecure, WsParameters wsp)
             throws IOException, GeneralSecurityException {
         if (handler == null || wsp == null) {
             throw new NullPointerException();
@@ -218,7 +218,7 @@ public class WebSocket {
     }
 
     synchronized public WsConnection connect(String uri,
-            WsConnection.EventHandler handler, WsParameters wsp)
+            WsConnection.Handler handler, WsParameters wsp)
             throws URISyntaxException, IOException, GeneralSecurityException {
         if (uri == null || handler == null || wsp == null) {
             throw new NullPointerException();

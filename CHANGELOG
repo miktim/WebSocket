@@ -4,10 +4,19 @@
     The available() method will return an estimate of the number
     of bytes that can be read, instead of the total number of bytes
     at the moment.
-  - server handler onAccept: pass an accepted socket instead of 
-    connection instance.
-4.2.0 TODO
-  - add setParameters() method to the server/connection instances
+
+4.2.x TODO
+  - check again for RFC6455 compliance;
+  - ! connection RuntimeException with handler exception as reason, try call onError handler's method
+    (now printStackTrace only);
+  - JavaDoc on GitHub;
+  - ? too many threads;
+  - implements Closeable, AutoCloseable;
+  - close Socket InputStream on connection errors as marker of an error (of course, closure not clean);
+  - abstract classes WsListener, WsHandshake, ?WsInputStream with methods providing implementation of WebSocket extensions: WebSocket Per-Message Deflate (RFC7692), BBF USP Protocol ( https://usp.technology );
+
+4.2.0
+  - getServerSocket(), getSocket() methods added
 
 4.1.4
   - fixed send() exception handling;
