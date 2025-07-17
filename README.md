@@ -13,7 +13,7 @@
 
 The ./dist/websocket-... jar file was built with debug info using JDK 1.8 for the target JRE 1.6.  
 
-Overview of the package in the file [./README.txt](./README.txt) and  [JavaDoc](./dist/javadoc/index.html)  
+Overview of the package in the file [./README.txt](./README.txt) and  [JavaDoc](./docs/index.html)  
 
 #### Example: creating and running a Java server for TLS connections:  
 
