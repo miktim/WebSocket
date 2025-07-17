@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayDeque;
 
-public class WsInputStream extends InputStream {
+class WsInputStream extends InputStream {
 
         ArrayDeque<byte[]> payloads; // Queue?
         byte[] payload = new byte[0];

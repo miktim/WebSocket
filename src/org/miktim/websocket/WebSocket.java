@@ -1,18 +1,3 @@
-/*
- * WebSocket. MIT (c) 2020-2025 miktim@mail.ru
- *
- * Creates and starts server/connection threads.
- *
- * Release notes:
- * - Java SE 6+, Android compatible;
- * - RFC-6455: https://tools.ietf.org/html/rfc6455 ;
- * - supported WebSocket version: 13;
- * - WebSocket extensions not supported;
- * - supports cleartext/TLS connections;
- * - stream-based messaging.
- *
- * Created: 2020-06-06
- */
 package org.miktim.websocket;
 
 import java.io.File;
@@ -47,40 +32,71 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
+/**
+ * WebSocket servers and client connections factory.
+ */
 public class WebSocket {
 
-    public static final String VERSION = "4.2.0";
+    /**
+     * Current package version like "1.2.3".
+     */
+    public static final String VERSION = "4.2.1"; 
+
     private InetAddress bindAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
     private final List<WsServer> servers = Collections.synchronizedList(new ArrayList<WsServer>());
     private File keyStoreFile = null;
     private String keyStorePassword = null;
 
+    /**
+     * Creates WebSocket factory.
+     * @throws NoSuchAlgorithmException if SHA1 algorithm not exists
+     */
     public WebSocket() throws NoSuchAlgorithmException {
         MessageDigest.getInstance("SHA-1"); // check algorithm exists
     }
 
-    public WebSocket(InetAddress bindAddr) throws SocketException {
-        super();
+    /**
+     * Creates WebSocket factory on network interface. 
+     * @param bindAddr network interface address for servers/connections. 
+     * @throws SocketException if interface does not exists.
+     * @throws NoSuchAlgorithmException if SHA1 algorithm not exists.
+     */
+    public WebSocket(InetAddress bindAddr) throws SocketException, NoSuchAlgorithmException {
+        this();
         if (NetworkInterface.getByInetAddress(bindAddr) == null) {
             throw new BindException("Not interface");
         }
         bindAddress = bindAddr;
     }
 
-    public static void setTrustStore(String jksFile, String passphrase) {
-        System.setProperty("javax.net.ssl.trustStore", jksFile);
+    /**
+     * Sets system properties javax.net.ssl.trustStore/trustStorePassword.
+     * @param keyFilePath trust store file path
+     * @param passphrase password
+     */
+    public static void setTrustStore(String keyFilePath, String passphrase) {
+        System.setProperty("javax.net.ssl.trustStore", keyFilePath);
         System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
     }
 
-    public static void setKeyStore(String jksFile, String passphrase) {
-        System.setProperty("javax.net.ssl.keyStore", jksFile);
+    /**
+     * Sets system properties javax.net.ssl.keyStore/keyStorePassword.
+     * @param keyFilePath key file path
+     * @param passphrase password
+     */
+    public static void setKeyStore(String keyFilePath, String passphrase) {
+        System.setProperty("javax.net.ssl.keyStore", keyFilePath);
         System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
-
-// convert host name to International Domain Names (IDN) format and create URI
+    /**
+     * Converts host name to Internationalized Domain Names (IDNs) format and creates URI.
+     * @param uri uri String like:
+     * [scheme:]//[user-info@]host[:port][/path][?query][#fragment]
+     * @return URI object
+     * @throws URISyntaxException
+     */
     public static URI idnURI(String uri) throws URISyntaxException {
-// Supported uri format: [scheme:][//[user-info@]host][:port][/path][?query][#fragment]
 // https://stackoverflow.com/questions/9607903/get-domain-name-from-given-url
         Pattern pattern = Pattern.compile(
                 "^(([^:/?#]+):)?(//(([^@]+)@)?([^:/?#]*))?(.*)(\\?([^#]*))?(#(.*))?$");
@@ -96,30 +112,57 @@ public class WebSocket {
         return new URI(uri);
     }
 
+    /**
+     * Sets key file for server or client TLS connections. 
+     * @param storeFile key store file path.
+     * @param storePassword password.
+     */
     public void setKeyFile(File storeFile, String storePassword) {
         keyStoreFile = storeFile;
         keyStorePassword = storePassword;
     }
 
+    /**
+     * Clear key file info.
+     */
     public void resetKeyFile() {
         keyStoreFile = null;
         keyStorePassword = null;
     }
 
+    /**
+     * Returns network interface address.
+     * @return network interface InetAddress
+     */
     public InetAddress getBindAddress() {
         return bindAddress;
     }
 
+    /**
+     * Lists active connections.
+     * @return array of active connections
+     */
     public WsConnection[] listConnections() {
         return connections.toArray(new WsConnection[0]);
     }
 
+    /**
+     * Lists active servers or inactive servers with active connections.
+     * @return array of servers
+     */
     public WsServer[] listServers() {
         return servers.toArray(new WsServer[0]);
     }
 
+    /**
+     * Closes all servers/connections within this WebSocket instance.
+     * <p>
+     * Connections close status code GOING_AWAY.
+     * </p>
+     * @param closeReason connection close reason. String of 123 BYTES length.
+     * @see WsStatus
+     */
     public void closeAll(String closeReason) {
-// close WebSocket servers/connections 
         for (WsServer server : listServers()) {
             server.close(closeReason);
         }
@@ -128,15 +171,40 @@ public class WebSocket {
         }
     }
 
+    /**
+     * Closes all servers/connections within this WebSocket instance.
+     * <p>
+     * Connections close status code GOING_AWAY.
+     * </p>
+     * @see WsStatus
+     */
     public void closeAll() {
         closeAll("");
     }
 
+    /**
+     * Creates WebSocket server for plaintext connections.
+     * @param port listening port.
+     * @param handler server side connection handler.
+     * @param wsp server side connection parameters.
+     * @return WebSocket server instance.
+     * @throws IOException
+     * @throws GeneralSecurityException
+     */
     public WsServer Server(int port, WsConnection.Handler handler, WsParameters wsp)
             throws IOException, GeneralSecurityException {
         return createServer(port, handler, false, wsp);
     }
 
+    /**
+     * Creates WebSocket server for TLS connections.
+     * @param port listening port.
+     * @param handler server side connection handler.
+     * @param wsp server side connection parameters.
+     * @return WebSocket server instance.
+     * @throws IOException
+     * @throws GeneralSecurityException
+     */
     public WsServer SecureServer(int port, WsConnection.Handler handler, WsParameters wsp)
             throws IOException, GeneralSecurityException {
         return createServer(port, handler, true, wsp);
@@ -217,6 +285,20 @@ public class WebSocket {
         return ctx;
     }
 
+    /**
+     * Creates and starts client connection.
+     * @param uri connection uri string like:<br>
+     * scheme://[user-info@]host[:port][/path][?query][#fragment]<br>
+     *  - uri's scheme (ws: | wss:) and host are required;<br>
+     *  - :port, /path and ?query are optional;<br>
+     *  - user-info@ and #fragment are ignored.
+     * @param handler client side connection handler.
+     * @param wsp client side connection parameters.
+     * @return WebSocket client connection instance.
+     * @throws URISyntaxException
+     * @throws IOException
+     * @throws GeneralSecurityException
+     */
     synchronized public WsConnection connect(String uri,
             WsConnection.Handler handler, WsParameters wsp)
             throws URISyntaxException, IOException, GeneralSecurityException {

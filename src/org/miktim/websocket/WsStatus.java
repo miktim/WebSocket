@@ -5,13 +5,25 @@
  */
 package org.miktim.websocket;
 
+/**
+ * WebSocket connection status.
+ * <p>
+ * Descriptions of predefined WebSocket closing codes:<br>
+ * <a href="https://tools.ietf.org/html/rfc6455#section-7.4" target="_blank "> - RFC6455 section-7.4;</a><br>
+ * <a href="https://www.iana.org/assignments/websocket/websocket.xml#close-code-number" target="_blank "> - IANA close codes;</a><br> 
+ * <a href="https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code" target="_blank "> - MDN CloseEvent codes.</a>
+ * </p>
+ */
 public final class WsStatus {
-// Predefined WebSocket closure codes:
-//  https://tools.ietf.org/html/rfc6455#section-7.4
-//  https://www.iana.org/assignments/websocket/websocket.xml#close-code-number 
-//  https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
 
+    /**
+     * WebSocket connection yet not open.
+     */
     public static final int IS_CLOSED = -1; // connection in progress
+
+    /**
+     * WebSocket connection is open.
+     */
     public static final int IS_OPEN = 0;
     public static final int NORMAL_CLOSURE = 1000; //
     public static final int GOING_AWAY = 1001; //* 
@@ -27,10 +39,29 @@ public final class WsStatus {
     public static final int SERVICE_RESTART = 1012; //  
     public static final int TRY_AGAIN_LATER = 1013; //
 
+    /**
+     * Closing code (1000-4999).
+     */
     public volatile int code = IS_CLOSED;  // closing code (1000-4999)
+
+    /**
+     * Closing reason (max length 123 BYTES).
+     */
     public String reason = "";     // closing reason (max length 123 BYTES)
+
+    /**
+     * WebSocket closing handshake completed.
+     */
     public boolean wasClean = false;    // WebSocket closing handshake completed
+
+    /**
+     * WebSocket closed remotely.
+     */
     public boolean remotely = true;     // closed remotely
+
+    /**
+     * WebSocket closed due to error.
+     */
     public Throwable error = null; // closed due to exception
 
     WsStatus() {
@@ -46,6 +77,10 @@ public final class WsStatus {
         return clone;
     }
 
+    /**
+     * WebSocket status String representation.
+     * @return WebSocket status as String.
+     */
     @Override
     public String toString() {
         return String.format("WsStatus(%d,\"%s\",%s,%s%s)"

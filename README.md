@@ -4,16 +4,16 @@
 \- RFC 6455 compliant package ( [https://datatracker.ietf.org/doc/html/rfc6455/](https://datatracker.ietf.org/doc/html/rfc6455/) );  
 \- Java SE 6+/Android 4.1+ compatible (see WebSocket-Android-Test repo:  
   [https://github.com/miktim/WebSocket-Android-Test](https://github.com/miktim/WebSocket-Android-Test) ).  
-\- no external dependencies;  
-\- supported WebSocket version: 13;  
 \- WebSocket extensions ( Per-Message Deflate, ... ) are not supported;  
+\- supported WebSocket version: 13;  
+\- no external dependencies;  
 \- supports cleartext/TLS connections (without tunneling);  
 \- client supports Internationalized Domain Names (IDNs);  
 \- stream-based messaging.    
 
 The ./dist/websocket-... jar file was built with debug info using JDK 1.8 for the target JRE 1.6.  
 
-Overview of the package in the file ./README.txt .  
+Overview of the package in the file [./README.txt](./README.txt) and  [JavaDoc](./dist/javadoc/index.html)  
 
 #### Example: creating and running a Java server for TLS connections:  
 

@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class HttpHead {
+class HttpHead {
 
     public static final String START_LINE = "http-message-head-start-line";
 
