@@ -318,8 +318,8 @@ public final class WsConnection extends Thread {
      * @param code closing code.
      * @param reason closing reason.
      * @see WsStatus
-     * @see WsParameters#setHandshakeSoTimeout()
-     * @see WsParameters#getHandshakeSoTimeout()
+     * @see WsParameters#setHandshakeSoTimeout
+     * @see WsParameters#getHandshakeSoTimeout
      */
     public void close(int code, String reason) {
         synchronized (status) {
