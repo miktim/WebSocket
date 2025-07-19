@@ -7,28 +7,20 @@
  */
 package org.miktim.websocket;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.ProtocolException;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.LinkedBlockingDeque;
 import javax.net.ssl.SSLSocket;
 
-/**
+/** 
  * WebSocket client side or server side connection.
  */
 public final class WsConnection extends Thread {
@@ -37,26 +29,29 @@ public final class WsConnection extends Thread {
      * Max count of queued WebSocket messages.
      * <p>
      * Overflow of the incoming message queue leads to an error and connection
-     * closure with status code 1008 (POLICY_VIOLATION)
+     * closure with status code 1008 (POLICY_VIOLATION).
      * </p>
      *
      * @see WsStatus
      */
     public static final int MESSAGE_QUEUE_CAPACITY = 3;
-    private static final String SERVER_AGENT = "WsLite/" + WebSocket.VERSION;
+//    private static final String SERVER_AGENT = "WsLite/" + WebSocket.VERSION;
 
     final Socket socket;
     private Handler handler;
     private final boolean isSecure; // SSL connection
     private final boolean isClientSide;
-    private URI requestURI;
-    private String subProtocol = null; // handshaked WebSocket subprotocol
+    URI requestURI;
+    String subProtocol = null; // handshaked WebSocket subprotocol
     final WsParameters wsp;
     final WsStatus status = new WsStatus();
     List<WsConnection> connections = null; // list of connections to a websocket or server
 
+    InputStream inStream;
+    OutputStream outStream;
+
     /**
-     * Sending streamed data in binary format or UTF-8 encoded text.
+     * Sends streamed data in binary format or UTF-8 encoded text.
      *
      * @param is data input stream.
      * @param isUTF8Text stream is UTF-8 encoded text.
@@ -67,7 +62,7 @@ public final class WsConnection extends Thread {
     }
 
     /**
-     * Send binary data.
+     * Sends binary data.
      *
      * @param message array of bytes.
      * @throws IOException
@@ -77,7 +72,7 @@ public final class WsConnection extends Thread {
     }
 
     /**
-     * Send text message.
+     * Sends text message.
      *
      * @param message text message.
      * @throws IOException
@@ -90,7 +85,7 @@ public final class WsConnection extends Thread {
      * Returns handshaked WebSocket subprotocol.
      *
      * @return WebSocket subprotocol or null.
-     * @see WsParameters
+     * @see WsParameters.setSubProtocols(String)
      */
     public String getSubProtocol() {
         return subProtocol;
@@ -99,7 +94,7 @@ public final class WsConnection extends Thread {
     /**
      * Returns connection status.
      *
-     * @return status deep clone.
+     * @return status clone.
      * @see WsStatus
      */
     public WsStatus getStatus() {
@@ -111,7 +106,7 @@ public final class WsConnection extends Thread {
     /**
      * Is connection open.
      *
-     * @return true if is.
+     * @return true if so.
      */
     public boolean isOpen() {
         synchronized (status) {
@@ -122,7 +117,7 @@ public final class WsConnection extends Thread {
     /**
      * Is TLS connection.
      *
-     * @return true if is.
+     * @return true if so.
      */
     public boolean isSecure() {
         return isSecure;
@@ -131,17 +126,15 @@ public final class WsConnection extends Thread {
     /**
      * Is client side connection.
      *
-     * @return true if is.
+     * @return true if so.
      */
     public boolean isClientSide() {
         return isClientSide;
     }
 
     /**
-     * List connections.
-     * <p>
-     * The client connection returns only itself.
-     * </p> 
+     * List server connections.
+     * <br> The client connection returns only itself.
      * @return array of connections.
      */
     public WsConnection[] listConnections() {
@@ -150,11 +143,10 @@ public final class WsConnection extends Thread {
     }
 
     /**
-     * Replace handler for this connection.
-     * <p>
+     * Replaces the handler for this connection.
+     * <br>
      * Calls onClose in the old handler (conn.isOpen() returns true), then calls
      * onOpen in the new handler.
-     * </p>
      * @param newHandler new connectin handler.
      */
     public synchronized void setHandler(Handler newHandler) {
@@ -174,12 +166,12 @@ public final class WsConnection extends Thread {
     /**
      * Returns connection parameters.
      *
-     * @return deep clone of connection parameters.
+     * @return clone of the connection parameters.
      */
     public WsParameters getParameters() {
         return wsp;
     }
-
+    
     /**
      * Returns Socket object of this connection.
      *
@@ -188,9 +180,9 @@ public final class WsConnection extends Thread {
     public Socket getSocket() {
         return socket;
     }
-
+    
     /**
-     * Get remote host name.
+     * Returns remote host name.
      *
      * @return the remote hostname or null value if it is unavailable.
      */
@@ -211,7 +203,7 @@ public final class WsConnection extends Thread {
     }
 
     /**
-     * Get the connected port.
+     * Returns the connected port.
      *
      * @return port number.
      */
@@ -220,7 +212,7 @@ public final class WsConnection extends Thread {
     }
 
     /**
-     * Get http request path.
+     * Returns http request path.
      *
      * @return requested path or null.
      */
@@ -232,7 +224,7 @@ public final class WsConnection extends Thread {
     }
 
     /**
-     * Get http request query.
+     * Returns http request query.
      *
      * @return requested guery or null.
      */
@@ -244,7 +236,7 @@ public final class WsConnection extends Thread {
     }
 
     /**
-     * Get connection TLS protocol.
+     * Returns connection TLS protocol.
      *
      * @return protocol name or null.
      */
@@ -278,12 +270,12 @@ public final class WsConnection extends Thread {
         try {
             byte[] buf = new byte[wsp.payloadBufferLength];
             int len = 0;
-            while ((len = readFully(is, buf, 0, buf.length)) == buf.length) {
-                sendFrame(op, buf, buf.length);
+            while ((len = WsIo.readFully(is, buf, 0, buf.length)) == buf.length) {
+                WsIo.sendFrame(this, op, buf, buf.length);
                 op = WsListener.OP_CONTINUATION;
             }
 // be sure to send the final frame even if eof is detected (payload length = 0)!            
-            sendFrame(op | WsListener.OP_FINAL, buf, len >= 0 ? len : 0); //
+            WsIo.sendFrame(this, op | WsListener.OP_FINAL, buf, len >= 0 ? len : 0); //
         } catch (IOException e) {
             closeDueTo(WsStatus.INTERNAL_ERROR, "Send failed", e);
             throw e;
@@ -291,26 +283,27 @@ public final class WsConnection extends Thread {
     }
 
     /**
-     * Close connection without close code and reason.
-     * <p>
+     * Closes connection without close code and reason.
+     * <br>
      * Status code sets to 1005 (NO_STATUS) and reason sets to null.<br>
      * See close notes below.
-     * </p>
      */
     public void close() {
         close(WsStatus.NO_STATUS, "");
     }
 
+
     /**
-     * Close connection.
+     * Closes connection.
      * <p>
      * Close notes:<br>
      * - the closing code outside 1000-4999 is replaced by 1005 (NO_STATUS) and
      * the reason is ignored;<br>
-     * - a reason that is longer than 123 bytes is truncated;<br>
+     * - a reason that is longer than 123 BYTES is truncated;<br>
      * - closing handshake started;<br>
      * - blocks outgoing messages (send methods throw IOException);<br>
      * - isOpen() returns false;<br>
+     * - calls onClose handler method;<br>
      * - incoming messages are available until the closing handshake completed
      * or timeout is over.
      * </p>
@@ -349,7 +342,7 @@ public final class WsConnection extends Thread {
                     status.remotely = false;
                     status.reason = new String(byteReason, 0, byteReasonLen, "UTF-8");
                     socket.setSoTimeout(wsp.handshakeSoTimeout);
-                    sendControlFrame(WsListener.OP_CLOSE, payload, payloadLen);
+                    WsIo.sendControlFrame(this, WsListener.OP_CLOSE, payload, payloadLen);
                     status.code = code; // disable output
 // force closing socket 
                     (new Timer(true)).schedule(new TimerTask() {
@@ -387,18 +380,20 @@ public final class WsConnection extends Thread {
         this.isSecure = uri.getScheme().equals("wss");
         this.wsp = wsp;
     }
-
+    
     @Override
     public void start() {
         connections.add(this);
         super.start();
     }
-
+    
     @Override
     public void run() {
         try {
-            if (waitConnection()) {
-                this.handler.onOpen(this, subProtocol);
+            inStream = socket.getInputStream();
+            outStream = socket.getOutputStream();
+            if (WsHandshake.waitHandshake(this)) {
+                handler.onOpen(this, subProtocol);
                 waitMessages();
             } else {
                 // also called from closeDueTo                
@@ -415,9 +410,114 @@ public final class WsConnection extends Thread {
         connections.remove(this);
     }
 
-    InputStream inStream;
-    OutputStream outStream;
+    final LinkedBlockingDeque<WsInputStream> messageQueue
+            = new LinkedBlockingDeque<WsInputStream>(MESSAGE_QUEUE_CAPACITY);
 
+    void waitMessages() {
+        WsListener listener = new WsListener(this);
+        listener.start();
+        WsInputStream is;
+        while (messageQueue.size() > 0 || listener.isAlive()) {
+            try {
+                is = messageQueue.take();
+                if (is.available() < 0) {
+                    break;
+                }
+                handler.onMessage(this, is, is.isText());
+            } catch (InterruptedException ex) {
+            }
+        }
+    }
+
+    boolean isSocketOpen() {
+        return !(this.socket == null || this.socket.isClosed());
+    }
+
+    void closeSocket() {
+        try {
+            this.socket.close();
+        } catch (IOException e) {
+//            e.printStackTrace();
+        }
+    }
+
+    void closeDueTo(int closeCode, String reason, Throwable e) {
+        if (isOpen()) {
+            status.error = e;
+            close(closeCode, reason);
+            if (e != null) {
+                try {
+                    handler.onError(this, status.error);
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                }
+            }
+        }
+    }
+
+    /**
+     * WebSocket connection events handler.
+     * <p>
+     * There are two scenarios for handling connection events:<br>
+     * - onError - onClose, when SSL/WebSocket handshake failed;<br>
+     * - onOpen - [onMessage - onMessage - ...] - [onError] - onClose.
+     * </p>
+     */
+    public interface Handler {
+
+        /**
+         * Called when opening a WebSocket connection.
+         * @param conn WebSocket connection.
+         * @param subProtocol the negotiated WebSocket sub protocol or null 
+         * if the client did not requests it or if the server does not agree
+         * to any of the client's requested sub protocols.
+         */
+        public void onOpen(WsConnection conn, String subProtocol);
+
+        /**
+         * Called when a WebSocket message is received.
+         * <p>
+         * - the WebSocket message is represented by an input stream of binary
+         * data or UTF-8 encoded text;<br>
+         * - exiting method closes the stream.
+         * </p>
+         * @param conn WebSocket connection.
+         * @param is message input stream.
+         * @param isUTF8Text if true, the stream is UTF-8 encoded text.
+         * Otherwise, it is a binary data stream.
+         */
+        public void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text);
+
+        /**
+         * Called when the WebSocket connection or handler error occured.
+         * <p>
+         * - any error closes the WebSocket connection;<br>
+         * - allocating large buffers may throw an OutOfMemoryError.
+         * </p>
+         * @param conn WebSocket connection.
+         * @param e connection error.
+         */
+        public void onError(WsConnection conn, Throwable e);
+
+        /**
+         * Called when the WebSocket connection closed.
+         *
+         * @param conn WebSocket connection.
+         * @param status connection status.
+         * @see WsStatus
+         */
+        public void onClose(WsConnection conn, WsStatus status);
+
+    }
+
+    /**
+     * @deprecated Use WsConnection.Handler interface instead.
+     * @since 4.2
+     */
+    @Deprecated
+    public interface EventHandler extends Handler {} // deprecated
+    
+/*
     private boolean waitConnection() {
         synchronized (status) {
             try {
@@ -436,25 +536,6 @@ public final class WsConnection extends Thread {
                 status.error = e;
                 status.code = WsStatus.PROTOCOL_ERROR;
                 return false;
-            }
-        }
-    }
-
-    final LinkedBlockingDeque<WsInputStream> messageQueue
-            = new LinkedBlockingDeque<WsInputStream>(MESSAGE_QUEUE_CAPACITY);
-
-    void waitMessages() {
-        WsListener listener = new WsListener(this);
-        listener.start();
-        WsInputStream is;
-        while (messageQueue.size() > 0 || listener.isAlive()) {
-            try {
-                is = messageQueue.take();
-                if (is.available() < 0) {
-                    break;
-                }
-                handler.onMessage(this, is, is.isText());
-            } catch (InterruptedException ex) {
             }
         }
     }
@@ -579,7 +660,7 @@ public final class WsConnection extends Thread {
 
     private static final byte[] B64_BYTES = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".getBytes();
 
-    static String base64Encode(byte[] b) {
+    public static String base64Encode(byte[] b) {
         byte[] s = new byte[((b.length + 2) / 3 * 4)];
         int bi = 0;
         int si = 0;
@@ -608,33 +689,8 @@ public final class WsConnection extends Thread {
         }
         return bytesCnt;
     }
-
-    boolean isSocketOpen() {
-        return !(this.socket == null || this.socket.isClosed());
-    }
-
-    void closeSocket() {
-        try {
-            this.socket.close();
-        } catch (IOException e) {
-//            e.printStackTrace();
-        }
-    }
-
-    void closeDueTo(int closeCode, String reason, Throwable e) {
-        if (isOpen()) {
-            status.error = e;
-            close(closeCode, reason);
-            if (e != null) {
-                try {
-                    handler.onError(this, status.error);
-                } catch (Throwable t) {
-                    t.printStackTrace();
-                }
-            }
-        }
-    }
-
+*/
+/*
     void sendControlFrame(int opFrame, byte[] payload, int payloadLen)
             throws IOException {
         sendFrame(opFrame, Arrays.copyOf(payload, payloadLen), payloadLen);
@@ -673,7 +729,7 @@ public final class WsConnection extends Thread {
 
             if (masked) {
                 header[1] |= WsListener.MASKED_DATA;
-                byte[] mask = randomBytes(4);
+                byte[] mask = WsIo.randomBytes(4);
                 System.arraycopy(mask, 0, header, headerLen, 4);
                 headerLen += 4;
                 umaskPayload(mask, payload, 0, payloadLen);
@@ -694,66 +750,6 @@ public final class WsConnection extends Thread {
             payload[off++] ^= mask[i & 3];
         }
     }
-
-    /**
-     * WebSocket connection events handler.
-     * <p>
-     * There are two scenarios for handling connection events:<br>
-     * - onError - onClose, when SSL/WebSocket handshake failed;<br>
-     * - onOpen - [onMessage - onMessage - ...] - [onError] - onClose.
-     * </p>
-     */
-    public interface Handler {
-
-        /**
-         * On WebSocket connection open.
-         * @param conn WebSocket connection.
-         * @param subProtocol the negotiated WebSocket sub protocol or null 
-         * if the client did not requests it or if the server does not agree
-         * to any of the client's requested sub protocols.
-         */
-        public void onOpen(WsConnection conn, String subProtocol);
-
-        /**
-         * On WebSocket message receive.
-         * <p>
-         * - the WebSocket message is represented by an input stream of binary
-         * data or UTF-8 encoded text;<br>
-         * - exiting method closes the stream.
-         * </p>
-         * @param conn WebSocket connection.
-         * @param is message input stream.
-         * @param isUTF8Text if true, the stream is UTF-8 encoded text.
-         */
-        public void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text);
-
-        /**
-         * On WebSocket connection or handler error occure.
-         * <p>
-         * - any error closes the WebSocket connection;<br>
-         * - allocating large buffers may throw an OutOfMemoryError.
-         * </p>
-         * @param conn WebSocket connection.
-         * @param e connection error.
-         */
-        public void onError(WsConnection conn, Throwable e);
-
-        /**
-         * On WebSocket connection close.
-         *
-         * @param conn WebSocket connection.
-         * @param status connection status.
-         * @see WsStatus
-         */
-        public void onClose(WsConnection conn, WsStatus status);
-
-    }
-
-    /**
-     * @deprecated Use WsConnection.Handler interface instead.
-     * @since 4.2
-     */
-    @Deprecated
-    public interface EventHandler extends Handler {
-    }
+*/
+    
 }

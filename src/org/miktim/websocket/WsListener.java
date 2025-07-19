@@ -103,7 +103,7 @@ class WsListener extends Thread {
                 if (conn.isOpen() && conn.wsp.pingEnabled && !pingFrameSent) {
                     pingFrameSent = true;
                     try {
-                        conn.sendControlFrame(OP_PING, PING_PAYLOAD, PING_PAYLOAD.length);
+                        WsIo.sendControlFrame(conn, OP_PING, PING_PAYLOAD, PING_PAYLOAD.length);
                     } catch (IOException ex) {
                         conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e.getMessage(), e);
                         break; // exit 
@@ -127,7 +127,7 @@ class WsListener extends Thread {
                 break;
             }
         }
-// exit 
+// leave listener, clear message queue 
         messagePayloads = null;
         if (conn.messageQueue.remainingCapacity() > 0) {
             conn.messageQueue.add(new WsInputStream(null, -1, false));
@@ -144,7 +144,7 @@ class WsListener extends Thread {
             toRead = 8;
         }
         if (toRead > 0) {
-            if (conn.readFully(conn.inStream, payloadMask, 0, toRead) != toRead) {
+            if (WsIo.readFully(conn.inStream, payloadMask, 0, toRead) != toRead) {
                 throw new EOFException("Unexpected EOF");
             }
             payloadLength = 0L;
@@ -157,7 +157,7 @@ class WsListener extends Thread {
         maskedPayload = (b2 & MASKED_DATA) != 0;
         if (maskedPayload) {
             toRead = 4;
-            if (conn.readFully(conn.inStream, payloadMask, 0, toRead) != toRead) {
+            if (WsIo.readFully(conn.inStream, payloadMask, 0, toRead) != toRead) {
                 throw new EOFException("Unexpected EOF");
             }
         }
@@ -189,13 +189,13 @@ class WsListener extends Thread {
     byte[] readPayload() throws IOException {
 // read frame payload
         byte[] framePayload = new byte[(int) payloadLength];
-        if (conn.readFully(conn.inStream, framePayload, 0, (int) payloadLength)
+        if (WsIo.readFully(conn.inStream, framePayload, 0, (int) payloadLength)
                 != framePayload.length) {
             throw new EOFException("Unexpected EOF");
         }
 // unmask frame payload
         if (maskedPayload) {
-            conn.umaskPayload(payloadMask, framePayload, 0, framePayload.length);
+            WsIo.umaskPayload(payloadMask, framePayload, 0, framePayload.length);
         }
         return framePayload;
     }
@@ -219,7 +219,7 @@ class WsListener extends Thread {
             }
             case OP_PING:
                 if (conn.isOpen()) {
-                    conn.sendControlFrame(OP_PONG, framePayload, framePayload.length);
+                    WsIo.sendControlFrame(conn,OP_PONG, framePayload, framePayload.length);
                 }
                 return true;
             case OP_CLOSE:  // close handshake
@@ -228,7 +228,7 @@ class WsListener extends Thread {
                         conn.status.remotely = true;
                         conn.socket.setSoTimeout(conn.wsp.handshakeSoTimeout);
                         // send approval
-                        conn.sendControlFrame(OP_CLOSE,
+                        WsIo.sendControlFrame(conn, OP_CLOSE,
                                 framePayload, framePayload.length);
                         // extract status code and reason
                         if (framePayload.length > 1) {
@@ -241,6 +241,7 @@ class WsListener extends Thread {
                         }
                     }
                     conn.status.wasClean = true;
+                    conn.close();
                 }
                 return true;
             default:

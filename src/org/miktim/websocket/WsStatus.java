@@ -42,7 +42,7 @@ public final class WsStatus {
     /**
      * Closing code (1000-4999).
      */
-    public volatile int code = IS_CLOSED;  // closing code (1000-4999)
+    public int code = IS_CLOSED;  // closing code (1000-4999)
 
     /**
      * Closing reason (max length 123 BYTES).
@@ -78,7 +78,7 @@ public final class WsStatus {
     }
 
     /**
-     * WebSocket status String representation.
+     * Returns a textual representation of the WebSocket status.
      * @return WebSocket status as String.
      */
     @Override

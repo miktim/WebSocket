@@ -38,9 +38,9 @@ import javax.net.ssl.TrustManagerFactory;
 public class WebSocket {
 
     /**
-     * Current package version like "1.2.3".
+     * Current package version {@value VERSION}.
      */
-    public static final String VERSION = "4.2.1"; 
+    public static final String VERSION = "4.2.2"; 
 
     private InetAddress bindAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
@@ -58,16 +58,16 @@ public class WebSocket {
 
     /**
      * Creates WebSocket factory on network interface. 
-     * @param bindAddr network interface address for servers/connections. 
+     * @param intfAddr network interface address for servers/connections. 
      * @throws SocketException if interface does not exists.
      * @throws NoSuchAlgorithmException if SHA1 algorithm not exists.
      */
-    public WebSocket(InetAddress bindAddr) throws SocketException, NoSuchAlgorithmException {
+    public WebSocket(InetAddress intfAddr) throws SocketException, NoSuchAlgorithmException {
         this();
-        if (NetworkInterface.getByInetAddress(bindAddr) == null) {
+        if (NetworkInterface.getByInetAddress(intfAddr) == null) {
             throw new BindException("Not interface");
         }
-        bindAddress = bindAddr;
+        bindAddress = intfAddr;
     }
 
     /**
@@ -157,7 +157,7 @@ public class WebSocket {
     /**
      * Closes all servers/connections within this WebSocket instance.
      * <p>
-     * Connections close status code GOING_AWAY.
+     * Connections close status code 1001 (GOING_AWAY).
      * </p>
      * @param closeReason connection close reason. String of 123 BYTES length.
      * @see WsStatus
@@ -174,7 +174,7 @@ public class WebSocket {
     /**
      * Closes all servers/connections within this WebSocket instance.
      * <p>
-     * Connections close status code GOING_AWAY.
+     * Connections close status code 1001 (GOING_AWAY).
      * </p>
      * @see WsStatus
      */

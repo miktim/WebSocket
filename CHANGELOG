@@ -6,13 +6,14 @@
     at the moment.
 
 4.2.x TODO
-  - check again for RFC6455 compliance;
-  - ! connection RuntimeException with handler exception as reason, try call onError handler's method
+  - !connection RuntimeException with handler exception as reason, try call onError handler's method
     (now printStackTrace only);
-  - ? too many threads;
-  - implements Closeable, AutoCloseable;
-  - close Socket InputStream on connection errors as marker of an error (of course, closure not clean);
+  - ?too many threads;
+  - ?implements Closeable, AutoCloseable;
+  - ?close connection Socket on errors as marker of an error (of course, closure not clean);
   - abstract classes WsListener, WsHandshake, ?WsInputStream with methods providing implementation of WebSocket extensions: WebSocket Per-Message Deflate (RFC7692), BBF USP Protocol ( https://usp.technology );
+4.2.2
+  - the WsConnection class code has been reorganized (+WsHandshake, +WsIo classes).
 4.2.1
   - JavaDoc created;
   - server errors raise RuntimeException.

@@ -73,9 +73,8 @@ public class WsParameters {
 
     /**
      * Sets supported (server) or requested (client) subprotocols.
-     *
      * @param subps array of subprotocls or null.
-     * @return this.
+     * @return this
      */
     public WsParameters setSubProtocols(String[] subps) {
         if (subps == null || subps.length == 0) {
@@ -99,8 +98,8 @@ public class WsParameters {
 
     /**
      * Sets open/close WebSocket handshake timeout.
-     * @param millis timeout in milliseconds.
-     * @return this.
+     * @param millis handshake timeout in milliseconds.
+     * @return this
      */
     public WsParameters setHandshakeSoTimeout(int millis) {
         handshakeSoTimeout = millis;
@@ -109,7 +108,7 @@ public class WsParameters {
 
     /**
      * Returns open/close WebSocket handshake timeout.
-     * @return timeout in milliseconds. Default: 2000
+     * @return timeout in milliseconds. Default: {@value handshakeSoTimeout}
      */
     public int getHandshakeSoTimeout() {
         return handshakeSoTimeout;
@@ -118,7 +117,7 @@ public class WsParameters {
     /**
      * Sets connection Socket timeout and ping enabled.
      * @param millis socket timeout in milliseconds.
-     * @param ping true - ping enabled.
+     * @param ping true, if ping enabled.
      * @return this
      */
     public WsParameters setConnectionSoTimeout(int millis, boolean ping) {
@@ -129,7 +128,7 @@ public class WsParameters {
 
     /**
      * Returns connection Socket timeout.
-     * @return timeout in milliseconds. Default: 4000.
+     * @return timeout in milliseconds. Default: {@value connectionSoTimeout}.
      */
     public int getConnectionSoTimeout() {
         return connectionSoTimeout;
@@ -137,7 +136,7 @@ public class WsParameters {
 
     /**
      * Returns ping enabled.
-     * @return true if is it. Default: enabled.
+     * @return true if so. Default: enabled.
      */
     public boolean isPingEnabled() {
         return pingEnabled;
@@ -145,7 +144,7 @@ public class WsParameters {
 
     /**
      * Sets the maximum payload length of the outgoing message frames.
-     * The minimum length is 125 bytes.
+     * <br>The minimum length is 125 bytes.
      * @param len payload length in bytes.
      * @return this
      */
@@ -166,7 +165,7 @@ public class WsParameters {
     /**
      * Sets maximum number of pending connections on the server socket.
      * @param num of pending connections.
-     * @return this.
+     * @return this
      */
     public WsParameters setBacklog(int num) {
         backlog = num;
@@ -183,9 +182,9 @@ public class WsParameters {
 
     /**
      * Sets incoming WebSocket message max length.
-     * If exceeded, the connection will be terminated with the 1009 (MESSAGE_TOO_BIG) status code
+     * <br>If exceeded, the connection will be terminated with the 1009 (MESSAGE_TOO_BIG) status code
      * @param len max length.
-     * @return this.
+     * @return this
      */
     public WsParameters setMaxMessageLength(int len) {
         maxMessageLength = Math.max(len, MIN_MESSAGE_LENGTH);
@@ -202,10 +201,10 @@ public class WsParameters {
 
     /**
      * Sets TLS connection parameters.
-     * SSLParameters used by server:<br>
+     * <br>SSLParameters used by server:<br>
      * Protocols, CipherSuites, NeedClientAut, WantClientAuth.
      * @param sslParms SSL connection parameters.
-     * @return this.
+     * @return this
      */
     public WsParameters setSSLParameters(SSLParameters sslParms) {
         sslParameters = sslParms;
