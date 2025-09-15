@@ -11,9 +11,9 @@
 \- client supports Internationalized Domain Names (IDNs);  
 \- stream-based messaging.    
 
-The ./dist/websocket-... jar file was built with debug info using JDK 1.8 for the target JRE 1.6.  
+The [/dist/websocket-...](./dist) jar file was built with debug info using JDK 1.8 for the target JRE 1.6.  
 
-Overview of the package in the file [./README.txt](./README.txt) and  [JavaDoc](https://miktim.github.io/WebSocket/)  
+Overview of the package in the file [./README.txt](./README.txt)  
 
 #### Example: creating and running a Java server for TLS connections:  
 
