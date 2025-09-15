@@ -7,7 +7,7 @@
 \- WebSocket extensions ( Per-Message Deflate, ... ) are not supported;  
 \- supported WebSocket version: 13;  
 \- no external dependencies;  
-\- supports cleartext/TLS connections (without tunneling);  
+\- supports cleartext/TLS connections;  
 \- client supports Internationalized Domain Names (IDNs);  
 \- stream-based messaging.    
 

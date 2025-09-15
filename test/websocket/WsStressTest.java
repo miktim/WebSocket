@@ -1,5 +1,5 @@
 /*
- * WsStressTest. MIT (c) 2023 miktim@mail.ru
+ * WsStressTest. MIT (c) 2023-2025 miktim@mail.ru
  */
 import java.io.IOException;
 import java.io.InputStream;
@@ -56,7 +56,7 @@ public class WsStressTest {
 
             @Override
             public void onOpen(WsConnection conn, String subp) {
-                if (subp == null) {
+                if (subp == null) {// && conn.isClientSide()) {
                     conn.close(WsStatus.POLICY_VIOLATION, "Subprotocol required");
                     return;
                 }
@@ -99,6 +99,12 @@ public class WsStressTest {
 
             @Override
             public void onError(WsConnection conn, Throwable e) {
+                ws_log(String.format("[%s] %s onError %s%s",
+                        (conn.getSubProtocol() == null ? "0" : conn.getSubProtocol()),
+                        (conn.isClientSide() ? "Client" : "Server side"),
+                        conn.getStatus().toString(),
+                        (e != null ? " Error " + e.toString() : "")
+                ));
             }
 
             @Override
@@ -181,10 +187,10 @@ public class WsStressTest {
         final WsServer wsServer = webSocket.Server(PORT, handler, wsp)
                 .setHandler(serverHandler).launch();
 
-        ws_log("0. Connecting via TLS to a cleartext server (1002 expected):");
+        ws_log("0. Connecting via TLS to a cleartext server (1002,1015 expected):");
         WsConnection conn = webSocket.connect("wss://localhost:" + PORT, handler, wsp);
         conn.join();
-        testResult(conn,1002);
+        testResult(conn,1015); // TLS handshake
 
         ws_log("\r\n0. Unsupported WebSocket subProtocol (1008 expected)");
         wsp.setSubProtocols(new String[]{"10"});

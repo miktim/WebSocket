@@ -1,5 +1,5 @@
 /*
- * Secure WsConnection test. MIT (c) 2020-2023 miktim@mail.ru
+ * Secure WsConnection load test. MIT (c) 2020-2025 miktim@mail.ru
  */
 import java.io.File;
 import java.io.IOException;
@@ -13,7 +13,7 @@ import org.miktim.websocket.WsServer;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsStatus;
 
-public class WssConnectionTest {
+public class WssLoadTest {
 
     static final int MAX_MESSAGE_LENGTH = 1000000; //~1MB
     static final int TEST_SHUTDOWN_TIMEOUT = 10000; //10 sec 
@@ -139,6 +139,7 @@ public class WssConnectionTest {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
+                ws_log("\r\nTime is over!\r\n");
                 webSocket.closeAll("Time is over!");
                 timer.cancel();
                 try {
@@ -147,7 +148,7 @@ public class WssConnectionTest {
                 }
             }
         }, TEST_SHUTDOWN_TIMEOUT);
-        ws_log("\r\nWssConnectionTest "
+        ws_log("\r\nWssLoadTest "
                 + WebSocket.VERSION 
                 + "\r\nIncoming maxMessageLength: " + MAX_MESSAGE_LENGTH
                 + "\r\nClient try to connect to " + remoteAddr

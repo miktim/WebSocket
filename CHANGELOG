@@ -1,28 +1,27 @@
-5.0.0 TODO
-  - an "endless" input stream in the onMessage connection handler.
-    Call onMessage() with the first received data frame.
-    The available() method will return an estimate of the number
-    of bytes that can be read, instead of the total number of bytes
-    at the moment.
-
-4.2.x TODO
-  - !connection RuntimeException with handler exception as reason, try call onError handler's method
-    (now printStackTrace only);
-  - ?too many threads;
-  - ?implements Closeable, AutoCloseable;
-  - ?close connection Socket on errors as marker of an error (of course, closure not clean);
-  - abstract classes WsListener, WsHandshake, ?WsInputStream with methods providing implementation of WebSocket extensions: WebSocket Per-Message Deflate (RFC7692), BBF USP Protocol ( https://usp.technology );
+4.2.3
+  - FIXED: receive messages until a closing frame is received;
+  - FIXED: runtime errors in handlers close the connection,
+    call onError and throw a RuntimeException;
+  - status code 1011 (INTERNAL_ERROR) is used when handlers fail;
+  - added WsHandlerTest, WsBasicTest;
+  - FIXED: WsConnection.getPort() method;
+  - FIXED: WsConnection.setHandler() method;
+  - listener cancels connection close timer on exit;
+  - FIXED: WsServer exceptions handling;
+  - FIXED: WsConnection.close() closes connection with status code
+    1000 (NORMAL_CLOSURE);
+  - added status code 1015 (TLS_HANDSHAKE) for handshake SSLException.
 4.2.2
   - the WsConnection class code has been reorganized (+WsHandshake, +WsIo classes).
 4.2.1
   - JavaDoc created;
-  - server errors raise RuntimeException.
+  - default server handler: server errors raise RuntimeException.
 4.2.0
   - getServerSocket(), getSocket() methods added
 
 4.1.4
-  - fixed send() exception handling;
-  - fixed 4.1.3 last push mistake.
+  - FIXED: send() exception handling;
+  - FIXED: 4.1.3 last push mistake.
  
 4.1.3
   - WsConnection: asynchronous onError call;

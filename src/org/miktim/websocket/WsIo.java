@@ -16,7 +16,8 @@ class WsIo {
     // generate "random" mask/key
     static byte[] randomBytes(int len) {
         byte[] b = new byte[len];
-        long l = Double.doubleToRawLongBits(Math.random());
+//        long l = Double.doubleToRawLongBits(Math.random());
+        long l = System.currentTimeMillis();
         while (--len >= 0) {
             b[len] = (byte) l;
             l >>= 1;
@@ -39,7 +40,7 @@ class WsIo {
         sendFrame(conn, opFrame, Arrays.copyOf(payload, payloadLen), payloadLen);
     }
 
-    static void sendFrame(WsConnection conn,int opFrame, byte[] payload, int payloadLen)
+    static void sendFrame(WsConnection conn, int opFrame, byte[] payload, int payloadLen)
             throws IOException {
         synchronized (conn.outStream) {
             if (conn.status.code != WsStatus.IS_OPEN) { // todo: ?shutdown outputStream on close()
@@ -77,13 +78,9 @@ class WsIo {
                 headerLen += 4;
                 umaskPayload(mask, payload, 0, payloadLen);
             }
-            try {
-                conn.outStream.write(header, 0, headerLen);
-                conn.outStream.write(payload, 0, payloadLen);
-                conn.outStream.flush();
-            } catch (IOException e) {
-                throw e;
-            }
+            conn.outStream.write(header, 0, headerLen);
+            conn.outStream.write(payload, 0, payloadLen);
+            conn.outStream.flush();
         }
     }
 
@@ -93,5 +90,5 @@ class WsIo {
             payload[off++] ^= mask[i & 3];
         }
     }
-    
+
 }

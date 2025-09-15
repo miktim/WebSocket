@@ -18,7 +18,7 @@ import org.miktim.websocket.WsStatus;
 public class WsServerTest implements WsConnection.Handler{
 
     public static final int MAX_MESSAGE_LENGTH = 10000000;// bytes
-    public static final int TEST_SHUTDOWN_TIMEOUT = 20000;// millis
+    public static final int TEST_SHUTDOWN_TIMEOUT = 10000;// millis
     public static final String WEBSOCKET_SUBPROTOCOLS = "chat,superChat";
 
     static void ws_log(String msg) {

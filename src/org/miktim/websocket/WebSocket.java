@@ -40,7 +40,7 @@ public class WebSocket {
     /**
      * Current package version {@value VERSION}.
      */
-    public static final String VERSION = "4.2.2"; 
+    public static final String VERSION = "4.2.3";
 
     private InetAddress bindAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
@@ -50,6 +50,7 @@ public class WebSocket {
 
     /**
      * Creates WebSocket factory.
+     *
      * @throws NoSuchAlgorithmException if SHA1 algorithm not exists
      */
     public WebSocket() throws NoSuchAlgorithmException {
@@ -57,8 +58,9 @@ public class WebSocket {
     }
 
     /**
-     * Creates WebSocket factory on network interface. 
-     * @param intfAddr network interface address for servers/connections. 
+     * Creates WebSocket factory on network interface.
+     *
+     * @param intfAddr network interface address for servers/connections.
      * @throws SocketException if interface does not exists.
      * @throws NoSuchAlgorithmException if SHA1 algorithm not exists.
      */
@@ -72,6 +74,7 @@ public class WebSocket {
 
     /**
      * Sets system properties javax.net.ssl.trustStore/trustStorePassword.
+     *
      * @param keyFilePath trust store file path
      * @param passphrase password
      */
@@ -82,6 +85,7 @@ public class WebSocket {
 
     /**
      * Sets system properties javax.net.ssl.keyStore/keyStorePassword.
+     *
      * @param keyFilePath key file path
      * @param passphrase password
      */
@@ -89,8 +93,11 @@ public class WebSocket {
         System.setProperty("javax.net.ssl.keyStore", keyFilePath);
         System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
+
     /**
-     * Converts host name to Internationalized Domain Names (IDNs) format and creates URI.
+     * Converts host name to Internationalized Domain Names (IDNs) format and
+     * creates URI.
+     *
      * @param uri uri String like:
      * [scheme:]//[user-info@]host[:port][/path][?query][#fragment]
      * @return URI object
@@ -113,13 +120,14 @@ public class WebSocket {
     }
 
     /**
-     * Sets key file for server or client TLS connections. 
-     * @param storeFile key store file path.
-     * @param storePassword password.
+     * Sets key file for server or client TLS connections.
+     *
+     * @param keyFile key store file path.
+     * @param password password.
      */
-    public void setKeyFile(File storeFile, String storePassword) {
-        keyStoreFile = storeFile;
-        keyStorePassword = storePassword;
+    public void setKeyFile(File keyFile, String password) {
+        keyStoreFile = keyFile;
+        keyStorePassword = password;
     }
 
     /**
@@ -132,6 +140,7 @@ public class WebSocket {
 
     /**
      * Returns network interface address.
+     *
      * @return network interface InetAddress
      */
     public InetAddress getBindAddress() {
@@ -140,6 +149,7 @@ public class WebSocket {
 
     /**
      * Lists active connections.
+     *
      * @return array of active connections
      */
     public WsConnection[] listConnections() {
@@ -147,7 +157,8 @@ public class WebSocket {
     }
 
     /**
-     * Lists active servers or inactive servers with active connections.
+     * Lists active servers or interrupted servers with active connections.
+     *
      * @return array of servers
      */
     public WsServer[] listServers() {
@@ -159,10 +170,11 @@ public class WebSocket {
      * <p>
      * Connections close status code 1001 (GOING_AWAY).
      * </p>
+     *
      * @param closeReason connection close reason. String of 123 BYTES length.
      * @see WsStatus
      */
-    public void closeAll(String closeReason) {
+    synchronized public void closeAll(String closeReason) {
         for (WsServer server : listServers()) {
             server.close(closeReason);
         }
@@ -176,14 +188,17 @@ public class WebSocket {
      * <p>
      * Connections close status code 1001 (GOING_AWAY).
      * </p>
+     *
      * @see WsStatus
      */
     public void closeAll() {
-        closeAll("");
+        closeAll("Shutdown");
     }
 
     /**
-     * Creates WebSocket server for plaintext connections.
+     * Creates WebSocket server for plaintext connections. Start the server
+     * instance using the start() or launch() methods.
+     *
      * @param port listening port.
      * @param handler server side connection handler.
      * @param wsp server side connection parameters.
@@ -197,7 +212,9 @@ public class WebSocket {
     }
 
     /**
-     * Creates WebSocket server for TLS connections.
+     * Creates WebSocket server for TLS connections. Start the server instance
+     * using the start() or launch() methods.
+     *
      * @param port listening port.
      * @param handler server side connection handler.
      * @param wsp server side connection parameters.
@@ -205,12 +222,12 @@ public class WebSocket {
      * @throws IOException
      * @throws GeneralSecurityException
      */
-    public WsServer SecureServer(int port, WsConnection.Handler handler, WsParameters wsp)
+    synchronized public WsServer SecureServer(int port, WsConnection.Handler handler, WsParameters wsp)
             throws IOException, GeneralSecurityException {
         return createServer(port, handler, true, wsp);
     }
 
-    synchronized WsServer createServer(int port, WsConnection.Handler handler, boolean isSecure, WsParameters wsp)
+    WsServer createServer(int port, WsConnection.Handler handler, boolean isSecure, WsParameters wsp)
             throws IOException, GeneralSecurityException {
         if (handler == null || wsp == null) {
             throw new NullPointerException();
@@ -236,7 +253,6 @@ public class WebSocket {
                 ((SSLServerSocket) serverSocket).setWantClientAuth(sslp.getWantClientAuth());
                 ((SSLServerSocket) serverSocket).setEnabledCipherSuites(sslp.getCipherSuites());
 // TODO: downgrade Android API 24 to API 16
-
 //            ((SSLServerSocket) serverSocket).setSSLParameters(wsp.sslParameters);
             }
         } else {
@@ -246,12 +262,14 @@ public class WebSocket {
         serverSocket.setSoTimeout(0);
         WsServer server
                 = new WsServer(serverSocket, handler, isSecure, wsp);
-        server.servers = servers;
+        server.servers = this.servers;
+//        servers.add(server);
+//        server.start();
         return server;
     }
 
 // https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/samples/sockets/server/ClassFileServer.java
-    synchronized private SSLContext getSSLContext(boolean isClient)
+    private SSLContext getSSLContext(boolean isClient)
             throws IOException, GeneralSecurityException {
 //            throws NoSuchAlgorithmException, KeyStoreException,
 //            FileNotFoundException, IOException, CertificateException,
@@ -287,11 +305,12 @@ public class WebSocket {
 
     /**
      * Creates and starts client connection.
+     *
      * @param uri connection uri string like:<br>
      * scheme://[user-info@]host[:port][/path][?query][#fragment]<br>
-     *  - uri's scheme (ws: | wss:) and host are required;<br>
-     *  - :port, /path and ?query are optional;<br>
-     *  - user-info@ and #fragment are ignored.
+     * - uri's scheme (ws: | wss:) and host are required;<br>
+     * - :port (80 | 443), /path and ?query are optional;<br>
+     * - user-info@ and #fragment are ignored.
      * @param handler client side connection handler.
      * @param wsp client side connection parameters.
      * @return WebSocket client connection instance.
@@ -347,5 +366,17 @@ public class WebSocket {
         conn.start();
         return conn;
     }
-
+    /* TODO: 4.3.0
+    public void startServer(int port, WsConnection.Handler Handler) {
+    }
+    public void startServer(int port, WsConnection.Handler Handler, WsParameters wsp) {
+    }
+    
+    public void startSecureServer(int port, WsConnection.Handler Handler) {
+    }
+    public void startSecureServer(int port, WsConnection.Handler Handler, WsParameters wsp) {
+    }
+    public void connect(int port, WsConnection.Handler Handler) {
+    
+     */
 }

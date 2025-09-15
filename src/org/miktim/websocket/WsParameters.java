@@ -16,7 +16,7 @@ import javax.net.ssl.SSLParameters;
 public class WsParameters {
 
     public static final int MIN_PAYLOAD_BUFFER_LENGTH = 125;
-    public static final int MIN_MESSAGE_LENGTH = 1024;
+    public static final int MIN_INCOMING_MESSAGE_LENGTH = 125;
 
     String[] subProtocols = null; // WebSocket subprotocol[s] in preferred order
     int handshakeSoTimeout = 2000; // millis, TLS and WebSocket open/close handshake timeout
@@ -186,8 +186,8 @@ public class WsParameters {
      * @param len max length.
      * @return this
      */
-    public WsParameters setMaxMessageLength(int len) {
-        maxMessageLength = Math.max(len, MIN_MESSAGE_LENGTH);
+    public WsParameters setMaxMessageLength(long len) {
+        maxMessageLength = Math.max(len, MIN_INCOMING_MESSAGE_LENGTH);
         return this;
     }
 

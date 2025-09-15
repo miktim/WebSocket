@@ -12,12 +12,13 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import javax.net.ssl.SSLException;
 
 class WsHandshake {
     static final String SERVER_AGENT = "WsLite/" + WebSocket.VERSION;
 
     static boolean waitHandshake(WsConnection conn) {
-        synchronized (conn.status) {
+        synchronized (conn) {
             try {
                 if (conn.isClientSide()) {
                     handshakeServer(conn);
@@ -26,11 +27,17 @@ class WsHandshake {
                 }
                 conn.socket.setSoTimeout(conn.wsp.connectionSoTimeout);
                 conn.status.code = WsStatus.IS_OPEN;
+                conn.status.remotely = !conn.isClientSide();
+                conn.notifyAll();
                 return true;
             } catch (Exception e) {
+//System.err.println(e.toString());
+                conn.status.code = (e instanceof SSLException) ? 
+                        WsStatus.TLS_HANDSHAKE : WsStatus.PROTOCOL_ERROR;
                 conn.status.reason = "Handshake failed";
+                conn.status.remotely = conn.isClientSide();
                 conn.status.error = e;
-                conn.status.code = WsStatus.PROTOCOL_ERROR;
+                conn.notifyAll();
                 return false;
             }
         }
@@ -62,7 +69,7 @@ class WsHandshake {
                     .set(HttpHead.START_LINE, "HTTP/1.1 400 Bad Request")
                     .set("Connection", "close")
                     .write(conn.outStream);
-            conn.status.remotely = false;
+    //        conn.status.remotely = false;
             throw new ProtocolException("WebSocket handshake failed");
         }
     }
@@ -85,7 +92,7 @@ class WsHandshake {
         return true;
     }
 
-    private static void handshakeServer(WsConnection conn)
+    static void handshakeServer(WsConnection conn)
             throws IOException, URISyntaxException, NoSuchAlgorithmException {
         String key = base64Encode(WsIo.randomBytes(16));
 
@@ -119,7 +126,7 @@ class WsHandshake {
                 && responseHead.get("Sec-WebSocket-Extensions") == null
                 && responseHead.get("Sec-WebSocket-Accept").equals(sha1Hash(key))
                 && checkSubprotocol(conn))) {
-            conn.status.remotely = false;
+  //          conn.status.remotely = false;
             throw new ProtocolException("WebSocket handshake failed");
         }
     }

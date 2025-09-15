@@ -1,7 +1,7 @@
 /*
- * WsListener. Provides reading and processing of WebSocket frames, MIT (c) 2020-2023 miktim@mail.ru
- *
- * Created: 2021-01-29
+ * WsListener. MIT (c) 2020-2023 miktim@mail.ru
+ * Provides reading and processing of WebSocket frames.
+ * Class created: 2021-01-29
  */
 package org.miktim.websocket;
 
@@ -53,7 +53,9 @@ class WsListener extends Thread {
                     throw new EOFException("Unexpected EOF");
                 }
                 if ((b1 & OP_EXTENSIONS) != 0) {
-                    throw new ProtocolException("Unsupported extension");
+                    conn.closeDueTo(WsStatus.UNSUPPORTED_EXTENSION, "Unsupported extension",
+                            new ProtocolException());
+                    throw new ProtocolException();
                 }
 // client MUST mask the data, server - MUST NOT
                 maskedPayload = (b2 & MASKED_DATA) != 0;
@@ -72,9 +74,9 @@ class WsListener extends Thread {
                     case OP_TEXT_FINAL:
                         if ((opData & OP_FINAL) != 0) {
                             opData = b1;
-                            if (conn.isOpen()) {
+//                            if (conn.isOpen()) {
                                 messagePayloads = new ArrayDeque<byte[]>();
-                            }
+//                            }
                             messageLength = 0L;
                             dataFrame();
                             break;
@@ -132,6 +134,8 @@ class WsListener extends Thread {
         if (conn.messageQueue.remainingCapacity() > 0) {
             conn.messageQueue.add(new WsInputStream(null, -1, false));
         }
+        conn.cancelCloseTimer();
+
     }
 
     void readHeader(int b2) throws IOException {
@@ -170,6 +174,7 @@ class WsListener extends Thread {
             conn.closeDueTo(WsStatus.MESSAGE_TOO_BIG, e.getMessage(), e);
             messagePayloads = null;
         }
+//        if (conn.status.error != null) messagePayloads = null;
         if (messagePayloads == null) {
             skipPayload();
             return false;
@@ -177,7 +182,8 @@ class WsListener extends Thread {
         messagePayloads.add(readPayload());
         if ((opData & OP_FINAL) != 0) {
             conn.messageQueue.add(new WsInputStream(
-                    new ArrayDeque<byte[]>(messagePayloads),
+//                    new ArrayDeque<byte[]>(messagePayloads), //
+                    messagePayloads,
                     messageLength,
                     (opData & OP_TEXT) != 0)
             );
@@ -224,7 +230,8 @@ class WsListener extends Thread {
                 return true;
             case OP_CLOSE:  // close handshake
                 synchronized (conn.status) {
-                    if (conn.isOpen()) {
+//                    conn.socket.shutdownInput();
+                    if (conn.status.code == WsStatus.IS_OPEN) {
                         conn.status.remotely = true;
                         conn.socket.setSoTimeout(conn.wsp.handshakeSoTimeout);
                         // send approval
@@ -239,9 +246,9 @@ class WsListener extends Thread {
                         } else {
                             conn.status.code = WsStatus.NO_STATUS;
                         }
-                    }
+                    } 
                     conn.status.wasClean = true;
-                    conn.close();
+//
                 }
                 return true;
             default:
