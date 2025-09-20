@@ -9,7 +9,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.net.ProtocolException;
 import java.net.SocketTimeoutException;
-import java.util.ArrayDeque;
 import java.util.Arrays;
 
 class WsListener extends Thread {
@@ -22,7 +21,8 @@ class WsListener extends Thread {
     private long messageLength;
     private boolean pingFrameSent = false;
     private boolean maskedPayload;
-    private ArrayDeque<byte[]> messagePayloads = null;
+    private WsInputStream wsInputStream = null;
+//    private ArrayDeque<byte[]> messagePayloads = null;
 
     WsListener(WsConnection conn) {
         this.conn = conn;
@@ -53,7 +53,7 @@ class WsListener extends Thread {
                     throw new EOFException("Unexpected EOF");
                 }
                 if ((b1 & OP_EXTENSIONS) != 0) {
-                    conn.closeDueTo(WsStatus.UNSUPPORTED_EXTENSION, "Unsupported extension",
+                    conn.closeDueTo(WsStatus.PROTOCOL_ERROR, "Unautorized extension",
                             new ProtocolException());
                     throw new ProtocolException();
                 }
@@ -75,8 +75,10 @@ class WsListener extends Thread {
                         if ((opData & OP_FINAL) != 0) {
                             opData = b1;
 //                            if (conn.isOpen()) {
-                                messagePayloads = new ArrayDeque<byte[]>();
+//                                messagePayloads = new ArrayDeque<byte[]>();
 //                            }
+                            wsInputStream = new WsInputStream(
+                                    (opData & OP_TEXT) > 0);
                             messageLength = 0L;
                             dataFrame();
                             break;
@@ -129,10 +131,10 @@ class WsListener extends Thread {
                 break;
             }
         }
-// leave listener, clear message queue 
-        messagePayloads = null;
+// leave listener, clear message queue,  
+        wsInputStream = null;
         if (conn.messageQueue.remainingCapacity() > 0) {
-            conn.messageQueue.add(new WsInputStream(null, -1, false));
+            conn.messageQueue.add(new WsInputStream());
         }
         conn.cancelCloseTimer();
 
@@ -169,25 +171,22 @@ class WsListener extends Thread {
 
     boolean dataFrame() throws IOException, IllegalStateException {
         messageLength += payloadLength;
-        if (messageLength > conn.wsp.maxMessageLength) {
+        if (conn.wsp.maxMessageLength != -1 && messageLength > conn.wsp.maxMessageLength) {
             IOException e = new IOException("Message too big");
             conn.closeDueTo(WsStatus.MESSAGE_TOO_BIG, e.getMessage(), e);
-            messagePayloads = null;
+            wsInputStream = null;
         }
 //        if (conn.status.error != null) messagePayloads = null;
-        if (messagePayloads == null) {
+        if (wsInputStream == null) {
             skipPayload();
             return false;
         }
-        messagePayloads.add(readPayload());
+        byte[] payload = readPayload();
+        if(payload.length > 0) wsInputStream.write(payload);
         if ((opData & OP_FINAL) != 0) {
-            conn.messageQueue.add(new WsInputStream(
-//                    new ArrayDeque<byte[]>(messagePayloads), //
-                    messagePayloads,
-                    messageLength,
-                    (opData & OP_TEXT) != 0)
-            );
-            messagePayloads = null;
+            wsInputStream.write(EMPTY_PAYLOAD); // eof
+            conn.messageQueue.add(wsInputStream);
+            wsInputStream = null;
         }
         return true;
     }

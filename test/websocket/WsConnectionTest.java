@@ -90,16 +90,18 @@ public class WsConnectionTest {
             }
             delay();
             log("\r\n1. Key file not set. Start SecureServer");
+            log("The default Java keystore is used");
             delay();
 //            System.err.println("Server take key file from java keystore");
-            server = webSocket.SecureServer(securePort, handler, wsp).launch();
+            server = webSocket.startSecureServer(securePort, handler, wsp);
             delay();
             logTest("1","SecureServer", webSocket.listServers().length == 1);
-            if (server.isOpen()) {
+            if (server.isActive()) {
+//            if(server.isAlive()) {
                 conn = webSocket.connect("wss://localhost:" + securePort, handler, wsp);
                 conn.join();
                 logTest("1.1","wss to SecureServer " + conn.getStatus().code, 
-                        conn.getStatus().code == WsStatus.IS_OPEN);
+                        conn.getStatus().code == WsStatus.PROTOCOL_ERROR);
                 conn = webSocket.connect("ws://localhost:" + securePort, handler, wsp);
                 conn.join();
                 logTest("1.2","ws to SecureServer " + conn.getStatus().code,
@@ -109,7 +111,7 @@ public class WsConnectionTest {
 
             log("\r\n2. Key file is set. Start SecureServer");
             webSocket.setKeyFile(new File("./localhost.jks"), "password");
-            server = webSocket.SecureServer(securePort, handler, wsp).launch();
+            server = webSocket.startSecureServer(securePort, handler, wsp);
             delay();
             logTest("2","SecureServer", webSocket.listServers().length == 1);
             conn = webSocket.connect("wss://localhost:" + securePort, handler, wsp);
@@ -123,17 +125,17 @@ public class WsConnectionTest {
                     conn.getStatus().code == WsStatus.PROTOCOL_ERROR);
 //            log(conn.getStatus().error);
             conn.close();
-            server.close();
+            server.stopServer();
             closeAll("2", webSocket);
 
             log("\r\n3. Start plaintext Server");
-            server = webSocket.Server(port, handler, wsp).launch();
+            server = webSocket.startServer(port, handler, wsp);
             delay();
             logTest("3", "Server", webSocket.listServers().length == 1);
             conn = webSocket.connect("wss://localhost:" + port, handler, wsp);
             delay();
             logTest("3.1","wss to plaintext Server " + conn.getStatus().code,
-                    conn.getStatus().code == WsStatus.TLS_HANDSHAKE);
+                    conn.getStatus().code == WsStatus.PROTOCOL_ERROR);
             conn.close();
             delay();
             conn = webSocket.connect("ws://localhost:" + port, handler, wsp);

@@ -22,10 +22,11 @@ public class WsParameters {
     int handshakeSoTimeout = 2000; // millis, TLS and WebSocket open/close handshake timeout
     int connectionSoTimeout = 4000; // millis, data exchange timeout
     boolean pingEnabled = true; // if false, connection terminate by connectionSoTimeout
-    int payloadBufferLength = 32768; // bytes. Outgoing payload length, incoming buffer length. 
+    int payloadBufferLength = 32768; // bytes. Outgoing payload length. 
     int backlog = -1; // maximum number of pending connections on the server socket (system default)
-    long maxMessageLength = 1048576L; // 1 MiB
+    int maxMessageLength = 1048576; // 1 MiB
     SSLParameters sslParameters = null;  // TLS parameters
+    int maxMessages = 3; // 
 
     /**
      * Creates connection parameters.
@@ -183,11 +184,12 @@ public class WsParameters {
     /**
      * Sets incoming WebSocket message max length.
      * <br>If exceeded, the connection will be terminated with the 1009 (MESSAGE_TOO_BIG) status code
-     * @param len max length.
+     * @param len max length or -1  for "endless" messages.
      * @return this
      */
-    public WsParameters setMaxMessageLength(long len) {
-        maxMessageLength = Math.max(len, MIN_INCOMING_MESSAGE_LENGTH);
+    public WsParameters setMaxMessageLength(int len) {
+        maxMessageLength = len < 0 ? -1 :
+             Math.max(len, MIN_INCOMING_MESSAGE_LENGTH);
         return this;
     }
 
@@ -196,9 +198,30 @@ public class WsParameters {
      * @return max message length in bytes. Default: 1 MiB.
      */
     public int getMaxMessageLength() {
-        return (int) maxMessageLength;
+        return maxMessageLength;
     }
-
+    
+    /**
+     * Sets the maximum number of pending
+     * incoming messages for each current connection.
+     * @param maxMsgs maximum number of messages (min value is 1)
+     * @return this
+     */
+    public WsParameters setMaxMessages(int maxMsgs) {
+        maxMessages = Math.max(1, maxMsgs);
+        return this;
+    }
+    
+    /**
+     * Returns the maximum number of pending
+     * incoming messages for each current connection.
+     * Default: 3
+     * @return number of pending messages.
+     */
+    public int getMaxMessages() {
+        return maxMessages;
+    }
+    
     /**
      * Sets TLS connection parameters.
      * <br>SSLParameters used by server:<br>

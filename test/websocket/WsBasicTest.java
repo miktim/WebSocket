@@ -12,7 +12,6 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
-import java.util.Arrays;
 import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsConnection;
 import org.miktim.websocket.WsParameters;
@@ -23,8 +22,8 @@ import org.miktim.websocket.WsStatus;
 public class WsBasicTest {
 
     static int testId = 1;
-    static int sleepTime = 100; //milliseconds
-    static int port = 8080;
+    static final int DELAY = 100; //milliseconds
+    static final int PORT = 8080;
     static InetAddress intfAddr;
     static URI uri;
     static String uriString;
@@ -45,6 +44,7 @@ public class WsBasicTest {
     static void log(Object obj) {
         System.out.println(String.valueOf(obj));
     }
+/*    
     static String readString(InputStream is) throws IOException {
         byte[] buf = readBytes(is);
         return new String(buf, 0, buf.length, "UTF-8");
@@ -63,7 +63,7 @@ public class WsBasicTest {
         }
         return Arrays.copyOf(buf, totalBytes);
     }
-
+*/
     static void logTest(int testId, String obj, String msg) {
         log(format("[%d] %s %s", testId, obj, msg));
     }
@@ -77,7 +77,7 @@ public class WsBasicTest {
     }
 
     static String side(WsConnection conn) {
-        return conn.isClientSide() ? "client" : "server";
+        return conn.isClientSide() ? "client side" : "server side";
     }
 
     public static void main(String[] args) {
@@ -91,7 +91,7 @@ public class WsBasicTest {
             public void onOpen(WsConnection conn, String subProtocol) {
                 log(format("[0] %s Ok", side(conn)));
                 if (testId == 1) {
-                    testOk &= port == conn.getPort();
+                    testOk &= PORT == conn.getPort();
                     testOk &= intfAddr.equals(server.getBindAddress());
                     testOk &= conn.getPath().equals(uri.getPath());
                     testOk &= conn.getQuery().equals(uri.getQuery());
@@ -109,14 +109,14 @@ public class WsBasicTest {
                     if(!isText) throw new IOException("Not is text");
                     switch (testId) {
                         case 2: // empty message
-                            String s = readString(is);
+                            String s = conn.toString(is);
                             if (!s.equals("")) {
                                 break;
                             }
                             logTestOk(conn, testOk);
                             return;
                         case 3: // fragmented message
-                            String ts = readString(is);
+                            String ts = conn.toString(is);
                             if (!ts.equals(testBuffer)) {
                                 break;
                             }
@@ -138,6 +138,7 @@ public class WsBasicTest {
 
             @Override
             public void onError(WsConnection conn, Throwable e) {
+                e.printStackTrace();
                 logSide(conn, e.toString());
             }
 
@@ -154,8 +155,9 @@ public class WsBasicTest {
             intfAddr = InetAddress.getByName("127.0.0.1");
             webSocket = new WebSocket(intfAddr);
             WsParameters wsp = (new WsParameters()).setPayloadBufferLength(123);
-            webSocket.Server(port, handler, new WsParameters()).launch();
-            sleep(sleepTime);
+            server = webSocket.startServer(PORT, handler, new WsParameters());
+            log(server.isAlive() == server.isActive());
+            sleep(DELAY);
             server = webSocket.listServers()[0];
 
             while (testBuffer.length() < wsp.getPayloadBufferLength() * 3) {
@@ -170,7 +172,7 @@ public class WsBasicTest {
             runTest();
 
             while (!testCompleted) {
-                sleep(sleepTime);
+                sleep(DELAY);
             }
         } catch (Exception e) {
             logTest(testId, "?", e.toString());
@@ -185,7 +187,7 @@ public class WsBasicTest {
             throws URISyntaxException, IOException, GeneralSecurityException, InterruptedException {
         testId = 1;
         webSocket.connect(uriString, handler, server.getParameters());
-        sleep(sleepTime);
+        sleep(DELAY);
         WsConnection serverConn = server.listConnections()[0];
         WsConnection conn = webSocket.listConnections()[0];
         log("[0,1] WebSocket and WsServer Ok");
@@ -193,16 +195,16 @@ public class WsBasicTest {
         testId = 2;
         conn.send("");
         serverConn.send("");
-        sleep(sleepTime);
+        sleep(DELAY);
         testId = 3;
         conn.send(testBuffer);
         serverConn.send(testBuffer);
-        sleep(sleepTime);
+        sleep(DELAY);
         testId = 4;
         conn.close();
-        serverConn.join(sleepTime);
+        serverConn.join(DELAY);
         webSocket.closeAll();
-        sleep(sleepTime);
+        sleep(DELAY);
 //        int cnt = webSocket.listServers().length;
 //                + webSocket.listConnections().length
 //                + server.listConnections().length;

@@ -1,3 +1,49 @@
+4.3.0
+  - deprecated methods:
+      WebSocket:
+        InetAddress getBindAddress() - renamed
+        WsServer Server(...)
+        WsServer SecureServer(...)
+      WsServer:
+        launch()
+        close() - renamed
+        close(String reason) - renamed
+        isOpen() - renamed
+        InetAddress getBindAddress()
+        interrupt()
+        isInterrupted()
+        Handler.onAccept()
+      WsConnection:
+        MESSAGE_QUEUE_CAPACITY
+        getSocket()
+        listConnections()
+  - added methods:
+      WebSocket:
+        InetAddress getInterfaceAddress()
+        WsConnection WebSocket.connect(String uri, WsHandler handler)
+        WsServer WebSocket.startServer(int port, WsHandler handler)
+        WsServer WebSocket.startServer(int port, WsHandler handler, WsParameters wsp)
+        WsServer WebSocket.startSecureServer(int port, WsHandler handler)
+        WsServer WebSocket.startSecureServer(int port, WsHandler handler, WsParameters wsp)
+        Socket getConnectionSocket(WsConnection conn)
+      WsServer:
+        boolean isActive()
+        void stopServer()
+        void stopServer(String reason)
+        Socket getConnectionSocket(WsConnection conn)
+      WsConnection:
+        void close(String reason),
+        byte[] toByteArray(InputStream),
+        String toString(InputStream, charsetName)
+        String toString(InputStream),
+        boolean isPrimaryHandler()
+        WsConnection ready()
+      WsParameters:
+        setMaxMessages(int maxMsgs)
+        getMaxMessages()
+  - status code 1006 (ABNORMAL_CLOSURE) is used when connection handler failed
+  - status code 1011 (INTERNAL_ERROR) is used when server crashed;
+      
 4.2.3
   - FIXED: receive messages until a closing frame is received;
   - FIXED: runtime errors in handlers close the connection,
