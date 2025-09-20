@@ -18,7 +18,7 @@ import org.miktim.websocket.WsStatus;
 public class WsServerTest implements WsConnection.Handler{
 
     public static final int MAX_MESSAGE_LENGTH = 10000000;// bytes
-    public static final int TEST_SHUTDOWN_TIMEOUT = 20000;// millis
+    public static final int TEST_SHUTDOWN_TIMEOUT = 10000;// millis
     public static final String WEBSOCKET_SUBPROTOCOLS = "chat,superChat";
 
     static void ws_log(String msg) {
@@ -36,14 +36,14 @@ public class WsServerTest implements WsConnection.Handler{
                 .setMaxMessageLength(MAX_MESSAGE_LENGTH)
                 .setConnectionSoTimeout(1000, true) // ping on 1 second timeout
                 .setSubProtocols(WEBSOCKET_SUBPROTOCOLS.split(","));
-        final WsServer server = webSocket.Server(8080, new WsServerTest(), wsp);
-        server.start();
+        final WsServer server = webSocket.startServer(8080, new WsServerTest(), wsp);
+//        server.start();
 // init shutdown timer
         final Timer timer = new Timer(true); // is daemon
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                server.close("Time is over!");
+                server.stopServer("Time is over!");
                 timer.cancel();
             }
         }, TEST_SHUTDOWN_TIMEOUT);

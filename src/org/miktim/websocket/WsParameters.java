@@ -10,20 +10,27 @@ import java.util.Arrays;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 
+/**
+ * WebSocket connection parameters.
+ */
 public class WsParameters {
 
     public static final int MIN_PAYLOAD_BUFFER_LENGTH = 125;
-    public static final int MIN_MESSAGE_LENGTH = 1024;
+    public static final int MIN_INCOMING_MESSAGE_LENGTH = 125;
 
     String[] subProtocols = null; // WebSocket subprotocol[s] in preferred order
     int handshakeSoTimeout = 2000; // millis, TLS and WebSocket open/close handshake timeout
     int connectionSoTimeout = 4000; // millis, data exchange timeout
     boolean pingEnabled = true; // if false, connection terminate by connectionSoTimeout
-    int payloadBufferLength = 32768; // bytes. Outgoing payload length, incoming buffer length. 
+    int payloadBufferLength = 32768; // bytes. Outgoing payload length. 
     int backlog = -1; // maximum number of pending connections on the server socket (system default)
-    long maxMessageLength = 1048576L; // 1 MiB
+    int maxMessageLength = 1048576; // 1 MiB
     SSLParameters sslParameters = null;  // TLS parameters
+    int maxMessages = 3; // 
 
+    /**
+     * Creates connection parameters.
+     */
     public WsParameters() {
         try {
             SSLContext sslContext = SSLContext.getDefault();
@@ -65,6 +72,11 @@ public class WsParameters {
         return (array == null ? null : Arrays.copyOf(array, array.length));
     }
 
+    /**
+     * Sets supported (server) or requested (client) subprotocols.
+     * @param subps array of subprotocls or null.
+     * @return this
+     */
     public WsParameters setSubProtocols(String[] subps) {
         if (subps == null || subps.length == 0) {
             subps = null;
@@ -77,67 +89,155 @@ public class WsParameters {
         return this;
     }
 
+    /**
+     * Returns supported (server) or requested (client) subprotocols.
+     * @return array of subprotocols or null (default).
+     */
     public String[] getSubProtocols() {
         return subProtocols;
     }
 
+    /**
+     * Sets open/close WebSocket handshake timeout.
+     * @param millis handshake timeout in milliseconds.
+     * @return this
+     */
     public WsParameters setHandshakeSoTimeout(int millis) {
         handshakeSoTimeout = millis;
         return this;
     }
 
+    /**
+     * Returns open/close WebSocket handshake timeout.
+     * @return timeout in milliseconds. Default: {@value handshakeSoTimeout}
+     */
     public int getHandshakeSoTimeout() {
         return handshakeSoTimeout;
     }
 
+    /**
+     * Sets connection Socket timeout and ping enabled.
+     * @param millis socket timeout in milliseconds.
+     * @param ping true, if ping enabled.
+     * @return this
+     */
     public WsParameters setConnectionSoTimeout(int millis, boolean ping) {
         connectionSoTimeout = millis;
         this.pingEnabled = ping;
         return this;
     }
 
+    /**
+     * Returns connection Socket timeout.
+     * @return timeout in milliseconds. Default: {@value connectionSoTimeout}.
+     */
     public int getConnectionSoTimeout() {
         return connectionSoTimeout;
     }
 
+    /**
+     * Returns ping enabled.
+     * @return true if so. Default: enabled.
+     */
     public boolean isPingEnabled() {
         return pingEnabled;
     }
 
+    /**
+     * Sets the maximum payload length of the outgoing message frames.
+     * <br>The minimum length is 125 bytes.
+     * @param len payload length in bytes.
+     * @return this
+     */
     public WsParameters setPayloadBufferLength(int len) {
         payloadBufferLength = Math.max(len, MIN_PAYLOAD_BUFFER_LENGTH);
         return this;
     }
 
+    /**
+     * Returns maximum payload length of the outgoing message frames.
+     * @return payload length in bytes. Default: 32 KiB.
+     */
     public int getPayloadBufferLength() {
         return payloadBufferLength;
     }
 
-// maximum number of pending connections on the server socket
-// default value -1: system depended 
+
+    /**
+     * Sets maximum number of pending connections on the server socket.
+     * @param num of pending connections.
+     * @return this
+     */
     public WsParameters setBacklog(int num) {
         backlog = num;
         return this;
     }
 
+    /**
+     * Returns maximum number of pending connections on the server socket.
+     * @return number of pending connections. Default: -1 (system depended).
+     */
     public int getBacklog() {
         return backlog;
     }
 
+    /**
+     * Sets incoming WebSocket message max length.
+     * <br>If exceeded, the connection will be terminated with the 1009 (MESSAGE_TOO_BIG) status code
+     * @param len max length or -1  for "endless" messages.
+     * @return this
+     */
     public WsParameters setMaxMessageLength(int len) {
-        maxMessageLength = Math.max(len, MIN_MESSAGE_LENGTH);
+        maxMessageLength = len < 0 ? -1 :
+             Math.max(len, MIN_INCOMING_MESSAGE_LENGTH);
         return this;
     }
 
+    /**
+     * Returns incoming WebSocket message max length.
+     * @return max message length in bytes. Default: 1 MiB.
+     */
     public int getMaxMessageLength() {
-        return (int) maxMessageLength;
+        return maxMessageLength;
     }
-
+    
+    /**
+     * Sets the maximum number of pending
+     * incoming messages for each current connection.
+     * @param maxMsgs maximum number of messages (min value is 1)
+     * @return this
+     */
+    public WsParameters setMaxMessages(int maxMsgs) {
+        maxMessages = Math.max(1, maxMsgs);
+        return this;
+    }
+    
+    /**
+     * Returns the maximum number of pending
+     * incoming messages for each current connection.
+     * Default: 3
+     * @return number of pending messages.
+     */
+    public int getMaxMessages() {
+        return maxMessages;
+    }
+    
+    /**
+     * Sets TLS connection parameters.
+     * <br>SSLParameters used by server:<br>
+     * Protocols, CipherSuites, NeedClientAut, WantClientAuth.
+     * @param sslParms SSL connection parameters.
+     * @return this
+     */
     public WsParameters setSSLParameters(SSLParameters sslParms) {
         sslParameters = sslParms;
         return this;
     }
 
+    /**
+     * Returns TLS connection parameters.
+     * @return SSL parameters. Defaults: from the SSLContext.
+     */
     public SSLParameters getSSLParameters() {
         return sslParameters;
     }

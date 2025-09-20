@@ -1,5 +1,5 @@
 /*
- * Secure WebSocket client test. (c) websocketstest.com
+ * WebSocket client test. (c) websocketstest.com
  * Adapted by miktim@mail.ru, march 2021
  */
 
@@ -17,7 +17,7 @@ public class WssClientTest {
 
     static final int MAX_MESSAGE_LENGTH = 10000; //
     static final int TEST_SHUTDOWN_TIMEOUT = 10000; //milliseconds 
-    static final String REMOTE_URI = "wss://websocketstest.com:443/service";//
+    static final String REMOTE_URI = "wss://websocketstest.com/service";//
 
     static String fragmentTest = randomString(512);
     static int counter = 0;
