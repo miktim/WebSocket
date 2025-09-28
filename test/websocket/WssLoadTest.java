@@ -3,12 +3,12 @@
  */
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.miktim.websocket.WsConnection;
 import org.miktim.websocket.WebSocket;
+import org.miktim.websocket.WsMessage;
 import org.miktim.websocket.WsServer;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsStatus;
@@ -48,14 +48,8 @@ public class WssLoadTest {
                 ws_log(makeLogPrefix(con) + " onOPEN: " + makePath(con)
                         + " Peer: " + con.getPeerHost()
                         + " SecureProtocol: " + con.getSSLSessionProtocol());
-                try {
                     con.send(con.isClientSide()
                             ? "Привет, Сервер! " : "Hello, Client! ");
-                } catch (IOException e) {
-                    ws_log(makeLogPrefix(con) + " onOPEN: " + makePath(con)
-                            + " send error: " + e + " " + con.getStatus());
-//                    e.printStackTrace();
-                }
             }
 
             @Override
@@ -63,23 +57,23 @@ public class WssLoadTest {
                 ws_log(makeLogPrefix(con) + " onCLOSE: " + makePath(con)
                         + " " + con.getStatus());
             }
-
+/*
             @Override
             public void onError(WsConnection con, Throwable e) {
                     ws_log(makeLogPrefix(con) + " onERROR: "
                             + makePath(con) + " " + e + " " + con.getStatus());
 //                e.printStackTrace();
             }
-
+*/
             @Override
-            public void onMessage(WsConnection con, InputStream is, boolean isText) {
+            public void onMessage(WsConnection con, WsMessage is) {
                 byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
                 int messageLen;
                 try {
                     messageLen = is.read(messageBuffer, 0, messageBuffer.length);
                     if (is.read() != -1) {
                         con.close(WsStatus.MESSAGE_TOO_BIG, "Message too big");
-                    } else if (isText) {
+                    } else if (is.isText()) {
                         onMessage(con, new String(messageBuffer, 0, messageLen, "UTF-8"));
                     } else {
                         onMessage(con, Arrays.copyOfRange(messageBuffer, 0, messageLen));
@@ -111,12 +105,7 @@ public class WssLoadTest {
             }
 
             public void onMessage(WsConnection con, byte[] b) {
-                try {
                     con.send(b); //echo binary data
-                } catch (IOException e) {
-                    ws_log(makeLogPrefix(con) + " onBINARY: send error: "
-                            + e + " " + con.getStatus());
-                }
             }
         };
 
@@ -133,7 +122,7 @@ public class WssLoadTest {
         swsp.setConnectionSoTimeout(1000, true); // ping
         swsp.setSubProtocols("1,2,3,4,5".split(","));
         final WsServer wsServer = 
-                webSocket.SecureServer(port, handler, swsp).launch();
+                webSocket.startSecureServer(port, handler, swsp);
 
         final Timer timer = new Timer();
         timer.schedule(new TimerTask() {

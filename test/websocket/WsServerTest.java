@@ -1,5 +1,5 @@
 /*
- * WebSocket WsServer test. MIT (c) 2020-2023 miktim@mail.ru
+ * WebSocket WsServer test. MIT (c) 2020-2025 miktim@mail.ru
  * Created: 2020-03-09
  */
 
@@ -7,11 +7,11 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetAddress;
 import org.miktim.websocket.WsConnection;
 import org.miktim.websocket.WsServer;
 import org.miktim.websocket.WebSocket;
+import org.miktim.websocket.WsMessage;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsStatus;
 
@@ -89,14 +89,6 @@ public class WsServerTest implements WsConnection.Handler{
                 (con.getQuery() == null ? "" : "?" + con.getQuery()) //                + " Peer: " + con.getPeerHost()
                 ,
                  " Subprotocol:" + subp));
-        try {
-            con.send(hello);
-        } catch (IOException e) {
-            ws_log(String.format("[%s] server side onOPEN send error: %s",
-                    testId,
-                    e));
-//            e.printStackTrace();
-        }
     }
 
     @Override
@@ -107,7 +99,7 @@ public class WsServerTest implements WsConnection.Handler{
                 con.getPath(),
                 status));
     }
-
+/*
     @Override
     public void onError(WsConnection con, Throwable e) {
         String testId = getTestId(con);
@@ -116,9 +108,9 @@ public class WsServerTest implements WsConnection.Handler{
                 e));
 //                e.printStackTrace();
     }
-
+*/
     @Override
-    public void onMessage(WsConnection con, InputStream is, boolean isText) {
+    public void onMessage(WsConnection con, WsMessage is) {
         String testId = getTestId(con);
         int messageLen;
         byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
@@ -127,7 +119,7 @@ public class WsServerTest implements WsConnection.Handler{
             messageLen = is.read(messageBuffer, 0, messageBuffer.length);
             if (is.read() != -1) {
                 throw new IOException("Message too big");
-            } else if (isText) {
+            } else if (is.isText()) {
                 message = new String(messageBuffer, 0, messageLen, "UTF-8");
                 if (testId.equals("1")) { // wait browser closure
 //                    ws_log(server + " onTEXT: ");

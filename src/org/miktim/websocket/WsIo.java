@@ -94,6 +94,7 @@ class WsIo {
 
     static ByteArrayOutputStream toByteOutStream(InputStream is, int buflen) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        bos.write(new byte[0]);
         byte[] buffer = new byte[buflen];
         int length;
             while ((length = is.read(buffer)) != -1) {

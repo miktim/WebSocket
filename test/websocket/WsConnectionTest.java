@@ -3,13 +3,12 @@
  * Ws and wss WebSocket handshake tests.
  */
 
-import java.io.File;
-import java.io.InputStream;
 import static java.lang.String.format;
 import static java.lang.Thread.sleep;
 import java.security.NoSuchAlgorithmException;
 import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsConnection;
+import org.miktim.websocket.WsMessage;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsServer;
 import org.miktim.websocket.WsStatus;
@@ -56,13 +55,13 @@ public class WsConnectionTest {
             }
 
             @Override
-            public void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text) {
+            public void onMessage(WsConnection conn, WsMessage is) {
             }
-
+/*
             @Override
             public void onError(WsConnection conn, Throwable e) {
             }
-
+*/
             @Override
             public void onClose(WsConnection conn, WsStatus status) {
             }
@@ -110,7 +109,7 @@ public class WsConnectionTest {
             closeAll("1", webSocket);
 
             log("\r\n2. Key file is set. Start SecureServer");
-            webSocket.setKeyFile(new File("./localhost.jks"), "password");
+            webSocket.setKeyFile("./localhost.jks", "password");
             server = webSocket.startSecureServer(securePort, handler, wsp);
             delay();
             logTest("2","SecureServer", webSocket.listServers().length == 1);
@@ -128,19 +127,19 @@ public class WsConnectionTest {
             server.stopServer();
             closeAll("2", webSocket);
 
-            log("\r\n3. Start plaintext Server");
+            log("\r\n3. Start insecure Server");
             server = webSocket.startServer(port, handler, wsp);
             delay();
             logTest("3", "Server", webSocket.listServers().length == 1);
             conn = webSocket.connect("wss://localhost:" + port, handler, wsp);
             delay();
-            logTest("3.1","wss to plaintext Server " + conn.getStatus().code,
+            logTest("3.1","wss to insecure Server " + conn.getStatus().code,
                     conn.getStatus().code == WsStatus.PROTOCOL_ERROR);
             conn.close();
             delay();
             conn = webSocket.connect("ws://localhost:" + port, handler, wsp);
             delay();
-            logTest("3.2","ws to plaintext Server " + conn.getStatus().code,
+            logTest("3.2","ws to insecure Server " + conn.getStatus().code,
                     conn.getStatus().code == WsStatus.IS_OPEN);
             conn.close();
             delay();
@@ -149,6 +148,7 @@ public class WsConnectionTest {
         } catch (Exception ex) {
             ex.printStackTrace();
         }
+        log("\r\nCompleted");
 //        webSocket.closeAll();
     }
 }

@@ -8,7 +8,6 @@
 package org.miktim.websocket;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -16,18 +15,16 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * WebSocket server for cleartext or TLS connections.
- * 
- * - If the server is stopped normally, all associated connections are
- * closed with status code 1001 (GOING_AWAY) and it is
- * removed from the list of servers.<br>
- * - If the server is interrupted or abended, it remains in the server list. Server side
- * connections stay alive and can be closed by usual way.<br>
+ * WebSocket server for insecure or TLS connections.
+ *
+ * <p>
+ * If the server is stopped normally or crashed, all associated connections are
+ * closed with status code 1001 (GOING_AWAY) or 1011 (INTERNAL_ERROR) and it is
+ * removed from the list of servers.</p>
  */
-
 public class WsServer extends Thread {
 
-    private final WsStatus status = new WsStatus();
+    private WsStatus status = new WsStatus();
 
     private final boolean isSecure;
     private final WsParameters wsp;
@@ -38,18 +35,13 @@ public class WsServer extends Thread {
             = Collections.synchronizedList(new ArrayList<WsConnection>());
 
 // default handler    
-    private Handler serverHandler = new Handler() {
+    private ServerHandler serverHandler = new ServerHandler() {
         @Override
-        public void onStart(WsServer server) {
+        public void onStart(WsServer server, WsParameters wsp) {
         }
 
         @Override
-        public boolean onAccept(WsServer server, WsConnection conn) {
-            return true;
-        }
-
-        @Override
-        public void onStop(WsServer server, Exception error) {
+        public void onStop(WsServer server, WsStatus status) {
         }
     };
 
@@ -61,23 +53,31 @@ public class WsServer extends Thread {
     }
 
     /**
+     * Waiting for the server to be ready to accept connections.
+     *
+     * @return this server
+     * @since 5.0
+     */
+    public WsServer ready() {
+        synchronized (this) {
+            while (status.code == WsStatus.IS_INACTIVE) {
+                try {
+                    this.wait(500); // exception
+                } catch (InterruptedException ex) {
+                    return null;
+                }
+            }
+        }
+        return this;
+    }
+
+    /**
      * Checks the server for TLS connections.
      *
      * @return true if is it.
      */
     public boolean isSecure() {
         return isSecure;
-    }
-
-    /**
-     * Checks if the server is open.
-     *
-     * @return true if is it.
-     * @deprecated use isActive method instead
-     */
-    @Deprecated
-    public boolean isOpen() {
-        return status.code == WsStatus.IS_OPEN; // isAlive()?
     }
 
     /**
@@ -91,23 +91,17 @@ public class WsServer extends Thread {
     }
 
     /**
-     * Returns server error if any.
+     * Returns server status.
      *
-     * @return null or exception.
+     * @return server status.
+     * @since 5.0
      */
-    public Throwable getError() {
-        return status.error;
+    public WsStatus getStatus() {
+        return status.deepClone();
     }
 
-    /* TODO: 4.3.0
-    public WsStatus getStatus() {
-        synchronized(status) {
-            return status.deepClone();
-        }
-    }
-     */
     /**
-     * Returns listening port.
+     * Returns listening port number.
      *
      * @return listening port number.
      */
@@ -116,18 +110,7 @@ public class WsServer extends Thread {
     }
 
     /**
-     * Returns the listening interface address.
-     *
-     * @return interface address.
-     * @deprecated accessed via ServerSocket methods
-     */
-    @Deprecated
-    public InetAddress getBindAddress() {
-        return serverSocket.getInetAddress();
-    }
-
-    /**
-     * Returns the server side connection parameters.
+     * Returns the server-side connection parameters.
      *
      * @return clone of the connection parameters.
      */
@@ -136,83 +119,25 @@ public class WsServer extends Thread {
     }
 
     /**
-     * Returns ServerSocket.
+     * Returns the ServerSocket of this server.
      *
-     * @return ServerSocket.
+     * @return the ServerSocket object.
      */
     public ServerSocket getServerSocket() {
         return serverSocket;
     }
 
     /**
-     * Returns active server connection socket
-     * @param conn server side active connection
-     * @return Socket object or null
-     * @since 4.3
-     */
-    public Socket getConnectionSocket(WsConnection conn) {
-        if (connections.contains(conn)) {
-            return conn.socket;
-        }
-        return null;
-    }
-
-    /**
-     * Start server.
+     * Lists serve-side connections.
      *
-     * @return this.
-     */
-    @Deprecated
-    public WsServer launch() {
-        this.start();
-        return this;
-    }
-
-    /**
-     * Lists server side connections.
-     *
-     * @return array of connections.
+     * @return array of server-side connections.
      */
     public WsConnection[] listConnections() {
         return connections.toArray(new WsConnection[0]);
     }
 
     /**
-     * Close server with associated connections.
-     * <p>
-     * Stops listening. Connections are closed with the GOING_AWAY status code.
-     * The server is removed from the list of active WebSocket servers. Calls
-     * the onStop method of the handler.
-     * </p>
-     *
-     * @see WsStatus
-     * @deprecated use stopServer methods instead
-     */
-    @Deprecated
-    public void close() {
-        stopServer("Server shutdown");
-    }
-
-    /**
-     * Close server with associated connections.
-     * <p>
-     * Stops listening. Connections are closed with the GOING_AWAY status code.
-     * The server is removed from the list of active WebSocket servers. Calls
-     * the onStop method of the handler.
-     * </p>
-     *
-     * @param closeReason connections close reason. Reason max length is 123
-     * BYTES.
-     * @see WsStatus
-     * @deprecated use stopServer methods instead
-     */
-    @Deprecated
-    public void close(String closeReason) {
-        stopServer(WsStatus.GOING_AWAY, closeReason);
-    }
-
-    /**
-     * Stops the server and closes the associated connections.
+     * Stops the server and closes all server-side connections.
      * <p>
      * Stops listening. Connections are closed with the 1001 (GOING_AWAY) status
      * code. The server is removed from the list of active WebSocket servers.
@@ -250,44 +175,29 @@ public class WsServer extends Thread {
             for (WsConnection connection : listConnections()) {
                 connection.close(code, reason);
             }
+// remove server from WebSocket server list
+            servers.remove(this);
             status.wasClean = true;
-            servers.remove(this); // remove from the list of WebSocket servers
         }
-    }
-
-    /**
-     * Set custom server handler.
-     *
-     * @param handler custom server handler.
-     * @return this
-     * @throws IllegalStateException if the server is active or stopped.
-     */
-    @Deprecated
-    public WsServer setHandler(WsServer.Handler handler) {
-//        if (status != IS_OPEN) {
-//            throw new IllegalStateException();
-//        }
-        this.serverHandler = handler;
-        return this;
     }
 
     void closeServerSocket() {
         try {
             serverSocket.close();
-        } catch (IOException e) {
-//            e.printStackTrace();
+        } catch (IOException ignore) {
         }
     }
 
     /**
      * Interrupts the server, keeping server connections open.
      * <p>
-     * Stops listening. 
-     * The server remains in the list of servers.
-     * Server's connections stay alive. 
+     * Stops listening. The server remains in the list of servers. Server's
+     * connections stay alive and can be closed by usual way.
      * </p>
-     * @deprecated
+     *
+     * @deprecated 4.3
      */
+    @Deprecated
     @Override
     public void interrupt() {
         if (isAlive()) {
@@ -300,7 +210,7 @@ public class WsServer extends Thread {
      * Checks if the server is interrupted.
      *
      * @return true if is it.
-     * @deprecated
+     * @deprecated 4.3
      */
     @Deprecated
     @Override
@@ -308,56 +218,60 @@ public class WsServer extends Thread {
         return status.code == WsStatus.GOING_AWAY && !status.wasClean;
     }
 
-    /**
-     * Starts the server thread.
-     * <br>The server adds to the active servers list.<br>
-     */
     @Override
     public void start() {
         servers.add(this); // add to the list of WebSocket servers
         status.code = WsStatus.IS_OPEN;
         status.wasClean = false;
         status.remotely = false;
-        if (connectionHandler instanceof Handler) {
-            serverHandler = (Handler) connectionHandler;
+        if (connectionHandler instanceof ServerHandler) {
+            serverHandler = (ServerHandler) connectionHandler;
         }
         super.start();
     }
 
     @Override
     public void run() {
-        WsConnection conn = null;
+        setName("WsServer" + getName());
         try {
-            serverHandler.onStart(this);
+            synchronized (this) {
+                serverHandler.onStart(this, wsp);
+                this.notifyAll();
+            }
             while (true) {//(isOpen() ){
 // serverSocket SO_TIMEOUT = 0 by WebSocket creator
                 Socket socket = serverSocket.accept();
+                if (wsp.backlog > -1 && connections.size() >= wsp.backlog) {
+                    try {
+                        (new HttpHead())
+                                .setStartLine("HTTP/1.1 429 Too Many Requests")
+//                            .set("Retry-After", "10")
+                                .write(socket.getOutputStream());
+                        socket.close();
+                    } catch (IOException ignore) {
+                    }
+                    continue;
+                }
                 socket.setSoTimeout(wsp.handshakeSoTimeout);
-                conn = new WsConnection(socket, connectionHandler, wsp, isSecure);
+                WsConnection conn
+                        = new WsConnection(socket, connectionHandler, wsp, isSecure);
 // set a link to the server's connection list
                 conn.connections = this.connections;
-                if (serverHandler.onAccept(this, conn)) {
-                    conn.start();
-                } else {
-                    conn.closeSocket();
-                }
-                conn = null; //the connection was serviced
+                conn.start(); // start connection Thread
             }
         } catch (Exception e) {
             if (status.code == WsStatus.IS_OPEN) {
                 status.error = e;
                 stopServer(WsStatus.INTERNAL_ERROR, "Abnormal shutdown");
-                if (conn != null) {
-                    conn.closeSocket();
-                }
             }
         }
 
+        closeServerSocket();
         try {
-            serverHandler.onStop(this, (Exception) status.error);
-        } catch (Exception e) {
+            serverHandler.onStop(this, status);
+        } catch (Exception ex) {
             if (status.error == null) {
-                status.error = e;
+                status.error = ex;
             }
         }
         if (status.error != null) {
@@ -367,45 +281,34 @@ public class WsServer extends Thread {
     }
 
     /**
-     * WebSocket server events handler.
+     * WebSocket server event handler.
      */
-    public interface Handler {
+    interface ServerHandler {
 
         /**
-         * Called when the server is started.
+         * Called when the server is ready to accept connections.
          *
          * @param server WebSocket server.
+         * @param wsp server-side connection parameters.
+         * @since 5.0
          */
-        void onStart(WsServer server);
+        public void onStart(WsServer server, WsParameters wsp);
 
         /**
-         * Called when the connection is accepted.
-         * <p>
-         * It is called BEFORE WebSocket handshake.<br>
-         * Leave method as soon as possible.
-         * </p>
+         * Called when the server stops after the ServerSocket is closed.
          *
          * @param server WebSocket server.
-         * @param conn newly created server side connection.
-         * @return true to approve connection, false to close connection.
-         * @deprecated
+         * @param status clone of the server status.
+         * @see WsStatus
+         * @since 5.0
          */
-        @Deprecated
-        boolean onAccept(WsServer server, WsConnection conn);
-
-        /**
-         * Called when the server is stopped.
-         *
-         * @param server WebSocket server.
-         * @param error null or occurred exception.
-         */
-        void onStop(WsServer server, Exception error);
+        public void onStop(WsServer server, WsStatus status);
     }
 
     /**
-     * @deprecated Use WsServer.Handler interface instead.
+     * WebSocket server events handler. Extends connection handler.
      */
-    @Deprecated
-    public interface EventHandler extends Handler {
-    }
+    public interface Handler extends WsConnection.Handler, ServerHandler {
+    };
+
 }

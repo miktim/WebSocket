@@ -1,15 +1,15 @@
 /*
  * WebSocket client test. (c) websocketstest.com
- * Adapted by miktim@mail.ru, march 2021
+ * Adapted by miktim@mail.ru, march 2021-2025
  */
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.miktim.websocket.WsConnection;
 import org.miktim.websocket.WebSocket;
+import org.miktim.websocket.WsMessage;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsStatus;
 
@@ -59,15 +59,15 @@ public class WssClientTest {
             public void onClose(WsConnection con, WsStatus status) {
                 ws_log("Connection closed. " + status);
             }
-
+/*
             @Override
             public void onError(WsConnection con, Throwable e) {
                 ws_log("Error: " + e.toString() + " " + con.getStatus());
 //                e.printStackTrace();
             }
-
+*/
             @Override
-            public void onMessage(WsConnection con, InputStream is, boolean isText) {
+            public void onMessage(WsConnection con, WsMessage is) {
                 byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
                 int messageLen = 0;
 
@@ -75,7 +75,7 @@ public class WssClientTest {
                     messageLen = is.read(messageBuffer, 0, messageBuffer.length);
                     if (is.read() != -1) {
                         con.close(WsStatus.MESSAGE_TOO_BIG, "Message too big");
-                    } else if (isText) {
+                    } else if (is.isText()) {
                         onMessage(con, new String(messageBuffer, 0, messageLen, "UTF-8"));
                     } else {
                         onMessage(con, Arrays.copyOfRange(messageBuffer, 0, messageLen));

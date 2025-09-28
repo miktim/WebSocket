@@ -1,14 +1,14 @@
 /*
- * WsStatus. WebSocket connection status, MIT (c) 2020-2023 miktim@mail.ru
+ * WsStatus. WebSocket connection/server status, MIT (c) 2020-2023 miktim@mail.ru
  *
  * Created: 2021-02-08
  */
 package org.miktim.websocket;
 
 /**
- * WebSocket connection status.
+ * WebSocket status.
  * <p>
- * Descriptions of predefined WebSocket closing codes:<br>
+ * Descriptions of predefined WebSocket close codes:<br>
  * <a href="https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code" target="_blank ">
  * - MDN CloseEvent codes.</a><br>
  * <a href="https://tools.ietf.org/html/rfc6455#section-7.4" target="_blank ">
@@ -20,12 +20,12 @@ package org.miktim.websocket;
 public final class WsStatus {
 
         /**
-         * WebSocket connection yet not open.
+         * WebSocket connection yet not open or server not active.
          */
         public static final int IS_INACTIVE = -1; // connection in progress
 
         /**
-         * WebSocket connection is open.
+         * WebSocket connection is open or server is active.
          */
         public static final int IS_OPEN = 0;
         public static final int NORMAL_CLOSURE = 1000; //
@@ -83,8 +83,6 @@ public final class WsStatus {
 
     /**
      * Returns a textual representation of the WebSocket status.
-     *
-     * @return WebSocket status as String.
      */
     @Override
     public String toString() {

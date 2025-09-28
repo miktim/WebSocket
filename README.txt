@@ -15,25 +15,31 @@ package org.miktim.websocket
 
 Overview:
 
-  Class WebSocket - the creator of WebSocket servers or client connections;  
+  Class WebSocket - the creator of WebSocket servers and client-side connections;  
   Class WsServer - implements a WebSocket server for insecure or TLS connections;  
   Interface WsServer.Handler - a server event handler;  
   Class WsConnection - implements a WebSocket connection on the server or client side;  
-  Interface WsConnection.Handler - a connection event handler;  
+  Interface WsConnection.Handler - a connection event handler; 
+  Class WsInputStream - stream representation of the incoming message; 
   Class WsParameters - WebSocket connection creation and execution time parameters;  
   Class WsStatus - WebSocket connection status.
 
+  Class WsException extends RuntimeException
+    Unchecked exception "hides" real checked cause
+
+
   Class WebSocket:  
-    Creator of WebSocket servers or client connections.
+    The creator of WebSocket servers and client-side connections.
 
     Constant:
-      static final String VERSION = "4.3.0";
+      static final String VERSION = "5.0.0";
 
     Constructors:
       WebSocket();
         - creates WebSocket instance
-      WebSocket(InetAddress intfAddr) throws SocketException;
-        - creates WebSocket instance on interface
+      WebSocket(InetAddress intfAddr);
+        - creates WebSocket instance on interface;
+        - hidden: SocketException
 
     Methods:
       static URI idnURI(String uri) throws URISyntaxException;
@@ -53,42 +59,41 @@ Overview:
         - returns WebSocket instance interface address or null
 
       WsServer startServer(int port, WsConnection.Handler handler, WsParameters wsp)
-            throws IOException, GeneralSecurityException;
         - creates and starts insecure connections server.
         - port: is listening port number
-          handler: is server side connection handler
-          wsp: the connections creation and execution parameters
+          handler: is server-side connection handler
+          wsp: the server-side connections creation and execution parameters
+        - hidden Exceptions: IOException, GeneralSecurityException
 
       WsServer startServer(int port, WsConnection.Handler handler)
-            throws IOException, GeneralSecurityException;
         - creates and starts insecure connections server;
-        - parameters see above.
+        - see above.
  
       WsServer startSecureServer(int port, WsConnection.Handler handler, WsParameters wsp) 
-            throws IOException, GeneralSecurityException;
         - creates and starts TLS connections server;
-        - parameters see above.
+        - see above.
         
       WsServer startSecureServer(int port, WsConnection.Handler handler) 
-            throws IOException, GeneralSecurityException;
-        - creates and starts TLS connections server;
-        - parameters see above.
+        - creates and starts TLS connections server with default connection parameters;
+        - see above.
 
     NOTE:
-      if you need to handle server events, extend the connection handler
-      with a server handler. For example:
-        interface MyHandler extends WsConnection.Handler, WsServer.Handler {}; 
+      if you need to handle server events, use WsServer.Handler wich extends
+      WsConnection.Handler.
  
       WsConnection connect(String uri, WsConnection.Handler handler, WsParameters wsp) 
-            throws URISyntaxException, IOException, GeneralSecurityException;
         - creates and starts a client connection;
-        - uri's scheme (ws: | wss:) and host are required,
-          :port (80 | 443), /path and ?query are optional,
-          user-info@ and #fragment - ignored
+        - uri like: scheme://[user-info@]host[:port][/path][?query][#fragment]
+            uri's scheme (ws: | wss:) and host are required,
+            :port (80 | 443), /path and ?query are optional,
+            user-info@ and #fragment - ignored
+        - handler - client-side connection events handler
+        - wsp - client-side connection parameters
+        - hidden Exceptions: URISyntaxException, IOException, GeneralSecurityException
 
       WsConnection connect(String uri, WsConnection.Handler handler) 
-            throws URISyntaxException, IOException, GeneralSecurityException;
-        - creates and starts a client connection;
+        - creates and starts a client connection with default parameters;
+        - see above.
 
       WsServer[] listServers();
         - lists active servers.
@@ -124,74 +129,36 @@ Overview:
         - returns the server side connection parameters
       WsConnection[] listConnections();
         - returns the list of active server side connections
-      Socket getConnectionSocket(WsConnection conn)
-        - returns the socket of active server connection or null
 
       void stopServer(); 
       void stopServer(String closeReason);
         - stop listening and close all active connections with 
           code 1001 (GOING_AWAY)
         
-  Interface WsServer.Handler:  
+  Interface WsServer.Handler extends WsConnection.Handler:  
     The default server handler does nothing.
     
-    Methods:
+    Extension methods:
       void onStart(WsServer server);
         - called when the server is started
 
-      void onStop(WsServer server, Exception error);
-        - called when the server is closed or crashed;
+      void onStop(WsServer server, Throwable error);
+        - called when the server is shut down or crashed;
         - error is a ServerSocketException, RuntimeException or null.
 
 
   Class WsConnection extends Thread:  
-    Client side or server side connection.
+    Client-side or server-side connection.
 
     Methods:
-      void send(InputStream is, boolean isUTF8Text) throws IOException; 
+      void send(InputStream is, boolean isText) throws IOException; 
         - the input stream is binary data or UTF-8 encoded text
       void send(String message) throws IOException;
-        - send text
+        - send text;
+        - hidden: IOException
       void send(byte[] message) throws IOException;
-        - send binary data
-      byte[] toByteArray(InputStream is);
-        - converts the input stream into an array of bytes
-        - returns an array of bytes or null, if something happens.
-      String toString(InputStream is);
-        - converts the UTF-8 encoded input stream into a String
-        - returns a String or null, if something happens.
-
-      boolean isClientSide();
-        - returns true for the client side connections
-      boolean isOpen();
-        - returns true if it is so
-      boolean isSecure();
-        - is TLS connection
-      WsConnection ready()
-        - waiting for the WebSocket handshake to complete
-
-      void setHandler(WsConnection.Handler newHandler);
-        - sets the secondary connection handler;
-        - calls onClose in the old handler (conn.isOpen() returns true),
-          then calls onOpen in the new handler.
-      boolean isPrimaryHandler();
-        - returns true if it is so
-      String getSSLSessionProtocol()
-        - returns SSL protocol or null for insecure connection
-      WsStatus getStatus();
-        - returns clone of the connection status
-      String getSubProtocol();
-        - returns null or handshaked WebSocket subprotocol
-      String getPeerHost();
-        - returns remote host name or null
-      int getPort();
-        - returns the connection port
-      String getPath();
-        - returns http request path or null
-      String getQuery();
-        - returns http request query or null
-      WsParameters getParameters();
-        - returns connection parameters
+        - send binary data;
+        - hidden: IOException
 
       void close();
         - closes connection with status code 1000 (NORMAL_CLOSURE)
@@ -205,11 +172,43 @@ Overview:
         - the method blocks outgoing messages (sending methods throw IOException);
         - isOpen() returns false;
         - incoming messages are available until the closing handshake completed.
+
+      void setHandler(WsConnection.Handler newHandler);
+        - sets the secondary connection handler;
+        - calls onClose in the old handler (conn.isOpen() returns true),
+          then calls onOpen in the new handler.
+      boolean isPrimaryHandler();
+        - returns true if it is so
+
+      boolean isClientSide();
+        - returns true for the client side connections
+      boolean isOpen();
+        - returns true if it is so
+      boolean isSecure();
+        - is TLS connection
+      WsConnection ready()
+        - waiting for the WebSocket handshake to complete
+
+      WsStatus getStatus();
+        - returns clone of the connection status
+      String getSubProtocol();
+        - returns null or handshaked WebSocket subprotocol
+      String getSSLSessionProtocol()
+        - returns SSL protocol or null for insecure connection
+      String getPeerHost();
+        - returns the name of the remote host, or null if it is unavailable.
+      int getPort();
+        - returns the listening or connection port
+      String getPath();
+        - returns http request path or null
+      String getQuery();
+        - returns http request query or null
+      WsParameters getParameters();
+        - returns connection parameters
         
 
-  Interface WsConnection.Handler:  
-
-    There are two scenarios for handling events:  
+  Interface WsConnection.Handler  
+    There are several scenarios for event handling:  
       - onError - onClose, when the SSL/WebSocket handshake failed;  
       - onOpen - [onMessage - onMessage - ...] - [onError] - onClose.  
     A runtime error in the handler terminates the connection with status
@@ -222,8 +221,9 @@ Overview:
           or null if the client did not requests it or if the server
           does not agree to any of the client's requested sub protocols
     
-      void onMessage(WsConnection conn, InputStream is, boolean isText);
-        - the message is an InputStream of binary data or UTF-8 encoded text;
+      void onMessage(WsConnection conn, WsInputStream wis);
+        - the WebSocket message is an InputStream of binary data
+          or UTF-8 encoded text (see WsInputStream.isText() method);
         - the available() method returns the total number of bytes in the stream.
 
       void onError(WsConnection conn, Throwable e);
@@ -233,8 +233,20 @@ Overview:
       void onClose(WsConnection conn, WsStatus closeStatus);
         - called when connection closing handshake completed
           or closing time is over (WsParameters HandshakeSoTimeout)
-      
 
+
+  Class WsInputStream extends InputStream;
+    Extension methods:
+      boolean isText();
+        - returns true if input stream is UTF-8 encoded text
+      String toString();
+        - converts text stream to String;
+        - hidden Exceptions: IOException, IllegalStateException
+      byte[] toByteArray();
+        - converts stream to byte array;
+        - hidden Exceptions: IOException
+
+  
   Class WsParameters:  
     WebSocket connection creation and execution time parameters  
     
@@ -276,7 +288,7 @@ Overview:
         - default: 1 MiB
 
       WsParameters setMaxMessages(int maxMsgs);
-        - sets the maximum number of pending incoming messages for 
+        - sets the maximum number of pending incoming messages per 
           connection (min value: 1);
         - overflow of this value leads to an error and
           connection closure with status code 1008 (POLICY_VIOLATION)

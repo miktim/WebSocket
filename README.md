@@ -7,18 +7,19 @@
   [https://github.com/miktim/WebSocket-Android-Test](https://github.com/miktim/WebSocket-Android-Test) ).  
 \- WebSocket extensions ( Per-Message Deflate, ... ) are not supported;  
 \- supported WebSocket version: 13;  
-\- supports cleartext/TLS connections;  
+\- supports insecure or TLS connections;  
 \- client supports Internationalized Domain Names (IDNs);  
 \- stream-based messaging.    
 
-The [/dist/websocket-...](./dist) jar file was built with debug info using JDK 1.8 for the target JRE 1.6.  
-
-Overview of the package in the file [./README.txt](./README.txt)  
+The latest standalone jar and JavaDoc [here](./dist).  
+The package was built with debug info using openJDK 1.8 for the target JRE 1.6.  
 
 #### Example1: local echo server for TLS connections:  
 
 ```  
 public class Example1 {
+
+  int port = 8443; // listening port
 
   static void log(Object obj) {
     System.out.println(obj);
@@ -26,49 +27,41 @@ public class Example1 {
   
   public static void main(String[] args) {
   
+// define server-side connections handler  
     WsConnection.Handler handler = new WsConnection.Handler() {
       int getSession() {
-       return Thread.currentThread().hashCode();
+        return Thread.currentThread().hashCode();
       }
 
       @Override
       public void onOpen(WsConnection conn, String subProtocol) {
-        try {
-          String msg = "Session open: " + getSession();
-          log(msg);
-          conn.send(msg);
-        } catch (IOException ex) {
-          log("Send error: " + getSession() + ex);
-        }
+        String msg = "Session open: " + getSession();
+        log(msg);
+        conn.send(msg);
       }
 
       @Override
-      public void onMessage(WsConnection conn, InputStream is, boolean isText) {
+      public void onMessage(WsConnection conn, WsMessage msg) {
         try {
-          conn.send(is, isText); // echo message
+// echoing the WebSocket message as an UTF-8 encoded InputStream        
+          conn.send(msg, msg.isText(); 
         } catch (IOException ex) {
-          log(String.format(
-            "Send error: %d %s", getSession(), ex.toString()));
+// WebSocket message reading errors lead to connection closure.
+// No action.
         }
-      }
-
-      @Override
-      public void onError(WsConnection conn, Throwable ex) {
-        log(String.format(
-          "Handler error: %d %s", getSession(), ex.toString() ));
       }
 
       @Override
       public void onClose(WsConnection conn, WsStatus status) {
         log(String.format(
-          "Session closed: %d (%d)", getSession(), status.code));
+          "Session %d closed with status code (%d)",
+             getSession(), status.code));
       }
     };
     
     WebSocket webSocket = new WebSocket();
-// register your key store file       
-    WebSocket.setKeyStore("keystore.jks", "passphrase");
-    int port = 8443;
+// register your key store file      
+    WebSocket.setKeyStore("./keystore.jks", "passphrase");
     try {
       WsServer echoServer = webSocket.startSecureServer(port, handler);
       log("Echo Server listening port: " + port);
@@ -93,32 +86,20 @@ public class Example2 {
 
   public static void main(String[] args) {
 
+// define client connection event handler
     WsConnection.Handler handler = new WsConnection.Handler() {
 
       @Override
       public void onOpen(WsConnection conn, String subProtocol) {
         log(conn.getSSLSessionProtocol());
-          try {
-            conn.send("Hi, Server!");
-            conn.close("Bye, Server!");
-          } catch (IOException ex) {
-            log(ex);
-          }
+        conn.send("Hi, Server!");
+        conn.close("Bye, Server!");
       }
 
       @Override
-      public void onMessage(WsConnection conn, InputStream is, boolean isText) {
-        try {
-          log(conn.toString(is);
-        } catch (IOException ex) {
-          log(ex);
-          conn.close(WsStatus.UNSUPPORTED_DATA, ex.toString());
-        }
-      }
-
-      @Override
-      public void onError(WsConnection conn, Throwable ex) {
-        log(ex);
+      public void onMessage(WsConnection conn, WsMessage msg) {
+        if(msg.isText()) 
+          log(msg.toString());
       }
 
       @Override

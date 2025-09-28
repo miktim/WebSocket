@@ -21,7 +21,7 @@ class WsListener extends Thread {
     private long messageLength;
     private boolean pingFrameSent = false;
     private boolean maskedPayload;
-    private WsInputStream wsInputStream = null;
+    private WsMessage wsInputStream = null;
 //    private ArrayDeque<byte[]> messagePayloads = null;
 
     WsListener(WsConnection conn) {
@@ -44,6 +44,7 @@ class WsListener extends Thread {
 
     @Override
     public void run() {
+        setName("WsListener" + getName());
         conn.status.wasClean = false;
         while (!conn.status.wasClean) {
             try {
@@ -74,11 +75,8 @@ class WsListener extends Thread {
                     case OP_TEXT_FINAL:
                         if ((opData & OP_FINAL) != 0) {
                             opData = b1;
-//                            if (conn.isOpen()) {
-//                                messagePayloads = new ArrayDeque<byte[]>();
-//                            }
-                            wsInputStream = new WsInputStream(
-                                    (opData & OP_TEXT) > 0);
+                            wsInputStream = new WsMessage(
+                                    conn, (opData & OP_TEXT) > 0);
                             messageLength = 0L;
                             dataFrame();
                             break;
@@ -132,12 +130,12 @@ class WsListener extends Thread {
             }
         }
 // leave listener, clear message queue,  
-        wsInputStream = null;
+        wsInputStream = null;//?
         if (conn.messageQueue.remainingCapacity() > 0) {
-            conn.messageQueue.add(new WsInputStream());
+            conn.messageQueue.add(new WsMessage());
         }
         conn.cancelCloseTimer();
-
+//        notifyAll();
     }
 
     void readHeader(int b2) throws IOException {
@@ -228,7 +226,7 @@ class WsListener extends Thread {
                 }
                 return true;
             case OP_CLOSE:  // close handshake
-                synchronized (conn.status) {
+                synchronized (conn) {
 //                    conn.socket.shutdownInput();
                     if (conn.status.code == WsStatus.IS_OPEN) {
                         conn.status.remotely = true;
