@@ -9,7 +9,7 @@ import org.miktim.websocket.WsMessage;
 import org.miktim.websocket.WsStatus;
 
 public class Example2 {
-
+    static String serverURI = "wss://echo.websocket.org";
     static void log(Object obj) {
         System.out.println(obj);
     }
@@ -17,28 +17,34 @@ public class Example2 {
     public static void main(String[] args) {
         
         WsConnection.Handler handler = new WsConnection.Handler() {
+            int msgCnt = 2;
 
             @Override
             public void onOpen(WsConnection conn, String subProtocol) {
                 log(conn.getSSLSessionProtocol());
                 conn.send("Hi, Server!");
-                conn.close("Bye, Server!");
+                conn.close();
             }
 
             @Override
-            public void onMessage(WsConnection conn, WsMessage is) {
-                     log(conn.toString());
+            public void onMessage(WsConnection conn, WsMessage msg) {
+                log(msg.toString());
             }
 
             @Override
             public void onClose(WsConnection conn, WsStatus status) {
                 log(status);
             }
+
+            @Override
+            public void onError(WsConnection conn, Throwable err) {
+                log("Error: " + err);
+            }
         };
         
         WebSocket webSocket = new WebSocket();
         try {
-            webSocket.connect("ws://echo.websocket.org:443", handler);
+            webSocket.connect(serverURI, handler);
         } catch (Exception e) {
             log(e);
         }

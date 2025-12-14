@@ -24,7 +24,8 @@ import java.util.List;
  */
 public class WsServer extends Thread {
 
-    private WsStatus status = new WsStatus();
+    private int serverStatus = WsStatus.IS_INACTIVE;
+    private Throwable serverError = null;
 
     private final boolean isSecure;
     private final WsParameters wsp;
@@ -33,17 +34,6 @@ public class WsServer extends Thread {
     List<WsServer> servers = null;
     private final List<WsConnection> connections
             = Collections.synchronizedList(new ArrayList<WsConnection>());
-
-// default handler    
-    private ServerHandler serverHandler = new ServerHandler() {
-        @Override
-        public void onStart(WsServer server, WsParameters wsp) {
-        }
-
-        @Override
-        public void onStop(WsServer server, WsStatus status) {
-        }
-    };
 
     WsServer(ServerSocket ss, WsConnection.Handler h, boolean secure, WsParameters wsp) {
         this.serverSocket = ss;
@@ -60,9 +50,9 @@ public class WsServer extends Thread {
      */
     public WsServer ready() {
         synchronized (this) {
-            while (status.code == WsStatus.IS_INACTIVE) {
+            if (serverStatus == WsStatus.IS_INACTIVE) {
                 try {
-                    this.wait(500); // exception
+                    this.wait(wsp.connectionSoTimeout); //
                 } catch (InterruptedException ex) {
                     return null;
                 }
@@ -87,17 +77,17 @@ public class WsServer extends Thread {
      * @since 4.3
      */
     public boolean isActive() {
-        return isAlive() && status.code == WsStatus.IS_OPEN; //
+        return isAlive() && serverStatus == WsStatus.IS_OPEN; //
     }
 
     /**
-     * Returns server status.
+     * Returns server error or null.
      *
-     * @return server status.
+     * @return server error.
      * @since 5.0
      */
-    public WsStatus getStatus() {
-        return status.deepClone();
+    public Throwable getError() {
+        return serverError;
     }
 
     /**
@@ -168,16 +158,13 @@ public class WsServer extends Thread {
     }
 
     void stopServer(int code, String reason) {
-        if (!status.wasClean) {
-            status.code = code;
+        if (serverStatus == WsStatus.IS_OPEN) {
+            serverStatus = code;
             closeServerSocket();
 // close associated connections
-            for (WsConnection connection : listConnections()) {
-                connection.close(code, reason);
+            for (WsConnection conn : listConnections()) {
+                conn.ready().close(code, reason);
             }
-// remove server from WebSocket server list
-            servers.remove(this);
-            status.wasClean = true;
         }
     }
 
@@ -188,64 +175,31 @@ public class WsServer extends Thread {
         }
     }
 
-    /**
-     * Interrupts the server, keeping server connections open.
-     * <p>
-     * Stops listening. The server remains in the list of servers. Server's
-     * connections stay alive and can be closed by usual way.
-     * </p>
-     *
-     * @deprecated 4.3
-     */
-    @Deprecated
-    @Override
-    public void interrupt() {
-        if (isAlive()) {
-            status.code = WsStatus.GOING_AWAY;
-            closeServerSocket();
-        }
-    }
-
-    /**
-     * Checks if the server is interrupted.
-     *
-     * @return true if is it.
-     * @deprecated 4.3
-     */
-    @Deprecated
-    @Override
-    public boolean isInterrupted() {
-        return status.code == WsStatus.GOING_AWAY && !status.wasClean;
-    }
-
     @Override
     public void start() {
         servers.add(this); // add to the list of WebSocket servers
-        status.code = WsStatus.IS_OPEN;
-        status.wasClean = false;
-        status.remotely = false;
-        if (connectionHandler instanceof ServerHandler) {
-            serverHandler = (ServerHandler) connectionHandler;
-        }
         super.start();
     }
 
     @Override
     public void run() {
         setName("WsServer" + getName());
+        serverStatus = WsStatus.IS_OPEN;
         try {
             synchronized (this) {
-                serverHandler.onStart(this, wsp);
+                if (connectionHandler instanceof ServerHandler) {
+                    ((ServerHandler) connectionHandler).onStart(this, wsp);
+                }
                 this.notifyAll();
             }
-            while (true) {//(isOpen() ){
+            while (true) {//
 // serverSocket SO_TIMEOUT = 0 by WebSocket creator
                 Socket socket = serverSocket.accept();
                 if (wsp.backlog > -1 && connections.size() >= wsp.backlog) {
                     try {
                         (new HttpHead())
                                 .setStartLine("HTTP/1.1 429 Too Many Requests")
-//                            .set("Retry-After", "10")
+                                .set("Retry-After", "10")
                                 .write(socket.getOutputStream());
                         socket.close();
                     } catch (IOException ignore) {
@@ -259,23 +213,25 @@ public class WsServer extends Thread {
                 conn.connections = this.connections;
                 conn.start(); // start connection Thread
             }
-        } catch (Exception e) {
-            if (status.code == WsStatus.IS_OPEN) {
-                status.error = e;
+        } catch (Throwable err) {
+            if (serverStatus == WsStatus.IS_OPEN) {
+                serverError = err;
                 stopServer(WsStatus.INTERNAL_ERROR, "Abnormal shutdown");
             }
         }
-
+        servers.remove(this);
         closeServerSocket();
         try {
-            serverHandler.onStop(this, status);
-        } catch (Exception ex) {
-            if (status.error == null) {
-                status.error = ex;
+            if (connectionHandler instanceof ServerHandler) {
+                ((ServerHandler) connectionHandler).onStop(this, serverError);
+            }
+        } catch (Throwable err) {
+            if (serverError == null) {
+                serverError = err;
             }
         }
-        if (status.error != null) {
-            throw new RuntimeException("Abnormal shutdown", status.error);
+        if (serverError != null) {
+            throw new WsError("Abnormal shutdown", serverError);
         }
 
     }
@@ -286,9 +242,9 @@ public class WsServer extends Thread {
     interface ServerHandler {
 
         /**
-         * Called when the server is ready to accept connections.
+         * Called when the server is started.
          *
-         * @param server WebSocket server.
+         * @param server WebSocket server instance.
          * @param wsp server-side connection parameters.
          * @since 5.0
          */
@@ -297,18 +253,16 @@ public class WsServer extends Thread {
         /**
          * Called when the server stops after the ServerSocket is closed.
          *
-         * @param server WebSocket server.
-         * @param status clone of the server status.
+         * @param server WebSocket server instance.
+         * @param err error cause or null.
          * @see WsStatus
-         * @since 5.0
          */
-        public void onStop(WsServer server, WsStatus status);
+        public void onStop(WsServer server, Throwable err);
     }
 
     /**
-     * WebSocket server events handler. Extends connection handler.
+     * WebSocket server event handler. Extends connection handler.
      */
-    public interface Handler extends WsConnection.Handler, ServerHandler {
-    };
+    public interface Handler extends WsConnection.Handler, ServerHandler { };
 
 }

@@ -43,8 +43,8 @@ public class Example1 {
       @Override
       public void onMessage(WsConnection conn, WsMessage msg) {
         try {
-// echoing the WebSocket message as an UTF-8 encoded InputStream        
-          conn.send(msg, msg.isText(); 
+// echoing the WebSocket message as an InputStream        
+          conn.send(msg, msg.isText()); 
         } catch (IOException ex) {
 // WebSocket message reading errors lead to connection closure.
 // No action.

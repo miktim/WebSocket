@@ -1,8 +1,9 @@
 /*
- * WsConnectionTest. MIT (c) 2025 miktim@mail.ru
+ * WsConnectTest. MIT (c) 2025 miktim@mail.ru
  * Ws and wss WebSocket handshake tests.
  */
 
+import java.io.File;
 import static java.lang.String.format;
 import static java.lang.Thread.sleep;
 import java.security.NoSuchAlgorithmException;
@@ -14,7 +15,7 @@ import org.miktim.websocket.WsServer;
 import org.miktim.websocket.WsStatus;
 
 //package websocket;
-public class WsConnectionTest {
+public class WsConnectTest {
 
     static int port = 8080;
     static int securePort = 8443;
@@ -47,7 +48,7 @@ public class WsConnectionTest {
     }
 
     public static void main(String[] args) throws NoSuchAlgorithmException, InterruptedException {
-        log("\r\nWsConnectionTest. " + WebSocket.VERSION);
+        log("\r\nWsConnectTest. " + WebSocket.VERSION);
         
         WsConnection.Handler handler = new WsConnection.Handler() {
             @Override
@@ -57,11 +58,11 @@ public class WsConnectionTest {
             @Override
             public void onMessage(WsConnection conn, WsMessage is) {
             }
-/*
+
             @Override
             public void onError(WsConnection conn, Throwable e) {
             }
-*/
+
             @Override
             public void onClose(WsConnection conn, WsStatus status) {
             }
@@ -109,7 +110,7 @@ public class WsConnectionTest {
             closeAll("1", webSocket);
 
             log("\r\n2. Key file is set. Start SecureServer");
-            webSocket.setKeyFile("./localhost.jks", "password");
+            webSocket.setKeyFile(new File("./localhost.jks"), "password");
             server = webSocket.startSecureServer(securePort, handler, wsp);
             delay();
             logTest("2","SecureServer", webSocket.listServers().length == 1);

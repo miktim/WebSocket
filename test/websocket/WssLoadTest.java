@@ -24,7 +24,7 @@ public class WssLoadTest {
     }
 
     static String makePath(WsConnection con) {
-        return con.getPath()
+        return "" + con.getPath()
                 + (con.getQuery() == null ? "" : "?" + con.getQuery());
     }
 
@@ -57,14 +57,14 @@ public class WssLoadTest {
                 ws_log(makeLogPrefix(con) + " onCLOSE: " + makePath(con)
                         + " " + con.getStatus());
             }
-/*
+
             @Override
             public void onError(WsConnection con, Throwable e) {
                     ws_log(makeLogPrefix(con) + " onERROR: "
                             + makePath(con) + " " + e + " " + con.getStatus());
 //                e.printStackTrace();
             }
-*/
+
             @Override
             public void onMessage(WsConnection con, WsMessage is) {
                 byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];

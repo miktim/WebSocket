@@ -4,15 +4,15 @@
  * client and server connections.
  */
 
+import java.io.File;
 import java.io.IOException;
 import static java.lang.String.format;
 import static java.lang.Thread.sleep;
 import java.net.InetAddress;
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.security.GeneralSecurityException;
 import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsConnection;
+import org.miktim.websocket.WsError;
 import org.miktim.websocket.WsMessage;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsServer;
@@ -22,49 +22,23 @@ import org.miktim.websocket.WsStatus;
 public class WsBasicTest {
 
     static int testId = 1;
-    static final int DELAY = 100; //milliseconds
+    static final int DELAY = 500; //milliseconds
     static final int PORT = 8080;
     static InetAddress intfAddr;
     static URI uri;
     static String uriString;
     static WebSocket webSocket;
     static WsServer server;
+    static WsParameters wsp;
     static WsConnection.Handler handler;
     static boolean testOk = true;
     static boolean testCompleted = false;
-    static String[] tests = {
-        "Test opening WebSocket, WsServer, connections",
-        "Test connection properties",
-        "Test sending empty message",
-        "Test sending fragmented message",
-        "Test closing connections and WsServer"
-    };
     static String testBuffer = "";
 
     static void log(Object obj) {
         System.out.println(String.valueOf(obj));
     }
 
-    /*    
-    static String readString(InputStream is) throws IOException {
-        byte[] buf = readBytes(is);
-        return new String(buf, 0, buf.length, "UTF-8");
-    }
-    static byte[] readBytes(InputStream is) throws IOException {
-        int increment = 123; 
-        byte[] buf = new byte[increment];
-        int totalBytes = 0;
-        int bytesRead = 0;
-        while(bytesRead != -1) {
-            totalBytes += bytesRead;
-            if(totalBytes == buf.length) {
-                buf = Arrays.copyOf(buf, buf.length + increment);
-            }
-            bytesRead = is.read(buf, totalBytes, buf.length - totalBytes);
-        }
-        return Arrays.copyOf(buf, totalBytes);
-    }
-     */
     static void logTest(int testId, String obj, String msg) {
         log(format("[%d] %s %s", testId, obj, msg));
     }
@@ -83,11 +57,8 @@ public class WsBasicTest {
 
     public static void main(String[] args) {
         log("\r\nWsBasicTest. " + WebSocket.VERSION);
-        for (int i = 0; i < tests.length; i++) {
-            log(format("%d %s", i, tests[i]));
-        }
         log("");
-        handler = new WsConnection.Handler() {
+        handler = new WsServer.Handler() {
             @Override
             public void onOpen(WsConnection conn, String subProtocol) {
                 log(format("[0] %s Ok", side(conn)));
@@ -100,121 +71,120 @@ public class WsBasicTest {
             }
 
             @Override
-            public void onMessage(WsConnection conn, WsMessage is) {
+            public void onMessage(WsConnection conn, WsMessage msg) {
                 try {
-                    if (!is.isText()) {
-                        throw new IOException("Not is text");
+                    if (!msg.isText()) {
+                        throw new IOException("Not is text!");
                     }
                     switch (testId) {
                         case 2: // empty message
-                            String s = is.toString();
+                            String s = msg.toString();
                             logTestOk(conn, s.equals(""));
                             return;
                         case 3: // fragmented message
-                            String ts = is.toString();
+                            String ts = msg.toString();
                             logTestOk(conn, ts.equals(testBuffer));
                             return;
                         default:
-//                            conn.close();
                             return;
                     }
                 } catch (IOException ex) {
                     testOk = false;
-//                    onError(conn, ex);
                 }
                 conn.close();
             }
-/*
+
             @Override
             public void onError(WsConnection conn, Throwable e) {
                 e.printStackTrace();
                 logSide(conn, e.toString());
             }
-*/
+
             @Override
             public void onClose(WsConnection conn, WsStatus status) {
-                testId = tests.length - 1;
+//                testId = tests.length - 1;
                 logTestOk(conn, true);
                 logSide(conn, conn.getStatus().toString());
                 testCompleted = true;
+            }
+
+            @Override
+            public void onStart(WsServer server, WsParameters wsp) {
+                log("[0] server Ok");
+            }
+
+            @Override
+            public void onStop(WsServer server, Throwable error) {
+                log(format("[%d] server %s", testId,
+                        (error == null ? "Ok" : "Failed!")));
             }
         };
 
         try {
             intfAddr = InetAddress.getByName("127.0.0.1");
             webSocket = new WebSocket(intfAddr);
-            webSocket.setKeyFile("./testkeys", "passphrase");
+            webSocket.setKeyFile(new File("./testkeys"), "passphrase");
 
-            WsParameters wsp = (new WsParameters()).setPayloadBufferLength(123);
-            server = webSocket.startSecureServer(PORT, handler, wsp);
-            server = server.ready();
-            server = webSocket.listServers()[0];
+            wsp = (new WsParameters()).setPayloadBufferLength(123);
 
             while (testBuffer.length() < wsp.getPayloadBufferLength() * 10) {
                 testBuffer += "asfh域名alfqwoлвыыдйзццущ019801[r jsdfjs annsla;d";
             }
             uriString = format(
                     "wss://user:password@localhost:%d/путь?параметр=значение#paragraph",
-                    server.getPort());
+                    PORT);
             log("uri: " + uriString);
             uri = new URI(uriString);
 
             runTest();
 
-            while (!testCompleted) {
-                sleep(DELAY);
-            }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             logTest(testId, "?", e.toString());
             e.printStackTrace();
         }
         log("\n\rCompleted.");
-        webSocket.closeAll();
 
     }
 
-    //   static WsConnection conn;
-    static void runTest()
-            throws URISyntaxException, IOException, GeneralSecurityException, InterruptedException {
+    static void runTest() throws WsError, InterruptedException {
+//            throws URISyntaxException, IOException, GeneralSecurityException, InterruptedException {
         testId = 1;
+        log("\r\n0. Test opening WebSocket, WsServer, connect."
+                + "\r\n1. Test connection properties");
+        server = webSocket.startSecureServer(PORT, handler, wsp);
+        server = server.ready();
+        server = webSocket.listServers()[0];
         testOk = true;
         WsConnection conn = webSocket.connect(uriString, handler, server.getParameters());
-        conn = conn.ready();
-        conn = webSocket.listConnections()[0];
-        if(!conn.isOpen()) {
-            return;
-        }
+        conn = webSocket.listConnections()[0].ready();
         WsConnection serverConn = server.listConnections()[0];
-        conn = serverConn.ready();
-
+        serverConn = serverConn.ready();
         log("[0,1] WebSocket and WsServer Ok");
         sleep(DELAY);
+
         testId = 2;
+        log("\r\n2. Test sending empty message");
         testOk = true;
-        conn.send("");
-        serverConn.send("");
+        conn.send(""); // send to server
+        serverConn.send(""); // send to client
         sleep(DELAY);
         testId = 3;
+        log("\r\n3. Test sending fragmented message");
         testOk = true;
         conn.send(testBuffer);
         serverConn.send(testBuffer);
         sleep(DELAY);
         testId = 4;
+        log("\r\n4. Test closing connections and WsServer");
         testOk = true;
         webSocket.closeAll();
-        serverConn.join(DELAY);
-        conn.join(DELAY);
-        server.join(DELAY);
-//        sleep(DELAY);
-        int cnt =
-                webSocket.listServers().length
-                + webSocket.listConnections().length
-                + server.listConnections().length;
+        conn.join();
+        serverConn.join();
+        server.join();
+        int cnt =  webSocket.listServers().length + 
+                webSocket.listConnections().length + 
+                server.listConnections().length;
 //        log(cnt);
-        if (cnt > 0) {
-            logTest(4, "WebSocket or WsServer", "Failed!");
-        } else {
-            log("[4] WebSocket and WsServer Ok");
-        }
+        logTest(4, "WebSocket or WsServer", cnt > 0 ? "Failed!" : "Ok");
     }
 }

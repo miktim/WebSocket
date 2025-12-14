@@ -59,11 +59,11 @@ public class WsStressTest {
             }
 
             @Override
-            public void onStop(WsServer server, WsStatus status) {
+            public void onStop(WsServer server, Throwable error) {
                 if (server.isInterrupted()) {
                     ws_log("Server interrupted. Active connections: "
                             + server.listConnections().length
-                            + (status.error != null ? " Error " + status.error : ""));
+                            + (error != null ? " Error " + error : ""));
                 } else {
                     ws_log("Server closed");
                 }
@@ -103,7 +103,7 @@ public class WsStressTest {
                         (status.error != null ? " Error " + status.error.toString() : "")
                 ));
             }
-/*
+
             @Override
             public void onError(WsConnection conn, Throwable e) {
                 ws_log(String.format("[%s] %s onError %s%s",
@@ -113,7 +113,7 @@ public class WsStressTest {
                         (e != null ? " Error " + e.toString() : "")
                 ));
             }
-*/
+
             @Override
             public void onMessage(WsConnection conn, WsMessage is) {
                 String subp = conn.getSubProtocol();

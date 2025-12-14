@@ -2,12 +2,13 @@
  * HttpHead. Read/write/store HTTP message head. MIT (c) 2020-2025 miktim@mail.ru
  *
  * Notes:
- *  - the headers store are case-insensitive;
+ *  - the header names are case-insensitive;
  *  - multiple header values are stored in a comma separated string
  *
- * 2025-09:
+ * 2025-11:
  * - setStartLine, getStartLine methods added
  * - fixed excepion's messages
+ * - fuxes join
  * 2023-10:
  * - functions join, getValues, setValues added
  *
@@ -20,15 +21,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ProtocolException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-class HttpHead {
+class HttpHead extends TreeMap<String, String> {
 
     private String startLine = "";
 
-// The antonym for the Java String.split method
+// Antonym of Java String.split method
     public static String join(Object[] array, String delimiter) {
         if (array == null || array.length == 0) {
             return null;
@@ -37,12 +37,16 @@ class HttpHead {
         for (Object obj : array) {
             sb.append(obj).append(delimiter);
         }
-        return sb.deleteCharAt(sb.length() - 1).toString();
+        return sb.substring(0, sb.length() - delimiter.length());
     }
 
-    private final TreeMap<String, String> head = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
-
     public HttpHead() {
+        super(String.CASE_INSENSITIVE_ORDER);
+    }
+
+    public HttpHead(Map<String, String> map) {
+        this();
+        putAll(map);
     }
     
     public HttpHead setStartLine(String line) {
@@ -54,44 +58,36 @@ class HttpHead {
     }
 // Create or overwrite header value 
     public HttpHead set(String header, String value) {
-        head.put(header, value);
+        put(header, value);
         return this;
     }
 // Create header or add comma separated value
     public HttpHead add(String header, String value) {
-        String val = head.get(header);
+        String val = get(header);
         if (val == null || val.trim().isEmpty()) {
-            head.put(header, value);
+            put(header, value);
         } else {
-            head.put(header, val + "," + value);
+            put(header, val + ", " + value);
         }
         return this;
     }
 
-    public boolean containsHeader(String key) {
-        return head.containsKey(key);
-    }
-
-    public String remove(String header) {
-        return head.remove(header);
-    }
-
-    public String get(String header) {
-        return head.get(header);
+    public boolean exists(String key) {
+        return containsKey(key);
     }
 
     public HttpHead setValues(String header, String[] values) {
         if (values == null) {
             return this;
         }
-        return set(header, join(values, ","));
+        return set(header, join(values, ", "));
     }
 
-    public String[] getValues(String header) {
-        if (!containsHeader(header)) {
+    public String[] listValues(String header) {
+        if (!exists(header)) {
             return null;
         }
-        String[] values = head.get(header).split(",");
+        String[] values = get(header).split(",");
         for (int i = 0; i < values.length; i++) {
             values[i] = values[i].trim();
         }
@@ -99,14 +95,10 @@ class HttpHead {
     }
 
 // Returns list of header names    
-    public List<String> listHeaders() {
-        return new ArrayList<String>(head.keySet());
+    public String[] listHeaders() {
+        return (new ArrayList<String>(keySet())).toArray(new String[0]);
     }
 
-    public Map<String, String> headMap() {
-        return head;
-    }
-    
     String readHeaderLine(InputStream is) throws IOException {
         byte[] bb = new byte[1024];
         int i = 0;
@@ -137,7 +129,7 @@ class HttpHead {
                 break;
             }
             if (line.startsWith(" ") || line.startsWith("\t")) { // continued
-                head.put(key, head.get(key) + line.trim());
+                put(key, get(key) + line.trim());
                 continue;
             }
             key = line.substring(0, line.indexOf(":"));
@@ -150,7 +142,7 @@ class HttpHead {
     public String toString() {
         StringBuilder sb = (new StringBuilder(getStartLine())).append("\r\n");
         for (String hn : listHeaders()) {
-            sb.append(hn).append(": ").append(head.get(hn)).append("\r\n");
+            sb.append(hn).append(": ").append(get(hn)).append("\r\n");
         }
         sb.append("\r\n");
         return sb.toString();

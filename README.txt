@@ -7,9 +7,10 @@ Release notes:
   - WebSocket extensions (Per-Message Deflate, ...) are not supported;
   - supports insecure or TLS connections;
   - client supports Internationalized Domain Names (IDNs);
+  - "2/3 duplex": incoming messages are queued;
   - stream-based messaging.
   
-The jar ./dist/websocket-... file was generated with debugging info using JDK1.8 for target JDK1.6
+The jar ./dist/websocket-... file was generated with debugging info using JDK1.8 for target JRE1.6
 
 package org.miktim.websocket
 
@@ -20,19 +21,20 @@ Overview:
   Interface WsServer.Handler - a server event handler;  
   Class WsConnection - implements a WebSocket connection on the server or client side;  
   Interface WsConnection.Handler - a connection event handler; 
-  Class WsInputStream - stream representation of the incoming message; 
-  Class WsParameters - WebSocket connection creation and execution time parameters;  
+  Class WsMessage - streaming representation of the incoming WebSocket message; 
+  Class WsParameters - WebSocket connection creation and execution time parameters;
+  Class WsError - this class "hides" the cause of the checked exception;
   Class WsStatus - WebSocket connection status.
 
-  Class WsException extends RuntimeException
-    Unchecked exception "hides" real checked cause
 
+  Class WsError extends Error
+    Unchecked exception "hides" real checked cause
 
   Class WebSocket:  
     The creator of WebSocket servers and client-side connections.
 
     Constant:
-      static final String VERSION = "5.0.0";
+      static final String VERSION = "5.0.1";
 
     Constructors:
       WebSocket();
@@ -51,7 +53,7 @@ Overview:
       static void setTrustStore(String keyFilePath, String password);
         - sets system properties javax.net.ssl.trustStore/trustStorePassword
 
-      void setKeyFile(File storeFile, String storePassword);
+      void setKeyFile(String storeFile, String storePassword);
         - use a keyStore file (server) or a trustStore file (client);
       void resetKeyFile();
 
@@ -59,7 +61,7 @@ Overview:
         - returns WebSocket instance interface address or null
 
       WsServer startServer(int port, WsConnection.Handler handler, WsParameters wsp)
-        - creates and starts insecure connections server.
+        - creates and starts insecure (plaintext) connections server.
         - port: is listening port number
           handler: is server-side connection handler
           wsp: the server-side connections creation and execution parameters
@@ -79,7 +81,7 @@ Overview:
 
     NOTE:
       if you need to handle server events, use WsServer.Handler wich extends
-      WsConnection.Handler.
+      WsConnection.Handler (see below).
  
       WsConnection connect(String uri, WsConnection.Handler handler, WsParameters wsp) 
         - creates and starts a client connection;
@@ -99,8 +101,6 @@ Overview:
         - lists active servers.
       WsConnection[] listConnections();
         - lists active client connections.
-      Socket getConnectionSocket(WsConnection conn)
-        - returns the socket of active client connection or null
       
       void closeAll(); 
       void closeAll(String closeReason);
@@ -198,7 +198,8 @@ Overview:
       String getPeerHost();
         - returns the name of the remote host, or null if it is unavailable.
       int getPort();
-        - returns the listening or connection port
+        - returns the listening port (on the server side)
+          or connection port (on the client side)
       String getPath();
         - returns http request path or null
       String getQuery();
@@ -208,12 +209,12 @@ Overview:
         
 
   Interface WsConnection.Handler  
-    There are several scenarios for event handling:  
+    There are typical event handling scenarios:  
       - onError - onClose, when the SSL/WebSocket handshake failed;  
-      - onOpen - [onMessage - onMessage - ...] - [onError] - onClose.  
+      - onOpen [- onMessage - onMessage - ...] [- onError] - onClose.  
     A runtime error in the handler terminates the connection with status
     code 1006 (ABNORMAL_CLOSURE), calls the onError method, and throws
-    a RuntimeException.  
+    an WsError.  
 
     Methods:
       void onOpen(WsConnection conn, String subProtocol);
@@ -221,29 +222,30 @@ Overview:
           or null if the client did not requests it or if the server
           does not agree to any of the client's requested sub protocols
     
-      void onMessage(WsConnection conn, WsInputStream wis);
+      void onMessage(WsConnection conn, WsMessage msg);
         - the WebSocket message is an InputStream of binary data
-          or UTF-8 encoded text (see WsInputStream.isText() method);
-        - the available() method returns the total number of bytes in the stream.
+          or UTF-8 encoded text (see WsMessage.isText() method).
 
-      void onError(WsConnection conn, Throwable e);
-        - any exception closes the WebSocket connection;
-        - large incoming messages may throw an OutOfMemoryError
+      void onError(WsConnection conn, Throwable err);
+        - the err argument is the cause of the error;
+        - any exception closes the WebSocket connection.
 
       void onClose(WsConnection conn, WsStatus closeStatus);
-        - called when connection closing handshake completed
-          or closing time is over (WsParameters HandshakeSoTimeout)
+        - called when the connection closing handshake completed
+          or closing timeout expires (WsParameters HandshakeSoTimeout)
 
 
-  Class WsInputStream extends InputStream;
-    Extension methods:
+  Class WsMessage extends InputStream;
+    Streaming representation of incoming WebSocket messages.
+
+    Methods:
       boolean isText();
         - returns true if input stream is UTF-8 encoded text
       String toString();
-        - converts text stream to String;
+        - converts this stream to String;
         - hidden Exceptions: IOException, IllegalStateException
       byte[] toByteArray();
-        - converts stream to byte array;
+        - converts this stream to byte array;
         - hidden Exceptions: IOException
 
   
@@ -303,10 +305,9 @@ Overview:
         - defaults from the SSLContext
 
       WsParameters setBacklog(int num);
-        - maximum number of pending connections on the ServerSocket 
+        - sets the maximum number of pending connections on the ServerSocket 
       int getBacklog();
-        - default value is -1: system depended
-      
+        - default value is -1: system depended  
 
   Class WsStatus:  
     The status of the WebSocket connection
@@ -343,7 +344,7 @@ Overview:
         - the length of the message or frame payload size has been exceeded
           (see WsConnection.setMaxMessageLength method)
       int INTERNAL_ERROR = 1011;
-        - server crashed
+        - the server crashed
  
 
 Usage examples see in:  

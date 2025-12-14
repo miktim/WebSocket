@@ -99,7 +99,7 @@ public class WsServerTest implements WsConnection.Handler{
                 con.getPath(),
                 status));
     }
-/*
+
     @Override
     public void onError(WsConnection con, Throwable e) {
         String testId = getTestId(con);
@@ -108,7 +108,7 @@ public class WsServerTest implements WsConnection.Handler{
                 e));
 //                e.printStackTrace();
     }
-*/
+
     @Override
     public void onMessage(WsConnection con, WsMessage is) {
         String testId = getTestId(con);

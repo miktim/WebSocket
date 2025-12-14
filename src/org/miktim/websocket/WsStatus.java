@@ -20,12 +20,12 @@ package org.miktim.websocket;
 public final class WsStatus {
 
         /**
-         * WebSocket connection yet not open or server not active.
+         * The WebSocket connection yet not open or the server is not active.
          */
         public static final int IS_INACTIVE = -1; // connection in progress
 
         /**
-         * WebSocket connection is open or server is active.
+         * The WebSocket connection is open or the server is active.
          */
         public static final int IS_OPEN = 0;
         public static final int NORMAL_CLOSURE = 1000; //

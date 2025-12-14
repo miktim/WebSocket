@@ -60,11 +60,13 @@
                     show('Test' + testNo + ': ' + tests[testNo]
                             + " Requested subprotocols: " + subProtocols);
                 webSocket = new WebSocket(uri, subProtocols);
+
                 webSocket.onopen = function (event) {
 // WebSocket: .url .readyState .bufferedAmount .binaryType             
                     show('onopen: ' + event.target.url + " Handshaked subprotocol: " + webSocket.protocol);
                     event.target.send(msg);
                 };
+                
                 webSocket.onmessage = function (event) {
 // event: .data .origin .lastEventId .source .ports
 
@@ -87,10 +89,12 @@
                         event.target.send(event.data);
                     }
                 };
+                
                 webSocket.onerror = function (event) {
 // event:                    
                     show('onerror: no error info. WebSocket.bufferedAmount: ' + event.target.bufferedAmount);
                 };
+                
                 webSocket.onclose = function (event) {
 // event: .code .reason .wasClean
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent

@@ -1,5 +1,5 @@
 /*
- * SecureInfo. MIT (c) 2024 miktim@mail.ru
+ * SecureInfo. MIT (c) 2024-2025 miktim@mail.ru
  * Created: 2024-03-02
  */
 
@@ -27,7 +27,8 @@ public class ExecutionEnvironment {
     }
 
     public static void main(String[] args) throws Exception {
-        ws_log("Execution environment:");
+        ws_log("Execution environment.");
+        ws_log("");
         String[] sa = new String[]{"os.name","os.version","java.vendor","java.version"};
         for(String s : sa) {
             ws_log(s + ": " + System.getProperty(s));

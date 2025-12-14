@@ -6,13 +6,14 @@
  */
 package org.miktim.websocket;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.ProtocolException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Map;
 
 class WsHandshake {
 
@@ -21,6 +22,8 @@ class WsHandshake {
     static boolean waitHandshake(WsConnection conn) {
         synchronized (conn) {
             try {
+                conn.inStream = new BufferedInputStream(conn.socket.getInputStream());
+                conn.outStream =new BufferedOutputStream(conn.socket.getOutputStream());
                 if (conn.isClientSide()) {
                     handshakeServer(conn);
                 } else {
@@ -31,7 +34,7 @@ class WsHandshake {
                 conn.status.remotely = !conn.isClientSide();
                 conn.notifyAll();
                 return true;
-            } catch (Exception e) {
+            } catch (Throwable e) {
 //System.err.println(e.toString());
                 conn.status.code = WsStatus.PROTOCOL_ERROR;
                 conn.status.reason = "Handshake error";
@@ -39,7 +42,7 @@ class WsHandshake {
                 conn.status.error = e;
                 conn.closeSocket();
                 conn.notifyAll();
-                WsConnection.callHandler(conn, conn.getStatus()); // onClose
+                WsConnection.callHandler(conn, e); // onError
                 return false;
             }
         }
@@ -59,18 +62,16 @@ class WsHandshake {
                 && conn.requestHead.get("Upgrade").toLowerCase().equals("websocket")
                 && conn.requestHead.get("Sec-WebSocket-Version").equals("13")
                 && setSubprotocol(conn,
-                        conn.requestHead.getValues("Sec-WebSocket-Protocol"),
+                        conn.requestHead.listValues("Sec-WebSocket-Protocol"),
                         conn.responseHead)) {
             conn.responseHead
                     .setStartLine("HTTP/1.1 101 Upgrade")
                     .set("Upgrade", "websocket")
                     .set("Connection", "Upgrade,keep-alive")
                     .set("Sec-WebSocket-Accept", sha1Hash(key));
-            if (conn.handler instanceof WsConnection.OnRequest) {
-                setCustomHeaders(conn,
-                        ((WsConnection.OnRequest) conn.handler)
-                                .onRequest(conn, conn.getRequestHead()));
-            }
+
+//            onRequest(conn); // see onRequest below
+
             conn.responseHead.write(conn.outStream);
         } else {
             conn.responseHead
@@ -82,17 +83,22 @@ class WsHandshake {
         }
     }
 
-    static void setCustomHeaders(WsConnection conn, Map<String, String> hdrs) {
-        if(hdrs == null) return;
+/*
+    static void onRequest(WsConnection conn) {
+        if (!(conn.handler instanceof WsConnection.OnRequest)) return;
+        Map<String, String> map = ((WsConnection.OnRequest) conn.handler)
+                                .onRequest(conn, conn.getRequestHead());
+        if(map == null) return;
         HttpHead head = conn.isClientSide()
                 ? conn.requestHead : conn.responseHead;
-        for (String hdr : hdrs.keySet().toArray(new String[0])) {
-            if (!(conn.requestHead.containsHeader(hdr)
-                    || conn.responseHead.containsHeader(hdr))) {
-                head.set(hdr, hdrs.get(hdr));
+        for (String hdr : map.keySet().toArray(new String[0])) {
+            if (!(conn.requestHead.exists(hdr)
+                    || conn.responseHead.exists(hdr))) {
+                head.set(hdr, map.get(hdr));
             }
         }
     }
+*/
 
     private static boolean setSubprotocol(WsConnection conn, String[] requestedSubps, HttpHead rs) {
         if (requestedSubps == null) {
@@ -139,6 +145,9 @@ class WsHandshake {
         if (conn.wsp.subProtocols != null) {
             conn.requestHead.setValues("Sec-WebSocket-Protocol", conn.wsp.subProtocols);
         }
+        
+//        onRequest(conn); // see onRequest above
+
         conn.requestHead.write(conn.outStream);
 
         conn.responseHead = (new HttpHead()).read(conn.inStream);
@@ -148,13 +157,7 @@ class WsHandshake {
                 && conn.responseHead.get("Sec-WebSocket-Extensions") == null
                 && conn.responseHead.get("Sec-WebSocket-Accept").equals(sha1Hash(key))
                 && checkSubprotocol(conn))) {
-            //          conn.status.remotely = false;
             throw new ProtocolException("WebSocket handshake error");
-        }
-        if (conn.handler instanceof WsConnection.OnRequest) {
-            setCustomHeaders(conn,
-                    ((WsConnection.OnRequest) conn.handler)
-                            .onRequest(conn, conn.getRequestHead()));
         }
     }
 

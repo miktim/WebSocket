@@ -1,6 +1,6 @@
 /*
  * WebSocket. MIT (c) 2020-2025 miktim@mail.ru
- * Creator of WebSocket servers and connections.
+ * Creator of WebSocket servers and client connections.
  */
 package org.miktim.websocket;
 
@@ -41,12 +41,12 @@ public class WebSocket {
     /**
      * Current package version {@value VERSION}.
      */
-    public static final String VERSION = "5.0.0";
+    public static final String VERSION = "5.0.1";
 
     private InetAddress interfaceAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
     private final List<WsServer> servers = Collections.synchronizedList(new ArrayList<WsServer>());
-    private String keyStoreFile = null;
+    private File keyStoreFile = null;
     private String keyStorePassword = null;
 
     /**
@@ -61,16 +61,18 @@ public class WebSocket {
      * @param intfAddr network interface address (bind address). 
      */
     public WebSocket(InetAddress intfAddr) {// throws SocketException {
+
         try {
             NetworkInterface.getByInetAddress(intfAddr);
         } catch (SocketException ex) {
-            throw new WsException("Not interface", ex);
+            throw new WsError("Not interface", ex);
         }
+       
         interfaceAddress = intfAddr;
     }
 
     /**
-     * Sets system properties javax.net.ssl.trustStore/trustStorePassword.
+     * Sets the system properties javax.net.ssl.trustStore/trustStorePassword.
      *
      * @param keyFilePath trust store file path
      * @param passphrase password
@@ -81,7 +83,7 @@ public class WebSocket {
     }
 
     /**
-     * Sets system properties javax.net.ssl.keyStore/keyStorePassword.
+     * Sets the system properties javax.net.ssl.keyStore/keyStorePassword.
      *
      * @param keyFilePath key file path
      * @param passphrase password
@@ -117,31 +119,17 @@ public class WebSocket {
     }
 
     /**
-     * Sets the keystore or truststore file path for TLS connections.
-     * @param keyFilePath file path and name
+     * Sets the keystore or truststore file for TLS connections.
+     * @param file store file
      * @param password password
-     * @since 5.0
      */
-    public void setKeyFile(String keyFilePath, String password) {
-        if(keyFilePath == null || password == null) 
-            throw new NullPointerException();
-        this.keyStoreFile = keyFilePath;
+    public void setKeyFile(File file, String password) {
+//        if(file == null || password == null) 
+//            throw new NullPointerException();
+        this.keyStoreFile = file;
         this.keyStorePassword = password;
     }
-    /*
-     * Sets the keystore or truststore file for TLS connections.
-     *
-     * @param keyFile store file.
-     * @param password password.
-     */
-/*
-    public void setKeyFile(File keyFile, String password) {
-        if(keyFile == null || password == null) 
-            throw new NullPointerException();
-        keyStoreFile = keyFile;
-        keyStorePassword = password;
-    }
-*/
+
     /**
      * Clear key file info.
      */
@@ -219,7 +207,7 @@ public class WebSocket {
      * wich extends {@link WsConnection.Handler}.
      * @param wsp server side connection parameters.
      * @return WebSocket TLS server instance. 
-     * <p><b>Note:</b> {@link WsException} "hides" {@link java.io.IOException}, {@link java.security.GeneralSecurityException}</p>
+     * <p><b>Note:</b> {@link WsError} "hides" {@link java.io.IOException}, {@link java.security.GeneralSecurityException}</p>
      * @since 4.3
      */
     public WsServer startSecureServer(int port, WsConnection.Handler handler, WsParameters wsp) {//        throws IOException, GeneralSecurityException {
@@ -260,15 +248,12 @@ public class WebSocket {
 
     WsServer startServer(int port, WsConnection.Handler handler, WsParameters wsp, boolean isSecure) { //throws IOException, GeneralSecurityException {
         WsServer server = null;
-        String errMsg = "Server creation error";
         try {
             server = createServer(port, handler, wsp, isSecure);
             server.start();
 // } catch (IOException | GeneralSecurityException ex) { // NO! since Java 7
-        } catch (IOException ex) {
-            throw new WsException(errMsg, ex);
-        } catch (GeneralSecurityException ex) {
-            throw new WsException(errMsg, ex);
+        } catch (Throwable err) {
+            throw new WsError("Server creation error", err);
         }
 
         return server;
@@ -324,7 +309,7 @@ public class WebSocket {
      * @param handler client side connection handler.
      * @param wsp client side connection parameters.
      * @return WebSocket connection instance.
-     * <p><b>Note:</b> {@link WsException} "hides" {@link URISyntaxException}, {@link java.io.IOException}, {@link java.security.GeneralSecurityException}</p>
+     * <p><b>Note:</b> {@link WsError} "hides" {@link URISyntaxException}, {@link java.io.IOException}, {@link java.security.GeneralSecurityException}</p>
      */
     synchronized public WsConnection connect(String uri,
             WsConnection.Handler handler, WsParameters wsp) {//throws URISyntaxException, IOException, GeneralSecurityException {
@@ -341,22 +326,16 @@ public class WebSocket {
         return connect(uri, handler, new WsParameters());
     }
 
-// TODO: move to WsConnection?    
     WsConnection startConnection(
             String uri, WsConnection.Handler handler, WsParameters wsp) {
         WsConnection conn = null;
-        String errMsg = "Connection creation error";
         try {
             conn = createConnection(uri, handler, wsp);
             conn.start();
 // NO! since Java 7
 // } catch (URISyntaxException | IOException | GeneralSecurityException ex) {
-        } catch (URISyntaxException ex) {
-            throw new WsException(errMsg, ex);
-        } catch (IOException ex) {
-            throw new WsException(errMsg, ex);
-        } catch (GeneralSecurityException ex) {
-            throw new WsException(errMsg, ex);
+        } catch (Throwable err) {
+            throw new WsError("Connection creation error", err);
         }
         return conn;
     }
@@ -421,7 +400,7 @@ public class WebSocket {
         KeyStore ks;// = KeyStore.getInstance(KeyStore.getDefaultType());
 
         String ksPassphrase = this.keyStorePassword;
-        File ksFile = new File(keyStoreFile);
+        File ksFile = keyStoreFile;
         char[] passphrase = ksPassphrase.toCharArray();
 
         ctx = SSLContext.getInstance("TLS");

@@ -2,12 +2,11 @@
  * WebSocket Example1. MIT (c) 2025 miktim@mail.ru
  * Sample echo server.
  */
-package temp;
 
 import java.io.IOException;
 import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsConnection;
-import org.miktim.websocket.WsException;
+import org.miktim.websocket.WsError;
 import org.miktim.websocket.WsMessage;
 import org.miktim.websocket.WsServer;
 import org.miktim.websocket.WsStatus;
@@ -27,7 +26,7 @@ public class Example1 {
 
             @Override
             public void onOpen(WsConnection conn, String subProtocol) {
-                String msg = "Session open: " + getSession();
+                String msg = "Connection open: " + getSession();
                 log(msg);
                 conn.send(msg);
             }
@@ -46,6 +45,11 @@ public class Example1 {
             public void onClose(WsConnection conn, WsStatus status) {
                 log(String.format("Session closed: %d (%d)", getSession(), status.code));
             }
+
+            @Override
+            public void onError(WsConnection conn, Throwable err) {
+                log("Error: " + err);
+            }
         };
         WebSocket webSocket = new WebSocket();
 // register your keystore file       
@@ -54,7 +58,7 @@ public class Example1 {
         try {
             echoServer = webSocket.startSecureServer(PORT, handler);
             log("Echo Server listening port: " + PORT);
-        } catch (WsException ex) {
+        } catch (WsError ex) {
             webSocket.closeAll("Echo Server crashed");
             log(ex.getCause());
         }
