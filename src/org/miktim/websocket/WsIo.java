@@ -44,7 +44,7 @@ class WsIo {
             throws IOException {
         synchronized (conn.outStream) {
             if (conn.status.code != WsStatus.IS_OPEN) { // 
-                throw new SocketException("WebSocket is closed");
+                throw new SocketException("WebSocket closed");
             }
 // client MUST mask payload, server MUST NOT        
             boolean masked = conn.isClientSide();

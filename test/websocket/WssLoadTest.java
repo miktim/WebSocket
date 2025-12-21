@@ -19,7 +19,7 @@ public class WssLoadTest {
     static final int TEST_SHUTDOWN_TIMEOUT = 10000; //10 sec 
     static final String REMOTE_HOST = "localhost";//"192.168.1.106";
 
-    static void ws_log(String msg) {
+    static void ws_log(Object msg) {
         System.out.println(msg);
     }
 

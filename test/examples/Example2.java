@@ -5,11 +5,13 @@
 
 import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsConnection;
+import org.miktim.websocket.WsError;
 import org.miktim.websocket.WsMessage;
 import org.miktim.websocket.WsStatus;
 
 public class Example2 {
     static String serverURI = "wss://echo.websocket.org";
+//    static String serverURI = "wss://127.0.0.1:8443"; // local echo server   
     static void log(Object obj) {
         System.out.println(obj);
     }
@@ -23,11 +25,13 @@ public class Example2 {
             public void onOpen(WsConnection conn, String subProtocol) {
                 log(conn.getSSLSessionProtocol());
                 conn.send("Hi, Server!");
-                conn.close();
+                conn.close("Bye, Server!");
             }
 
             @Override
             public void onMessage(WsConnection conn, WsMessage msg) {
+                if(!msg.isText()) 
+                    conn.close(WsStatus.INVALID_DATA, "Unexpected binary");
                 log(msg.toString());
             }
 
@@ -44,9 +48,13 @@ public class Example2 {
         
         WebSocket webSocket = new WebSocket();
         try {
+// for local echo server
+//            WebSocket.setTrustStore("./testkeys", "passphrase");
+// or
+//            WebSocket.setStoreFile(new File("./testkeys"), "passphrase");
             webSocket.connect(serverURI, handler);
-        } catch (Exception e) {
-            log(e);
+        } catch (WsError err) {
+            log(err);
         }
     }
 /* console output like this:

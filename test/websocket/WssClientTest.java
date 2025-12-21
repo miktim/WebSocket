@@ -53,6 +53,7 @@ public class WssClientTest {
             @Override
             public void onClose(WsConnection con, WsStatus status) {
                 ws_log("Connection closed. " + status);
+                timer.cancel();
             }
 
             @Override
@@ -74,6 +75,7 @@ public class WssClientTest {
             public void onMessage(WsConnection con, WsMessage msg) {
                 if(!msg.isText()) {
                     ws_log("rcv: unexpected binary");
+                    con.close("Unexpected binary");
                 } else {
                     String packet = msg.toString();
                     String[] arr = packet.split(",", 2);
@@ -114,7 +116,6 @@ public class WssClientTest {
                         if (++counter > 4) {
                             ws_log("OK");
                             con.close(WsStatus.NORMAL_CLOSURE, "Completed");
-                            timer.cancel();
                         }
                     } else {
                         ws_log("Unknown command.");

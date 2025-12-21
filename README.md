@@ -11,7 +11,7 @@
 \- client supports Internationalized Domain Names (IDNs);  
 \- stream-based messaging.    
 
-The latest standalone jar and JavaDoc [here](./dist).  
+The latest standalone jar and JavaDoc are here: [./dist](./dist).  
 The package was built with debug info using openJDK 1.8 for the target JRE 1.6.  
 
 #### Example1: local echo server for TLS connections:  
@@ -42,13 +42,13 @@ public class Example1 {
 
       @Override
       public void onMessage(WsConnection conn, WsMessage msg) {
-        try {
-// echoing the WebSocket message as an InputStream        
-          conn.send(msg, msg.isText()); 
-        } catch (IOException ex) {
-// WebSocket message reading errors lead to connection closure.
-// No action.
-        }
+// echoing the WebSocket message as an stream        
+        conn.send(msg, msg.isText()); 
+      }
+      
+      @Override
+      public void onError(WsConnection conn, Throwable err) {
+      	log("Unexpected error: " + err);
       }
 
       @Override
@@ -60,14 +60,14 @@ public class Example1 {
     };
     
     WebSocket webSocket = new WebSocket();
-// register your key store file      
+// register key store file      
     WebSocket.setKeyStore("./keystore.jks", "passphrase");
     try {
       WsServer echoServer = webSocket.startSecureServer(port, handler);
       log("Echo Server listening port: " + port);
-    } catch (Exception ex) {
+    } catch (WsError err) {
       webSocket.closeAll("Echo Server crashed");
-      log(ex);
+      log(err);
     }
   } 
 }
@@ -98,8 +98,14 @@ public class Example2 {
 
       @Override
       public void onMessage(WsConnection conn, WsMessage msg) {
-        if(msg.isText()) 
-          log(msg.toString());
+        if(!msg.isText()) 
+          conn.close(WsStatus.INVALID_DATA, "Unexpected binary"); 
+        log(msg.toString());
+      }
+      
+      @Override
+      public void onError(WsConnection conn, Throwable err) {
+      
       }
 
       @Override
@@ -112,8 +118,8 @@ public class Example2 {
     try {
 // use the default Java Trust Store    
       webSocket.connect(serverUri, handler);
-    } catch (Exception ex) {
-      log(ex);
+    } catch (WsError err) {
+      log(err);
     }
   }
 /* console output like this:

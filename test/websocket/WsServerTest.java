@@ -37,7 +37,7 @@ public class WsServerTest implements WsConnection.Handler{
                 .setConnectionSoTimeout(1000, true) // ping on 1 second timeout
                 .setSubProtocols(WEBSOCKET_SUBPROTOCOLS.split(","));
         final WsServer server = webSocket.startServer(8080, new WsServerTest(), wsp);
-//        server.start();
+
 // init shutdown timer
         final Timer timer = new Timer(true); // is daemon
         timer.schedule(new TimerTask() {
@@ -55,15 +55,7 @@ public class WsServerTest implements WsConnection.Handler{
                 + "\r\nTest will be terminated after "
                 + (TEST_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
-// call the default browser
-        /* Android
-        Intent browserIntent = new Intent(Intent.ACTION_VIEW,
-                Uri.parse("file:///android_asset/WsServerTest.html"));
-        startActivity(browserIntent);
-         */
-// /* Desktop 
         java.awt.Desktop.getDesktop().open(new File(path, "WsServerTest.html"));
-// */
     }
 
     String getTestId(WsConnection con) {
@@ -144,7 +136,7 @@ public class WsServerTest implements WsConnection.Handler{
                     con.send(message);
                 }
             } else {
-                ws_log("Unexpected binary: ignored");
+                con.close(WsStatus.INVALID_DATA, "Unexpected binary");
             }
         } catch (IOException e) {
             ws_log(String.format("[%s] server side onMessage send error: %s",

@@ -24,8 +24,9 @@ public class WsMessage extends InputStream {
     byte[] payload = new byte[0]; // current payload
     int off = 0; // offset in the current payload
     boolean eof = false;
+    boolean closed = false; // stream is closed
 
-    WsMessage(WsConnection conn, boolean isText) {
+    WsMessage(WsConnection conn,boolean isText) {
         super();
         this.conn = conn;
         this.isText = isText;
@@ -36,8 +37,8 @@ public class WsMessage extends InputStream {
     }
 
     /**
-     * Returns true if the message is UTF-8 encoded text,
-     * otherwise it is binary data.
+     * Returns true if the message is UTF-8 encoded text, otherwise it is binary
+     * data.
      *
      * @since 5.0
      */
@@ -58,10 +59,11 @@ public class WsMessage extends InputStream {
             }
             getPayload();
         }
+        checkClosed();
         return -1; // end of message
     }
 
-    private void getPayload() {
+    private void getPayload() throws IOException {
         synchronized (payloads) {
             if (!eof) {
                 while ((payload = payloads.poll()) == null) {
@@ -77,30 +79,37 @@ public class WsMessage extends InputStream {
         }
         off = 0;
         eof = payload.length == 0;
+        checkClosed();
     }
 
     void putPayload(byte[] buf) {
         synchronized (payloads) {
             payloads.add(buf);
             available += buf.length;
-            payloads.notify();
+            payloads.notifyAll();
         }
     }
 
     /**
      * Closes the input stream.
-     *
-     * Further reading causes an IOException.
+     * 
+     * Once the stream is closed, attempts to read will throw an IOException.
      */
     @Override
-    synchronized public void close() {
-        payloads.clear();
-        available = 0;
-        payload = new byte[0];
-        off = 0;
-        eof = true;
+    public void close() {
+        synchronized (payloads) {
+            payloads.clear();
+            putPayload(new byte[0]);
+            available = 0;
+            eof = true;
+            closed = true;
+        }
     }
-
+    
+    private void checkClosed() throws IOException {
+        if(closed) throw new IOException("Stream closed");
+    } 
+    
     ByteArrayOutputStream toByteOutStream() throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         while (!eof) {
@@ -129,7 +138,7 @@ public class WsMessage extends InputStream {
         try {
             return toByteOutStream().toString("UTF-8");
         } catch (IOException ex) {
-            String msg = "toString() failed";
+            String msg = "toString failed";
             conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, msg, ex);
             throw new WsError(msg, ex);
         }
@@ -147,7 +156,7 @@ public class WsMessage extends InputStream {
         try {
             return toByteOutStream().toByteArray();
         } catch (IOException ex) {
-            String msg = "toByteArray() failed";
+            String msg = "toByteArray failed";
             conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, msg, ex);
             throw new WsError(msg, ex);
         }

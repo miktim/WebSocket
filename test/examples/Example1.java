@@ -12,6 +12,7 @@ import org.miktim.websocket.WsServer;
 import org.miktim.websocket.WsStatus;
 
 public class Example1 {
+
     static final int PORT = 8443;
 
     static void log(Object obj) {
@@ -53,14 +54,13 @@ public class Example1 {
         };
         WebSocket webSocket = new WebSocket();
 // register your keystore file       
-        WebSocket.setKeyStore("./keystore.jks", "passphrase");
-        WsServer echoServer = null;
         try {
-            echoServer = webSocket.startSecureServer(PORT, handler);
+            WebSocket.setKeyStore("./testkeys", "passphrase");
+            WsServer echoServer = webSocket.startSecureServer(PORT, handler);
             log("Echo Server listening port: " + PORT);
-        } catch (WsError ex) {
+        } catch (WsError err) {
             webSocket.closeAll("Echo Server crashed");
-            log(ex.getCause());
+            log(err.getCause());
         }
     }
 }

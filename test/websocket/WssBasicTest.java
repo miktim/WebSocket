@@ -1,5 +1,5 @@
 /*
- * WsBasicTest. MIT (c) 2025 miktim@mail.ru
+ * WssBasicTest. MIT (c) 2025 miktim@mail.ru
  * Testing basic functions of WebSocket, WsServer,
  * client and server connections.
  */
@@ -19,7 +19,7 @@ import org.miktim.websocket.WsServer;
 import org.miktim.websocket.WsStatus;
 
 //package websocket;
-public class WsBasicTest {
+public class WssBasicTest {
 
     static int testId = 1;
     static final int DELAY = 500; //milliseconds
@@ -123,7 +123,7 @@ public class WsBasicTest {
         try {
             intfAddr = InetAddress.getByName("127.0.0.1");
             webSocket = new WebSocket(intfAddr);
-            webSocket.setKeyFile(new File("./testkeys"), "passphrase");
+            webSocket.setStoreFile(new File("./testkeys"), "passphrase");
 
             wsp = (new WsParameters()).setPayloadBufferLength(123);
 

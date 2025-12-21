@@ -23,25 +23,25 @@ Overview:
   Interface WsConnection.Handler - a connection event handler; 
   Class WsMessage - streaming representation of the incoming WebSocket message; 
   Class WsParameters - WebSocket connection creation and execution time parameters;
-  Class WsError - this class "hides" the cause of the checked exception;
+  Class WsError - indicates serious WebSocket problem;
   Class WsStatus - WebSocket connection status.
 
 
   Class WsError extends Error
-    Unchecked exception "hides" real checked cause
+    Unchecked exception contains the real cause
 
   Class WebSocket:  
     The creator of WebSocket servers and client-side connections.
 
     Constant:
-      static final String VERSION = "5.0.1";
+      static final String VERSION = "5.0.2";
 
     Constructors:
       WebSocket();
         - creates WebSocket instance
       WebSocket(InetAddress intfAddr);
         - creates WebSocket instance on interface;
-        - hidden: SocketException
+        - throws WsError on cause: SocketException when interface does not exists
 
     Methods:
       static URI idnURI(String uri) throws URISyntaxException;
@@ -53,9 +53,9 @@ Overview:
       static void setTrustStore(String keyFilePath, String password);
         - sets system properties javax.net.ssl.trustStore/trustStorePassword
 
-      void setKeyFile(String storeFile, String storePassword);
+      void setStoreFile(File storeFile, String storePassword);
         - use a keyStore file (server) or a trustStore file (client);
-      void resetKeyFile();
+      void reseStoreFile();
 
       InetAddress getInterfaceAddress();
         - returns WebSocket instance interface address or null
@@ -65,7 +65,7 @@ Overview:
         - port: is listening port number
           handler: is server-side connection handler
           wsp: the server-side connections creation and execution parameters
-        - hidden Exceptions: IOException, GeneralSecurityException
+        - throws WsError on causes: IOException, GeneralSecurityException
 
       WsServer startServer(int port, WsConnection.Handler handler)
         - creates and starts insecure connections server;
@@ -91,7 +91,7 @@ Overview:
             user-info@ and #fragment - ignored
         - handler - client-side connection events handler
         - wsp - client-side connection parameters
-        - hidden Exceptions: URISyntaxException, IOException, GeneralSecurityException
+        - throws WsError on causes: URISyntaxException, IOException, GeneralSecurityException
 
       WsConnection connect(String uri, WsConnection.Handler handler) 
         - creates and starts a client connection with default parameters;
@@ -114,7 +114,8 @@ Overview:
     and it is removed from the WebSocket server list.
 
     Methods:
-     
+      WsServer ready();
+        - returns himself when started
       boolean isActive();
         - returns the running state
       boolean isSecure();
@@ -133,7 +134,7 @@ Overview:
       void stopServer(); 
       void stopServer(String closeReason);
         - stop listening and close all active connections with 
-          code 1001 (GOING_AWAY)
+          code 1001 (GOING_AWAY). Default closeReason: "Shutdown".
         
   Interface WsServer.Handler extends WsConnection.Handler:  
     The default server handler does nothing.
@@ -142,9 +143,9 @@ Overview:
       void onStart(WsServer server);
         - called when the server is started
 
-      void onStop(WsServer server, Throwable error);
+      void onStop(WsServer server, Throwable err);
         - called when the server is shut down or crashed;
-        - error is a ServerSocketException, RuntimeException or null.
+        - err is null or server crash cause.
 
 
   Class WsConnection extends Thread:  
@@ -153,12 +154,12 @@ Overview:
     Methods:
       void send(InputStream is, boolean isText) throws IOException; 
         - the input stream is binary data or UTF-8 encoded text
-      void send(String message) throws IOException;
+      void send(String message);
         - send text;
-        - hidden: IOException
-      void send(byte[] message) throws IOException;
+        - throws WsError on cause: IOException
+      void send(byte[] message);
         - send binary data;
-        - hidden: IOException
+        - throws WsError on cause: IOException
 
       void close();
         - closes connection with status code 1000 (NORMAL_CLOSURE)
@@ -243,10 +244,12 @@ Overview:
         - returns true if input stream is UTF-8 encoded text
       String toString();
         - converts this stream to String;
-        - hidden Exceptions: IOException, IllegalStateException
+        - throws WsError on: IOException, IllegalStateException
       byte[] toByteArray();
         - converts this stream to byte array;
-        - hidden Exceptions: IOException
+        - throws WsError on: IOException
+      void close();
+        - closes this stream.
 
   
   Class WsParameters:  
@@ -272,7 +275,7 @@ Overview:
         - if the timeout is exceeded and ping is disabled, 
           the connection is closed with status code 1001 (GOING_AWAY)
       int getConnectionSoTimeout();
-        - default: 4000 milliseconds
+        - default: 2000 milliseconds
       boolean isPingEnabled();
         - enabled by default
 
@@ -290,8 +293,8 @@ Overview:
         - default: 1 MiB
 
       WsParameters setMaxMessages(int maxMsgs);
-        - sets the maximum number of pending incoming messages per 
-          connection (min value: 1);
+        - sets the length of the incoming message queue for each connection
+          (min value: 1);
         - overflow of this value leads to an error and
           connection closure with status code 1008 (POLICY_VIOLATION)
       int getMaxMessages();

@@ -204,8 +204,10 @@ public class WsParameters {
     }
     
     /**
-     * Sets the maximum number of pending
+     * Sets the maximum number of queued
      * incoming messages per connection.
+     * Overflow of this value leads to an error and
+     * connection closure with status code 1008 (POLICY_VIOLATION)
      * @param maxMsgs maximum number of messages (min value is 1)
      * @return this
      */
@@ -215,7 +217,7 @@ public class WsParameters {
     }
     
     /**
-     * Returns the maximum number of pending
+     * Returns the maximum number of queued
      * incoming messages per connection.
      * @return number of pending messages. Default: {@link WsParameters#maxMessages}
      */

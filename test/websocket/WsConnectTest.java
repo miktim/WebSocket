@@ -78,14 +78,14 @@ public class WsConnectTest {
             log("0.1 wss to ...");
             try{
                 conn = webSocket.connect("wss://localhost:" + securePort, handler, wsp);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                System.err.println(e.toString()); 
             }
             delay();
             log("0.2 ws to ...");
             try{
                 conn = webSocket.connect("ws://localhost:" + securePort, handler, wsp);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                System.err.println(e.toString()); 
             }
             delay();
@@ -110,7 +110,7 @@ public class WsConnectTest {
             closeAll("1", webSocket);
 
             log("\r\n2. Key file is set. Start SecureServer");
-            webSocket.setKeyFile(new File("./localhost.jks"), "password");
+            webSocket.setStoreFile(new File("./localhost.jks"), "password");
             server = webSocket.startSecureServer(securePort, handler, wsp);
             delay();
             logTest("2","SecureServer", webSocket.listServers().length == 1);
@@ -146,7 +146,7 @@ public class WsConnectTest {
             delay();
             closeAll("3", webSocket);
 
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
             ex.printStackTrace();
         }
         log("\r\nCompleted");

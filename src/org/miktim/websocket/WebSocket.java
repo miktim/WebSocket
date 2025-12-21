@@ -41,13 +41,13 @@ public class WebSocket {
     /**
      * Current package version {@value VERSION}.
      */
-    public static final String VERSION = "5.0.1";
+    public static final String VERSION = "5.0.2";
 
     private InetAddress interfaceAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
     private final List<WsServer> servers = Collections.synchronizedList(new ArrayList<WsServer>());
-    private File keyStoreFile = null;
-    private String keyStorePassword = null;
+    private File storeFile = null;
+    private String storePassword = null;
 
     /**
      * Creates a WebSocket factory.
@@ -59,12 +59,12 @@ public class WebSocket {
      * Creates a WebSocket factory on network interface.
      *
      * @param intfAddr network interface address (bind address). 
+     * <p><b>Throws</b> {@link WsError} on causes: {@link SocketException}, {@link NullPointerException} </p>
      */
     public WebSocket(InetAddress intfAddr) {// throws SocketException {
-
         try {
             NetworkInterface.getByInetAddress(intfAddr);
-        } catch (SocketException ex) {
+        } catch (Exception ex) {
             throw new WsError("Not interface", ex);
         }
        
@@ -123,19 +123,19 @@ public class WebSocket {
      * @param file store file
      * @param password password
      */
-    public void setKeyFile(File file, String password) {
+    public void setStoreFile(File file, String password) {
 //        if(file == null || password == null) 
 //            throw new NullPointerException();
-        this.keyStoreFile = file;
-        this.keyStorePassword = password;
+        this.storeFile = file;
+        this.storePassword = password;
     }
 
     /**
-     * Clear key file info.
+     * Clear store file info.
      */
-    public void resetKeyFile() {
-        keyStoreFile = null;
-        keyStorePassword = null;
+    public void resetStoreFile() {
+        storeFile = null;
+        storePassword = null;
     }
 
     /**
@@ -207,7 +207,7 @@ public class WebSocket {
      * wich extends {@link WsConnection.Handler}.
      * @param wsp server side connection parameters.
      * @return WebSocket TLS server instance. 
-     * <p><b>Note:</b> {@link WsError} "hides" {@link java.io.IOException}, {@link java.security.GeneralSecurityException}</p>
+     * <p><b>Throws</b> {@link WsError} on {@link java.io.IOException}, {@link java.security.GeneralSecurityException}</p>
      * @since 4.3
      */
     public WsServer startSecureServer(int port, WsConnection.Handler handler, WsParameters wsp) {//        throws IOException, GeneralSecurityException {
@@ -269,7 +269,7 @@ public class WebSocket {
         ServerSocket serverSocket;
         if (isSecure) {
             ServerSocketFactory serverSocketFactory;
-            if (this.keyStoreFile != null) {
+            if (this.storeFile != null) {
                 serverSocketFactory = getSSLContext(false)
                         .getServerSocketFactory();
             } else {
@@ -309,7 +309,7 @@ public class WebSocket {
      * @param handler client side connection handler.
      * @param wsp client side connection parameters.
      * @return WebSocket connection instance.
-     * <p><b>Note:</b> {@link WsError} "hides" {@link URISyntaxException}, {@link java.io.IOException}, {@link java.security.GeneralSecurityException}</p>
+     * <p><b>Throws</b> {@link WsError} on {@link URISyntaxException}, {@link java.io.IOException}, {@link java.security.GeneralSecurityException}</p>
      */
     synchronized public WsConnection connect(String uri,
             WsConnection.Handler handler, WsParameters wsp) {//throws URISyntaxException, IOException, GeneralSecurityException {
@@ -362,7 +362,7 @@ public class WebSocket {
         SSLSocketFactory factory;
 
         if (isSecure) {
-            if (this.keyStoreFile != null) {
+            if (this.storeFile != null) {
                 factory = getSSLContext(true).getSocketFactory();
             } else {
                 factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
@@ -399,8 +399,8 @@ public class WebSocket {
         KeyManagerFactory kmf;
         KeyStore ks;// = KeyStore.getInstance(KeyStore.getDefaultType());
 
-        String ksPassphrase = this.keyStorePassword;
-        File ksFile = keyStoreFile;
+        String ksPassphrase = this.storePassword;
+        File ksFile = storeFile;
         char[] passphrase = ksPassphrase.toCharArray();
 
         ctx = SSLContext.getInstance("TLS");

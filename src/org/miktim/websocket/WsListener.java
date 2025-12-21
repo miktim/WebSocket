@@ -77,6 +77,7 @@ class WsListener extends Thread {
                             messageStream = new WsMessage(
                                     conn, (opData & OP_TEXT) > 0);
                             messageLength = 0L;
+            conn.messageQueue.add(messageStream);
                             dataFrame();
                             break;
                         }
@@ -128,13 +129,12 @@ class WsListener extends Thread {
                 break;
             }
         }
-// leave listener, clear message queue,  
-        messageStream = null;//?
+// leave listener  
+        if(messageStream != null) messageStream.close();
         if (conn.messageQueue.remainingCapacity() > 0) {
             conn.messageQueue.add(new WsMessage());
         }
         conn.cancelCloseTimer();
-//        notifyAll();
     }
 
     void readHeader(int b2) throws IOException {
@@ -171,9 +171,9 @@ class WsListener extends Thread {
         if (conn.wsp.maxMessageLength != -1 && messageLength > conn.wsp.maxMessageLength) {
             IOException e = new IOException("Message too big");
             conn.closeDueTo(WsStatus.MESSAGE_TOO_BIG, e.getMessage(), e);
-            messageStream = null;
+            messageStream.close();
         }
-//        if (conn.status.error != null) messagePayloads = null;
+
         if (messageStream == null || messageStream.eof) {
             skipPayload();
             return false;
@@ -182,7 +182,7 @@ class WsListener extends Thread {
         if(payload.length > 0) messageStream.putPayload(payload);
         if ((opData & OP_FINAL) != 0) {
             messageStream.putPayload(EMPTY_PAYLOAD); // eof
-            conn.messageQueue.add(messageStream);
+//            conn.messageQueue.add(messageStream);
             messageStream = null;
         }
         return true;
