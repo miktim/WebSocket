@@ -1,3 +1,5 @@
+5.0.2
+  - refactored! see ./dist/javaDoc or README.txt
 4.3.1
   - WsInputStream published
   - WsException class added
