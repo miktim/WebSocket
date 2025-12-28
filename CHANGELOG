@@ -16,7 +16,6 @@
       WsConnection:
         MESSAGE_QUEUE_CAPACITY
         getSocket()
-        listConnections()
   - added methods:
       WebSocket:
         InetAddress getInterfaceAddress()
@@ -25,12 +24,10 @@
         WsServer WebSocket.startServer(int port, WsHandler handler, WsParameters wsp)
         WsServer WebSocket.startSecureServer(int port, WsHandler handler)
         WsServer WebSocket.startSecureServer(int port, WsHandler handler, WsParameters wsp)
-        Socket getConnectionSocket(WsConnection conn)
       WsServer:
         boolean isActive()
         void stopServer()
         void stopServer(String reason)
-        Socket getConnectionSocket(WsConnection conn)
       WsConnection:
         void close(String reason),
         byte[] toByteArray(InputStream),

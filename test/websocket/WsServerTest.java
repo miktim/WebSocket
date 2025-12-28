@@ -97,6 +97,7 @@ public class WsServerTest implements WsConnection.Handler{
                     e));
 //            e.printStackTrace();
         }
+        if(testId.equals("0")) con.close("Suddenly... null subProtocol accepted");
     }
 
     @Override

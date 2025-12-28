@@ -98,7 +98,7 @@ public class WsHandlerTest {
                         throw new NullPointerException(method);
                     }
                     if (testId == 3) try {
-                        server.getConnectionSocket(conn).close();
+                        conn.getSocket().close();
                     } catch (IOException ignore) {
                     }
                     if (testId == 4) {

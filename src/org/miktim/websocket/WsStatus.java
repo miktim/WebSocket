@@ -8,7 +8,7 @@ package org.miktim.websocket;
 /**
  * WebSocket connection status.
  * <p>
- * Descriptions of predefined WebSocket closing codes:<br>
+ * Contains public properties and predefined WebSocket closing codes:<br>
  * <a href="https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code" target="_blank ">
  * - MDN CloseEvent codes.</a><br>
  * <a href="https://tools.ietf.org/html/rfc6455#section-7.4" target="_blank ">

@@ -144,18 +144,18 @@ public class WsServer extends Thread {
         return serverSocket;
     }
 
-    /**
+    /*
      * Returns active server connection socket
      * @param conn server side active connection
      * @return Socket object or null
      * @since 4.3
-     */
     public Socket getConnectionSocket(WsConnection conn) {
         if (connections.contains(conn)) {
             return conn.socket;
         }
         return null;
     }
+    */
 
     /**
      * Start server.

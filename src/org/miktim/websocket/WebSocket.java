@@ -169,17 +169,17 @@ public class WebSocket {
         return servers.toArray(new WsServer[0]);
     }
 
-    /**
+    /*
      * Get active client connection socket
      * @param conn active client connection
      * @return connection socket or null
-     */
     public Socket getConnectionSocket(WsConnection conn) {
         if (connections.contains(conn)) {
             return conn.socket;
         }
         return null;
     }
+     */
 
     /**
      * Closes all servers/connections within this WebSocket instance.

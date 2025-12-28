@@ -89,7 +89,7 @@ public final class WsConnection extends Thread {
      * Returns handshaked WebSocket subprotocol.
      *
      * @return WebSocket subprotocol or null.
-     * @see WsParameters.setSubProtocols()
+     * @see WsParameters#setSubProtocols(String[])
      */
     public String getSubProtocol() {
         return subProtocol;

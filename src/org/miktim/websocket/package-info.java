@@ -9,10 +9,8 @@
  * - supports insecure or TLS connections;<br>
  * - client supports IDNs (Internationalized Domain Names);<br>
  * - stream-based messaging.<br>
- *<br>
- * Created: 2020-06-06
- *<br>
+  *<br>
  * @version 4.3
- * @author miktim@mail.ru, MIT (c) 2020-2025
+ * @author @miktim, MIT (c) 2020-2025
  */
 package org.miktim.websocket;

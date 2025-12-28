@@ -20,7 +20,7 @@ public class WsParameters {
 
     String[] subProtocols = null; // WebSocket subprotocol[s] in preferred order
     int handshakeSoTimeout = 2000; // millis, TLS and WebSocket open/close handshake timeout
-    int connectionSoTimeout = 4000; // millis, data exchange timeout
+    int connectionSoTimeout = 2000; // millis, data exchange timeout
     boolean pingEnabled = true; // if false, connection terminate by connectionSoTimeout
     int payloadBufferLength = 32768; // bytes. Outgoing payload length. 
     int backlog = -1; // maximum number of pending connections on the server socket (system default)
@@ -109,7 +109,7 @@ public class WsParameters {
 
     /**
      * Returns open/close WebSocket handshake timeout.
-     * @return timeout in milliseconds. Default: {@value handshakeSoTimeout}
+     * @return timeout in milliseconds. Default: 2000
      */
     public int getHandshakeSoTimeout() {
         return handshakeSoTimeout;
@@ -129,7 +129,7 @@ public class WsParameters {
 
     /**
      * Returns connection Socket timeout.
-     * @return timeout in milliseconds. Default: {@value connectionSoTimeout}.
+     * @return timeout in milliseconds. Default: 2000
      */
     public int getConnectionSoTimeout() {
         return connectionSoTimeout;
