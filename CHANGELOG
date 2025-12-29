@@ -1,4 +1,4 @@
-4.3.0
+4.3.0 intermediate version to 5.0
   - deprecated methods:
       WebSocket:
         InetAddress getBindAddress() - renamed
@@ -30,9 +30,9 @@
         void stopServer(String reason)
       WsConnection:
         void close(String reason),
-        byte[] toByteArray(InputStream),
-        String toString(InputStream, charsetName)
-        String toString(InputStream),
+?        byte[] toByteArray(InputStream),
+?        String toString(InputStream, charsetName)
+?        String toString(InputStream),
         boolean isPrimaryHandler()
         WsConnection ready()
       WsParameters:
