@@ -7,6 +7,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import org.miktim.websocket.WsConnection;
 import org.miktim.websocket.WebSocket;
+import org.miktim.websocket.WsError;
 import org.miktim.websocket.WsMessage;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsStatus;
@@ -27,7 +28,11 @@ public class WssClientTest {
 
     static void ws_send(WsConnection con, String msg) {
         ws_log("snd: " + msg);
-        con.send(msg);
+        try {
+            con.send(msg);
+        } catch (WsError err) {
+            ws_log("snd: " + err.getCause());
+        }
     }
 
     static String randomString(int string_length) {
@@ -77,7 +82,11 @@ public class WssClientTest {
                     ws_log("rcv: unexpected binary");
                     con.close("Unexpected binary");
                 } else {
-                    String packet = msg.toString();
+                    String packet = "";
+                    try {
+                        packet = msg.asString();
+                    } catch (WsError err) {
+                    }
                     String[] arr = packet.split(",", 2);
                     String cmd = arr[0];
                     String response = arr[1];

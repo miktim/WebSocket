@@ -57,9 +57,13 @@ public class WsHandlerTest {
                     serverSideCalls = "onOpen";
                 }
                 String message = conn.isClientSide() ? "Hi, Server!" : "Hi, Client!";
+                try {
                     conn.send(message);
                     conn.send(message);
                     conn.send(message);
+                } catch (Exception ex) {
+                    
+                }
                 if (testId == 1 && testClient == conn.isClientSide()) {
                     throw new NullPointerException(method);
                 }

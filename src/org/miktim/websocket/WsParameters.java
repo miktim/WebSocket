@@ -1,5 +1,5 @@
 /*
- * WsParameters. MIT (c) 2020-2023 miktim@mail.ru
+ * WsParameters. MIT (c) 2020-2025 miktim@mail.ru
  * WebSocket connection parameters.
  * Created: 2021-01-29
  */
@@ -110,7 +110,7 @@ public class WsParameters {
 
     /**
      * Returns open/close WebSocket handshake timeout.
-     * @return timeout. Default: {@link WsParameters#handshakeSoTimeout} milliseconds.
+     * @return timeout. Default: 2000 milliseconds.
      */
     public int getHandshakeSoTimeout() {
         return handshakeSoTimeout;
@@ -130,8 +130,7 @@ public class WsParameters {
 
     /**
      * Returns connection Socket timeout.
-     * @return timeout. Default: {@link WsParameters#connectionSoTimeout}
-     *  milliseconds.
+     * @return timeout. Default: 2000 milliseconds.
      */
     public int getConnectionSoTimeout() {
         return connectionSoTimeout;
@@ -219,7 +218,7 @@ public class WsParameters {
     /**
      * Returns the maximum number of queued
      * incoming messages per connection.
-     * @return number of pending messages. Default: {@link WsParameters#maxMessages}
+     * @return number of pending messages. Default: 3
      */
     public int getMaxMessages() {
         return maxMessages;

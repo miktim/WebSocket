@@ -10,9 +10,10 @@ import static java.lang.String.format;
 import static java.lang.Thread.sleep;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.security.GeneralSecurityException;
 import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsConnection;
-import org.miktim.websocket.WsError;
 import org.miktim.websocket.WsMessage;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsServer;
@@ -23,7 +24,7 @@ public class WssBasicTest {
 
     static int testId = 1;
     static final int DELAY = 500; //milliseconds
-    static final int PORT = 8080;
+    static final int PORT = 8443;
     static InetAddress intfAddr;
     static URI uri;
     static String uriString;
@@ -78,11 +79,11 @@ public class WssBasicTest {
                     }
                     switch (testId) {
                         case 2: // empty message
-                            String s = msg.toString();
+                            String s = msg.asString();
                             logTestOk(conn, s.equals(""));
                             return;
                         case 3: // fragmented message
-                            String ts = msg.toString();
+                            String ts = msg.asString();
                             logTestOk(conn, ts.equals(testBuffer));
                             return;
                         default:
@@ -123,7 +124,7 @@ public class WssBasicTest {
         try {
             intfAddr = InetAddress.getByName("127.0.0.1");
             webSocket = new WebSocket(intfAddr);
-            webSocket.setStoreFile(new File("./testkeys"), "passphrase");
+            webSocket.setKeyFile(new File("./localhost.jks"), "password");
 
             wsp = (new WsParameters()).setPayloadBufferLength(123);
 
@@ -146,8 +147,8 @@ public class WssBasicTest {
 
     }
 
-    static void runTest() throws WsError, InterruptedException {
-//            throws URISyntaxException, IOException, GeneralSecurityException, InterruptedException {
+    static void runTest() 
+            throws URISyntaxException, IOException, GeneralSecurityException, InterruptedException {
         testId = 1;
         log("\r\n0. Test opening WebSocket, WsServer, connect."
                 + "\r\n1. Test connection properties");

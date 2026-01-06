@@ -110,7 +110,7 @@ public class WsConnectTest {
             closeAll("1", webSocket);
 
             log("\r\n2. Key file is set. Start SecureServer");
-            webSocket.setStoreFile(new File("./localhost.jks"), "password");
+            webSocket.setKeyFile(new File("./localhost.jks"), "password");
             server = webSocket.startSecureServer(securePort, handler, wsp);
             delay();
             logTest("2","SecureServer", webSocket.listServers().length == 1);

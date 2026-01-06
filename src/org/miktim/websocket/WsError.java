@@ -1,15 +1,15 @@
 /*
- * WsError. MIT (c) 2020-2025 miktim@mail.ru
+ * WsError. MIT (c) 2025 miktim@mail.ru
  * Indicates serious WebSocket problem.
  */
 package org.miktim.websocket;
 
 /**
- * Indicates serious WebSocket problem.
- * Contains the error cause.
+ * Indicates serious WebSocket problem,
+ * contains the error cause.
  * @since 5.0
  */
-public class WsError extends Error {
+public class WsError extends RuntimeException {
     WsError(String message, Throwable cause) {
         super(message, cause);
     }

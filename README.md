@@ -1,4 +1,4 @@
-## Java SE 6+/Android 4.1+ WebSocket client and server package, MIT (c) 2020-2025 @miktim<br/>
+## Java SE 1.6+/Android 4.0+ WebSocket client and server package, MIT (c) 2020-2025 @miktim<br/>
 ### Release notes:
 
 \- RFC 6455 compliant package ( [https://datatracker.ietf.org/doc/html/rfc6455/](https://datatracker.ietf.org/doc/html/rfc6455/) );  
@@ -11,15 +11,16 @@
 \- client supports Internationalized Domain Names (IDNs);  
 \- stream-based messaging.    
 
-The latest standalone jar and JavaDoc are here: [./dist](./dist).  
+The latest standalone jar here: [./dist](./dist).  
 The package was built with debug info using openJDK 1.8 for the target JRE 1.6.  
+The latest standalone JavaDoc are here: [./docs](./docs).  
 
 #### Example1: local echo server for TLS connections:  
 
 ```  
 public class Example1 {
 
-  int port = 8443; // listening port
+  static final int PORT = 8443; // listening port
 
   static void log(Object obj) {
     System.out.println(obj);
@@ -29,45 +30,52 @@ public class Example1 {
   
 // define server-side connections handler  
     WsConnection.Handler handler = new WsConnection.Handler() {
-      int getSession() {
-        return Thread.currentThread().hashCode();
-      }
 
       @Override
       public void onOpen(WsConnection conn, String subProtocol) {
-        String msg = "Session open: " + getSession();
+        String msg = String.format("Connection %d open.",
+          conn.hashCode());
         log(msg);
-        conn.send(msg);
+        try {
+          conn.send(msg);
+        } catch (WsError err) {
+// Do nothing. 
+// An error sending the message means that the connection is closed.
+        }
       }
 
       @Override
       public void onMessage(WsConnection conn, WsMessage msg) {
-// echoing the WebSocket message as an stream        
-        conn.send(msg, msg.isText()); 
+        try {      
+// echoing the WebSocket message as an stream  
+          conn.send(msg, msg.isText()); 
+        } catch (IOException e) {
+// Do nothing. 
+// An error reading the message means that the connection is closed.
+        }  
       }
       
       @Override
       public void onError(WsConnection conn, Throwable err) {
-      	log("Unexpected error: " + err);
+
       }
 
       @Override
       public void onClose(WsConnection conn, WsStatus status) {
-        log(String.format(
-          "Session %d closed with status code (%d)",
-             getSession(), status.code));
+ // logs the connection closure and the error that occurred
+        log(String.format("Connection %d closed. %s",
+             conn.hashCode(), status.toString()));
       }
     };
     
     WebSocket webSocket = new WebSocket();
-// register key store file      
-    WebSocket.setKeyStore("./keystore.jks", "passphrase");
     try {
-      WsServer echoServer = webSocket.startSecureServer(port, handler);
-      log("Echo Server listening port: " + port);
+// register your key store file      
+      WebSocket.setKeyStore("./yourfile.jks", "password");
+      webSocket.startSecureServer(PORT, handler);
+      log("Echo Server listening port: " + PORT);
     } catch (WsError err) {
-      webSocket.closeAll("Echo Server crashed");
-      log(err);
+      log("Server creation error: " + err.getCause());
     }
   } 
 }
@@ -98,14 +106,15 @@ public class Example2 {
 
       @Override
       public void onMessage(WsConnection conn, WsMessage msg) {
-        if(!msg.isText()) 
-          conn.close(WsStatus.INVALID_DATA, "Unexpected binary"); 
-        log(msg.toString());
+        if(msg.isText()) 
+          log(msg.asString());
+        else 
+          conn.close(WsStatus.INVALID_DATA, "Unexpected binary");
       }
       
       @Override
       public void onError(WsConnection conn, Throwable err) {
-      
+// Do nothing. Log error in onClose method.      
       }
 
       @Override
@@ -116,10 +125,10 @@ public class Example2 {
 
     WebSocket webSocket = new WebSocket();
     try {
-// use the default Java Trust Store    
+// use the default Java TrustStore for TLS connection   
       webSocket.connect(serverUri, handler);
     } catch (WsError err) {
-      log(err);
+      log("Connection creation error: " + err.getCause());
     }
   }
 /* console output like this:

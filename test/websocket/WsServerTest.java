@@ -81,6 +81,7 @@ public class WsServerTest implements WsConnection.Handler{
                 (con.getQuery() == null ? "" : "?" + con.getQuery()) //                + " Peer: " + con.getPeerHost()
                 ,
                  " Subprotocol:" + subp));
+        if(testId.equals("0")) con.close("Suddenly...");
     }
 
     @Override

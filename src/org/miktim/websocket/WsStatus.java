@@ -8,30 +8,32 @@ package org.miktim.websocket;
 /**
  * WebSocket status.
  * <p>
- * Descriptions of predefined WebSocket close codes:<br>
- * <a href="https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code" target="_blank ">
- * - MDN CloseEvent codes.</a><br>
+ * The class contains public properties and WebSocket predefined close codes.
+ * <br>
  * <a href="https://tools.ietf.org/html/rfc6455#section-7.4" target="_blank ">
  * - RFC6455 section-7.4;</a><br>
  * <a href="https://www.iana.org/assignments/websocket/websocket.xml#close-code-number" target="_blank ">
  * - IANA close codes;</a><br>
+ * <a href="https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code" target="_blank ">
+ * - MDN CloseEvent codes.</a><br>
  * </p>
  */
 public final class WsStatus {
 
         /**
-         * The WebSocket connection yet not open or the server is not active.
+         * The WebSocket connection yet not open.
          */
         public static final int IS_INACTIVE = -1; // connection in progress
 
         /**
-         * The WebSocket connection is open or the server is active.
+         * The WebSocket connection is open.
          */
         public static final int IS_OPEN = 0;
         public static final int NORMAL_CLOSURE = 1000; //
         public static final int GOING_AWAY = 1001; //* 
         public static final int PROTOCOL_ERROR = 1002; //* 
-        public static final int UNSUPPORTED_DATA = 1003; // 
+        public static final int UNSUPPORTED_DATA = 1003; //
+        public static final int ENDPOINT_ERROR = 1004;
         public static final int NO_STATUS = 1005; //* 
         public static final int ABNORMAL_CLOSURE = 1006; //* 
         public static final int INVALID_DATA = 1007; // 

@@ -1,16 +1,16 @@
 /**
- * WebSocket Java SE 1.6+, Android 4+ server and client package.
+ * WebSocket Java SE 1.6+, Android 4.0+ server and client package.
  *<p> 
  * Release notes:<br>
- * - Java SE 1.6+, Android 4+ compatible;<br>
+ * - Java SE 1.6+, Android 4.0(API 14)+ compatible;<br>
  * - meets the requirements of the <a href="https://tools.ietf.org/html/rfc6455/" target="_blank">RFC6455</a> ;<br>
  * - supported WebSocket version: 13;<br>
  * - WebSocket extensions (Per-Message Deflate, ...) not supported;<br>
- * - supports unsecured (plaintext) or TLS connections;<br>
+ * - supports insecure (cleartext) or TLS connections;<br>
  * - client connections support IDNs (Internationalized Domain Names);<br>
  * - stream-based messaging.<br>
  *<br><br><b>Version:</b> 5.0
- *<br><br><b>License:</b> MIT (c) 2025 @miktim
+ *<br><br><b>License:</b> MIT (c) 2020-2026 @miktim
  * 
  * </p>
  */

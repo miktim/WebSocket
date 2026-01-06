@@ -1,5 +1,5 @@
 /*
- * WebSocket Example1. MIT (c) 2025 miktim@mail.ru
+ * WebSocket Example2. MIT (c) 2025 miktim@mail.ru
  * Connecting to the echo server.
  */
 
@@ -24,7 +24,10 @@ public class Example2 {
             @Override
             public void onOpen(WsConnection conn, String subProtocol) {
                 log(conn.getSSLSessionProtocol());
-                conn.send("Hi, Server!");
+                try {
+                    conn.send("Hi, Server!");
+                } catch (WsError err) {
+                }
                 conn.close("Bye, Server!");
             }
 
@@ -32,7 +35,11 @@ public class Example2 {
             public void onMessage(WsConnection conn, WsMessage msg) {
                 if(!msg.isText()) 
                     conn.close(WsStatus.INVALID_DATA, "Unexpected binary");
-                log(msg.toString());
+                else
+                    try {
+                        log(msg.asString());
+                    } catch (WsError err) {
+                    }
             }
 
             @Override
@@ -49,12 +56,10 @@ public class Example2 {
         WebSocket webSocket = new WebSocket();
         try {
 // for local echo server
-//            WebSocket.setTrustStore("./testkeys", "passphrase");
-// or
-//            WebSocket.setStoreFile(new File("./testkeys"), "passphrase");
+//            webSocket.setKeyFile(new File("./localhost.jks"), "password");
             webSocket.connect(serverURI, handler);
-        } catch (WsError err) {
-            log(err);
+        } catch (Exception err) {
+            log("Connection creation error: " + err);
         }
     }
 /* console output like this:

@@ -13,6 +13,8 @@ import java.util.ArrayDeque;
  * WebSocket message.
  *
  * Messages are input streams of binary data or UTF-8 encoded text.
+ * @since 5.0
+ * 
  */
 public class WsMessage extends InputStream {
 
@@ -26,7 +28,7 @@ public class WsMessage extends InputStream {
     boolean eof = false;
     boolean closed = false; // stream is closed
 
-    WsMessage(WsConnection conn,boolean isText) {
+    WsMessage(WsConnection conn, boolean isText) {
         super();
         this.conn = conn;
         this.isText = isText;
@@ -39,8 +41,6 @@ public class WsMessage extends InputStream {
     /**
      * Returns true if the message is UTF-8 encoded text, otherwise it is binary
      * data.
-     *
-     * @since 5.0
      */
     public boolean isText() {
         return isText;
@@ -91,8 +91,9 @@ public class WsMessage extends InputStream {
     }
 
     /**
-     * Closes the input stream.
-     * 
+     * Closes the message input stream and releases any 
+     * resources associated with the stream.
+     * <br>
      * Once the stream is closed, attempts to read will throw an IOException.
      */
     @Override
@@ -105,11 +106,13 @@ public class WsMessage extends InputStream {
             closed = true;
         }
     }
-    
+
     private void checkClosed() throws IOException {
-        if(closed) throw new IOException("Stream closed");
-    } 
-    
+        if (closed) {
+            throw new IOException("Message stream closed");
+        }
+    }
+
     ByteArrayOutputStream toByteOutStream() throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         while (!eof) {
@@ -122,25 +125,20 @@ public class WsMessage extends InputStream {
     /**
      * Converts the contents of the message to a string.
      *
-     * Throws {@link java.lang.IllegalStateException} when the message is binary
-     * data.
-     *
-     * @return WebSocket message as String.
-     * <p>
-     * <b>Note:</b> {@link WsError} "hides" {@link java.io.IOException}</p>
-     * @since 5.0
+     * @return WebSocket message as a String.
+     * @throws WsError on any exception and
+     * {@link IOException} when the message is binary stream
      */
-    @Override
-    public String toString() {
-        if (!isText()) {
-            throw new IllegalStateException("Is not a text");
-        }
+
+    public String asString() {
+//        throws IOException {
         try {
+            if (!isText()) {
+                throw new IOException("Is not a text");
+            }
             return toByteOutStream().toString("UTF-8");
-        } catch (IOException ex) {
-            String msg = "toString failed";
-            conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, msg, ex);
-            throw new WsError(msg, ex);
+        } catch (Throwable th) {
+            throw new WsError("asString error", th);
         }
     }
 
@@ -148,17 +146,14 @@ public class WsMessage extends InputStream {
      * Converts the contents of the message to a byte array.
      *
      * @return WebSocket message as an array of bytes.
-     * <p>
-     * <b>Note:</b> {@link WsError} "hides" {@link java.io.IOException}</p>
-     * @since 5.0
+     * @throws WsError on any exception
      */
-    public byte[] toByteArray() {
+    public byte[] asByteArray() {
+//        throws IOException {
         try {
             return toByteOutStream().toByteArray();
-        } catch (IOException ex) {
-            String msg = "toByteArray failed";
-            conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, msg, ex);
-            throw new WsError(msg, ex);
+        } catch (Throwable th) {
+            throw new WsError("asByteArray error", th);
         }
     }
 }

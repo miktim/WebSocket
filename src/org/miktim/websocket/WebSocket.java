@@ -41,7 +41,7 @@ public class WebSocket {
     /**
      * Current package version {@value VERSION}.
      */
-    public static final String VERSION = "5.0.2";
+    public static final String VERSION = "5.0.3";
 
     private InetAddress interfaceAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
@@ -56,40 +56,42 @@ public class WebSocket {
     }
 
     /**
-     * Creates a WebSocket factory on network interface.
+     * Creates a WebSocket factory on the network interface.
      *
-     * @param intfAddr network interface address (bind address). 
-     * <p><b>Throws</b> {@link WsError} on causes: {@link SocketException}, {@link NullPointerException} </p>
+     * @param intfAddr network interface address (binding address).
+     * @throws WsError with cause {@link IOException} if no such interface.
      */
-    public WebSocket(InetAddress intfAddr) {// throws SocketException {
+    public WebSocket(InetAddress intfAddr) {
+//            throws IOException {
         try {
-            NetworkInterface.getByInetAddress(intfAddr);
-        } catch (Exception ex) {
-            throw new WsError("Not interface", ex);
+            if(intfAddr != null &&
+                NetworkInterface.getByInetAddress(intfAddr) == null)
+                    throw new SocketException("Not an interface");
+            interfaceAddress = intfAddr;
+        } catch (Throwable th) {
+            throw new WsError("Not an interface", th);
         }
-       
-        interfaceAddress = intfAddr;
     }
 
     /**
      * Sets the system properties javax.net.ssl.trustStore/trustStorePassword.
      *
-     * @param keyFilePath trust store file path
+     * @param filePath trust store file path
      * @param passphrase password
      */
-    public static void setTrustStore(String keyFilePath, String passphrase) {
-        System.setProperty("javax.net.ssl.trustStore", keyFilePath);
+    public static void setTrustStore(String filePath, String passphrase) {
+        System.setProperty("javax.net.ssl.trustStore", filePath);
         System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
     }
 
     /**
-     * Sets the system properties javax.net.ssl.keyStore/keyStorePassword.
+     * Sets the system properties link javax.net.ssl.keyStore/keyStorePassword.
      *
-     * @param keyFilePath key file path
+     * @param filePath key store file path
      * @param passphrase password
      */
-    public static void setKeyStore(String keyFilePath, String passphrase) {
-        System.setProperty("javax.net.ssl.keyStore", keyFilePath);
+    public static void setKeyStore(String filePath, String passphrase) {
+        System.setProperty("javax.net.ssl.keyStore", filePath);
         System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
     }
 
@@ -98,7 +100,7 @@ public class WebSocket {
      * creates URI.
      *
      * @param uri uri String like:
-     * [scheme:]//[user-info@]host[:port][/path][?query][#fragment]
+     * scheme://[user-info@]host[:port][/path][?query][#fragment]
      * @return URI object
      * @throws URISyntaxException
      */
@@ -119,11 +121,11 @@ public class WebSocket {
     }
 
     /**
-     * Sets the keystore or truststore file for TLS connections.
-     * @param file store file
+     * Sets the keystore or truststore file for TLS connections/servers.
+     * @param file keystore (server) or truststore (client) file
      * @param password password
      */
-    public void setStoreFile(File file, String password) {
+    public void setKeyFile(File file, String password) {
 //        if(file == null || password == null) 
 //            throw new NullPointerException();
         this.storeFile = file;
@@ -131,9 +133,9 @@ public class WebSocket {
     }
 
     /**
-     * Clear store file info.
+     * Clear key file info.
      */
-    public void resetStoreFile() {
+    public void resetKeyFile() {
         storeFile = null;
         storePassword = null;
     }
@@ -141,7 +143,7 @@ public class WebSocket {
     /**
      * Returns network interface address of this WebSocket instance.
      *
-     * @return network interface InetAddress
+     * @return network interface address or null
      * @since 4.3
      */
     public InetAddress getInterfaceAddress() {
@@ -167,7 +169,8 @@ public class WebSocket {
     }
 
     /**
-     * Closes all servers/connections within this WebSocket instance.
+     * Closes all servers/connections within this WebSocket instance
+     * with specified reason.
      * <p>
      * Connections close status code 1001 (GOING_AWAY).
      * </p>
@@ -206,57 +209,80 @@ public class WebSocket {
      * If you need to handle server events, use {@link WsServer.Handler} 
      * wich extends {@link WsConnection.Handler}.
      * @param wsp server side connection parameters.
-     * @return WebSocket TLS server instance. 
-     * <p><b>Throws</b> {@link WsError} on {@link java.io.IOException}, {@link java.security.GeneralSecurityException}</p>
+     * @return WebSocket TLS server instance.
+     * @throws WsError on server creation error<br>
+     * Causes:
+     * {@link java.io.IOException},
+     * {@link java.security.GeneralSecurityException},
+     * {@link java.lang.NullPointerException}
+     * @see #setKeyStore(String, String)
+     * @see #setKeyFile(File, String)
      * @since 4.3
      */
-    public WsServer startSecureServer(int port, WsConnection.Handler handler, WsParameters wsp) {//        throws IOException, GeneralSecurityException {
+    public WsServer startSecureServer(int port, WsConnection.Handler handler,
+            WsParameters wsp) {
+//        throws IOException, GeneralSecurityException {
         return startServer(port, handler, wsp, true);
     }
 
     /**
-     * Creates and starts WebSocket server for TLS connections with default
-     * connection parameters.
-     * 
-     * <br><p><b>See: </b>{@link WebSocket#startSecureServer(int, WsConnection.Handler, WsParameters)}</p>
+     * Creates and starts WebSocket server for TLS connections
+     * with default connection parameters
+     * <br>
+     * See {@link WebSocket#startSecureServer(int, WsConnection.Handler, WsParameters)} for details
+     * @throws WsError on server creation error
      * @since 4.3
      */
-    public WsServer startSecureServer(int port, WsConnection.Handler handler) {//        throws IOException, GeneralSecurityException {
+    public WsServer startSecureServer(int port, WsConnection.Handler handler) {
+//            throws IOException, GeneralSecurityException {
         return startServer(port, handler, new WsParameters(), true);
     }
 
     /**
      * Creates and starts WebSocket server for insecure connections
-     *
-     * <br><p><b>See: </b>{@link WebSocket#startSecureServer(int, WsConnection.Handler, WsParameters)}</p>
+     * @param port listening port number.
+     * @param handler server side connection handler.<br>
+     * If you need to handle server events, use {@link WsServer.Handler} 
+     * wich extends {@link WsConnection.Handler}.
+     * @param wsp server side connection parameters.
+     * @return WebSocket cleartext server instance.
+     * @throws WsError on server creation error<br>
+     * Causes:
+     * {@link java.io.IOException},
+     * {@link java.security.GeneralSecurityException},
+     * {@link java.lang.NullPointerException}
      * @since 4.3
      */
-    public WsServer startServer(int port, WsConnection.Handler handler, WsParameters wsp) {//    throws IOException, GeneralSecurityException {
+    public WsServer startServer(int port, WsConnection.Handler handler,
+            WsParameters wsp) {
+//        throws IOException, GeneralSecurityException {
         return startServer(port, handler, wsp, false);
     }
 
     /**
      * Creates and starts WebSocket server for insecure connections 
      * with default connection parameters
-     *
-     * <br><p><b>See: </b>{@link WebSocket#startSecureServer(int, WsConnection.Handler, WsParameters)}</p>
+     * <br>
+     * See {@link WebSocket#startServer(int, WsConnection.Handler, WsParameters)} for details
+     * @return WebSocket cleartext server instance.
+     * @throws WsError on server creation error
      * @since 4.3
      */
-    public WsServer startServer(int port, WsConnection.Handler handler) {//    throws IOException, GeneralSecurityException {
+    public WsServer startServer(int port, WsConnection.Handler handler) { 
+//            throws IOException, GeneralSecurityException {
         return startServer(port, handler, new WsParameters(), false);
     }
 
-    WsServer startServer(int port, WsConnection.Handler handler, WsParameters wsp, boolean isSecure) { //throws IOException, GeneralSecurityException {
-        WsServer server = null;
+    WsServer startServer(int port, WsConnection.Handler handler,
+            WsParameters wsp, boolean isSecure) {
+//            throws IOException, GeneralSecurityException {
         try {
-            server = createServer(port, handler, wsp, isSecure);
+            WsServer server = createServer(port, handler, wsp, isSecure);
             server.start();
-// } catch (IOException | GeneralSecurityException ex) { // NO! since Java 7
-        } catch (Throwable err) {
-            throw new WsError("Server creation error", err);
+            return server;
+        } catch(Throwable th) {
+            throw new WsError("Server creation error", th);
         }
-
-        return server;
     }
 
     WsServer createServer(int port, WsConnection.Handler handler, WsParameters wsp, boolean isSecure)
@@ -303,41 +329,49 @@ public class WebSocket {
      *
      * @param uri connection uri string like:<br>
      * scheme://[user-info@]host[:port][/path][?query][#fragment]<br>
-     * - uri's scheme (ws: | wss:) and host are required;<br>
+     * - scheme (ws: | wss:) and host are required;<br>
      * - :port (80 | 443), /path and ?query are optional;<br>
      * - user-info@ and #fragment are ignored.
      * @param handler client side connection handler.
      * @param wsp client side connection parameters.
      * @return WebSocket connection instance.
-     * <p><b>Throws</b> {@link WsError} on {@link URISyntaxException}, {@link java.io.IOException}, {@link java.security.GeneralSecurityException}</p>
+     * @throws WsError on connection creation error.<br>
+     * Causes: {@link java.net.URISyntaxException},
+     * {@link java.io.IOException},
+     * {@link java.security.GeneralSecurityException},
+     * {@link java.lang.NullPointerException}
+     * @see #setTrustStore(String, String)
+     * @see #setKeyFile(File, String)
      */
     synchronized public WsConnection connect(String uri,
-            WsConnection.Handler handler, WsParameters wsp) {//throws URISyntaxException, IOException, GeneralSecurityException {
+            WsConnection.Handler handler, WsParameters wsp) {
+//            throws URISyntaxException, IOException, GeneralSecurityException {
         return startConnection(uri, handler, wsp);
     }
 
     /**
      * Creates and starts WebSocket client connection with default parameters
-     *
-     * <br><p><b>See: </b>{@link WebSocket#connect(String, WsConnection.Handler, WsParameters)}</p>
+     * <br>
+     * See: {@link WebSocket#connect(String, WsConnection.Handler, WsParameters)} for details 
+     * @return WebSocket connection instance.
+     * @throws WsError on connection creation error
      * @since 5.0
      */
-    public WsConnection connect(String uri, WsConnection.Handler handler) {//    throws URISyntaxException, IOException, GeneralSecurityException {
+    public WsConnection connect(String uri, WsConnection.Handler handler) { 
+//            throws URISyntaxException, IOException, GeneralSecurityException {
         return connect(uri, handler, new WsParameters());
     }
 
-    WsConnection startConnection(
+    WsConnection startConnection (
             String uri, WsConnection.Handler handler, WsParameters wsp) {
-        WsConnection conn = null;
+//            throws URISyntaxException, GeneralSecurityException, IOException {
         try {
-            conn = createConnection(uri, handler, wsp);
+            WsConnection conn = createConnection(uri, handler, wsp);
             conn.start();
-// NO! since Java 7
-// } catch (URISyntaxException | IOException | GeneralSecurityException ex) {
-        } catch (Throwable err) {
-            throw new WsError("Connection creation error", err);
+            return conn;
+        } catch (Throwable th) {
+            throw new WsError("Connection creation error", th);
         }
-        return conn;
     }
 
     synchronized WsConnection createConnection(
@@ -400,7 +434,7 @@ public class WebSocket {
         KeyStore ks;// = KeyStore.getInstance(KeyStore.getDefaultType());
 
         String ksPassphrase = this.storePassword;
-        File ksFile = storeFile;
+        File ksFile = this.storeFile;
         char[] passphrase = ksPassphrase.toCharArray();
 
         ctx = SSLContext.getInstance("TLS");

@@ -11,6 +11,15 @@
     <body>
         <div>WsServer test<br><br></div>
         <script>
+            function show(msg) {
+                var div = document.getElementsByTagName("div")[0];
+                div.innerHTML += msg + '<br>';
+                div.scrollIntoView(false);
+//                        .insertAdjacentHTML('beforeend', msg + '<br>');
+            }
+            show('Browser: ' + navigator.appName + ' ' + navigator.appVersion
+            + ' ' + navigator.appCodeName);
+            show('UserAgent: ' + navigator.userAgent + '<br>');
             var supportsWebSockets = 'WebSocket' in window || 'MozWebSocket' in window;
             if (!supportsWebSockets) {
                 alert('WebSocket is not supported!\r\n\nUser agent: '
@@ -20,14 +29,13 @@
         <!-- When loading the script, the server should return error 1002 (protocol error) -->
         <script src="http://localhost:8080/this_request_must_fail.js"></script>
         <script>
-            if('MozWebSocket' in window) window.WebSocket = MozWebSocket;
+//            if('MozWebSocket' in window) window.WebSocket = MozWebSocket;
             if (!('endsWith' in String)) {
                 String.prototype.endsWith = function (searchStr, endPos) {
                     endPos = endPos || this.length;
                     return this.substring(endPos - searchStr.length, endPos) === searchStr;
                 };
             }
-            show('Browser: ' + navigator.userAgent + '<br>');
 // see MDN: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
             var testuri = 'ws://localhost:8080/test/';
             var msg = 'Hello, Server! Привет, Сервер! ';
@@ -48,12 +56,6 @@
                 connectWs(testuri + "0");
             } catch (e) {
                 show('Exception: ' + e.code + ' ' + e.message);
-            }
-            function show(msg) {
-                var div = document.getElementsByTagName("div")[0];
-                div.innerHTML += msg + '<br>';
-                div.scrollIntoView(false);
-//                        .insertAdjacentHTML('beforeend', msg + '<br>');
             }
             function connectWs(uri) {
                 if (testNo < tests.length)

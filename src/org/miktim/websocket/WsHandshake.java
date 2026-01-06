@@ -70,7 +70,7 @@ class WsHandshake {
                     .set("Connection", "Upgrade,keep-alive")
                     .set("Sec-WebSocket-Accept", sha1Hash(key));
 
-//            onRequest(conn); // see onRequest below
+//            onRequest(conn, conn.responseHead); // see onRequest below
 
             conn.responseHead.write(conn.outStream);
         } else {
@@ -84,17 +84,15 @@ class WsHandshake {
     }
 
 /*
-    static void onRequest(WsConnection conn) {
+    static void onRequest(WsConnection conn, HttpHead target) {
         if (!(conn.handler instanceof WsConnection.OnRequest)) return;
         Map<String, String> map = ((WsConnection.OnRequest) conn.handler)
                                 .onRequest(conn, conn.getRequestHead());
         if(map == null) return;
-        HttpHead head = conn.isClientSide()
-                ? conn.requestHead : conn.responseHead;
         for (String hdr : map.keySet().toArray(new String[0])) {
             if (!(conn.requestHead.exists(hdr)
                     || conn.responseHead.exists(hdr))) {
-                head.set(hdr, map.get(hdr));
+                target.set(hdr, map.get(hdr));
             }
         }
     }
@@ -146,7 +144,7 @@ class WsHandshake {
             conn.requestHead.setValues("Sec-WebSocket-Protocol", conn.wsp.subProtocols);
         }
         
-//        onRequest(conn); // see onRequest above
+//        onRequest(conn, conn.requestHead); // see onRequest above
 
         conn.requestHead.write(conn.outStream);
 

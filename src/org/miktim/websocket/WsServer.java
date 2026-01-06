@@ -16,11 +16,6 @@ import java.util.List;
 
 /**
  * WebSocket server for insecure or TLS connections.
- *
- * <p>
- * If the server is stopped normally or crashed, all associated connections are
- * closed with status code 1001 (GOING_AWAY) or 1011 (INTERNAL_ERROR) and it is
- * removed from the list of servers.</p>
  */
 public class WsServer extends Thread {
 
@@ -54,7 +49,6 @@ public class WsServer extends Thread {
                 try {
                     this.wait(wsp.connectionSoTimeout); //
                 } catch (InterruptedException ex) {
-                    return null;
                 }
             }
         }
@@ -82,9 +76,6 @@ public class WsServer extends Thread {
 
     /**
      * Returns server error or null.
-     *
-     * @return server error.
-     * @since 5.0
      */
     public Throwable getError() {
         return serverError;
@@ -93,16 +84,13 @@ public class WsServer extends Thread {
     /**
      * Returns listening port number.
      *
-     * @return listening port number.
      */
     public int getPort() {
         return serverSocket.getLocalPort();
     }
 
     /**
-     * Returns the server-side connection parameters.
-     *
-     * @return clone of the connection parameters.
+     * Returns a clone of the server-side connection parameters.
      */
     public WsParameters getParameters() {
         return wsp.deepClone();
@@ -111,7 +99,6 @@ public class WsServer extends Thread {
     /**
      * Returns the ServerSocket of this server.
      *
-     * @return the ServerSocket object.
      */
     public ServerSocket getServerSocket() {
         return serverSocket;
@@ -142,7 +129,7 @@ public class WsServer extends Thread {
     }
 
     /**
-     * Stops the server and closes the associated connections.
+     * Stops the server and closes all server-side connections with specified reason.
      * <p>
      * Stops listening. Connections are closed with the 1001 (GOING_AWAY) status
      * code. The server is removed from the list of active WebSocket servers.
@@ -226,12 +213,10 @@ public class WsServer extends Thread {
                 ((ServerHandler) connectionHandler).onStop(this, serverError);
             }
         } catch (Throwable err) {
-            if (serverError == null) {
+//            if (serverError == null) {
                 serverError = err;
-            }
-        }
-        if (serverError != null) {
-            throw new WsError("Abnormal shutdown", serverError);
+//            }
+            err.printStackTrace();
         }
 
     }
@@ -242,7 +227,7 @@ public class WsServer extends Thread {
     interface ServerHandler {
 
         /**
-         * Called when the server is started.
+         * Called when the server is ready to accept connections.
          *
          * @param server WebSocket server instance.
          * @param wsp server-side connection parameters.
@@ -251,17 +236,16 @@ public class WsServer extends Thread {
         public void onStart(WsServer server, WsParameters wsp);
 
         /**
-         * Called when the server stops after the ServerSocket is closed.
+         * Called after the ServerSocket is closed.
          *
          * @param server WebSocket server instance.
          * @param err error cause or null.
-         * @see WsStatus
          */
         public void onStop(WsServer server, Throwable err);
     }
 
     /**
-     * WebSocket server event handler. Extends connection handler.
+     * WebSocket server event handler extends connection handler.
      */
     public interface Handler extends WsConnection.Handler, ServerHandler { };
 
