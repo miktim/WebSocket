@@ -2,7 +2,7 @@
   - final payloadBuffer added (outgoing messages)
   - call onMessage for the first data frame
 5.0.0 - 5.0.2 alpha
-  - refactored, see ./dist/javadoc or README.txt
+  - refactored, see ./docs or README.txt
     WsMessage published
     WsError class added
     WsServer.Handler fixed
