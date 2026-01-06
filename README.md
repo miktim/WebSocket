@@ -1,4 +1,4 @@
-## Java SE 1.6+/Android 4.0+ WebSocket client and server package, MIT (c) 2020-2025 @miktim<br/>
+## Java SE 1.6+/Android 4.0+ WebSocket client and server package, MIT (c) 2020-2026 @miktim
 ### Release notes:
 
 \- RFC 6455 compliant package ( [https://datatracker.ietf.org/doc/html/rfc6455/](https://datatracker.ietf.org/doc/html/rfc6455/) );  
