@@ -1,5 +1,5 @@
 /*
- * WsListener. MIT (c) 2020-2023 miktim@mail.ru
+ * WsListener. MIT (c) 2020-2025 miktim@mail.ru
  * Provides reading and processing of WebSocket frames.
  * Class created: 2021-01-29
  */
@@ -18,11 +18,10 @@ class WsListener extends Thread {
     private int opData = OP_FINAL; // data frame opcode
     private final byte[] payloadMask = new byte[8]; // mask & temp buffer for payloadLength
     private long payloadLength;
-    private long messageLength;
     private boolean pingFrameSent = false;
     private boolean maskedPayload;
-    private WsInputStream wsInputStream = null;
-//    private ArrayDeque<byte[]> messagePayloads = null;
+    private WsMessage messageStream = null;
+    private long messageLength;
 
     WsListener(WsConnection conn) {
         this.conn = conn;
@@ -44,6 +43,7 @@ class WsListener extends Thread {
 
     @Override
     public void run() {
+        setName("WsListener" + getName());
         conn.status.wasClean = false;
         while (!conn.status.wasClean) {
             try {
@@ -74,12 +74,10 @@ class WsListener extends Thread {
                     case OP_TEXT_FINAL:
                         if ((opData & OP_FINAL) != 0) {
                             opData = b1;
-//                            if (conn.isOpen()) {
-//                                messagePayloads = new ArrayDeque<byte[]>();
-//                            }
-                            wsInputStream = new WsInputStream(
-                                    (opData & OP_TEXT) > 0);
+                            messageStream = new WsMessage(
+                                    conn, (opData & OP_TEXT) > 0);
                             messageLength = 0L;
+            conn.messageQueue.add(messageStream);
                             dataFrame();
                             break;
                         }
@@ -131,13 +129,12 @@ class WsListener extends Thread {
                 break;
             }
         }
-// leave listener, clear message queue,  
-        wsInputStream = null;
+// leave listener  
+        if(messageStream != null) messageStream.close();
         if (conn.messageQueue.remainingCapacity() > 0) {
-            conn.messageQueue.add(new WsInputStream());
+            conn.messageQueue.add(new WsMessage());
         }
         conn.cancelCloseTimer();
-
     }
 
     void readHeader(int b2) throws IOException {
@@ -174,19 +171,19 @@ class WsListener extends Thread {
         if (conn.wsp.maxMessageLength != -1 && messageLength > conn.wsp.maxMessageLength) {
             IOException e = new IOException("Message too big");
             conn.closeDueTo(WsStatus.MESSAGE_TOO_BIG, e.getMessage(), e);
-            wsInputStream = null;
+            messageStream.close();
         }
-//        if (conn.status.error != null) messagePayloads = null;
-        if (wsInputStream == null) {
+
+        if (messageStream == null || messageStream.eof) {
             skipPayload();
             return false;
         }
         byte[] payload = readPayload();
-        if(payload.length > 0) wsInputStream.write(payload);
+        if(payload.length > 0) messageStream.putPayload(payload);
         if ((opData & OP_FINAL) != 0) {
-            wsInputStream.write(EMPTY_PAYLOAD); // eof
-            conn.messageQueue.add(wsInputStream);
-            wsInputStream = null;
+            messageStream.putPayload(EMPTY_PAYLOAD); // eof
+//            conn.messageQueue.add(messageStream);
+            messageStream = null;
         }
         return true;
     }
@@ -228,7 +225,7 @@ class WsListener extends Thread {
                 }
                 return true;
             case OP_CLOSE:  // close handshake
-                synchronized (conn.status) {
+                synchronized (conn) {
 //                    conn.socket.shutdownInput();
                     if (conn.status.code == WsStatus.IS_OPEN) {
                         conn.status.remotely = true;

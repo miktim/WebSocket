@@ -1,21 +1,21 @@
 /*
- * WsConnectionTest. MIT (c) 2025 miktim@mail.ru
+ * WsConnectTest. MIT (c) 2025 miktim@mail.ru
  * Ws and wss WebSocket handshake tests.
  */
 
 import java.io.File;
-import java.io.InputStream;
 import static java.lang.String.format;
 import static java.lang.Thread.sleep;
 import java.security.NoSuchAlgorithmException;
 import org.miktim.websocket.WebSocket;
 import org.miktim.websocket.WsConnection;
+import org.miktim.websocket.WsMessage;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsServer;
 import org.miktim.websocket.WsStatus;
 
 //package websocket;
-public class WsConnectionTest {
+public class WsConnectTest {
 
     static int port = 8080;
     static int securePort = 8443;
@@ -48,7 +48,7 @@ public class WsConnectionTest {
     }
 
     public static void main(String[] args) throws NoSuchAlgorithmException, InterruptedException {
-        log("\r\nWsConnectionTest. " + WebSocket.VERSION);
+        log("\r\nWsConnectTest. " + WebSocket.VERSION);
         
         WsConnection.Handler handler = new WsConnection.Handler() {
             @Override
@@ -56,7 +56,7 @@ public class WsConnectionTest {
             }
 
             @Override
-            public void onMessage(WsConnection conn, InputStream is, boolean isUTF8Text) {
+            public void onMessage(WsConnection conn, WsMessage is) {
             }
 
             @Override
@@ -78,14 +78,14 @@ public class WsConnectionTest {
             log("0.1 wss to ...");
             try{
                 conn = webSocket.connect("wss://localhost:" + securePort, handler, wsp);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                System.err.println(e.toString()); 
             }
             delay();
             log("0.2 ws to ...");
             try{
                 conn = webSocket.connect("ws://localhost:" + securePort, handler, wsp);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                System.err.println(e.toString()); 
             }
             delay();
@@ -128,27 +128,28 @@ public class WsConnectionTest {
             server.stopServer();
             closeAll("2", webSocket);
 
-            log("\r\n3. Start plaintext Server");
+            log("\r\n3. Start insecure Server");
             server = webSocket.startServer(port, handler, wsp);
             delay();
             logTest("3", "Server", webSocket.listServers().length == 1);
             conn = webSocket.connect("wss://localhost:" + port, handler, wsp);
             delay();
-            logTest("3.1","wss to plaintext Server " + conn.getStatus().code,
+            logTest("3.1","wss to insecure Server " + conn.getStatus().code,
                     conn.getStatus().code == WsStatus.PROTOCOL_ERROR);
             conn.close();
             delay();
             conn = webSocket.connect("ws://localhost:" + port, handler, wsp);
             delay();
-            logTest("3.2","ws to plaintext Server " + conn.getStatus().code,
+            logTest("3.2","ws to insecure Server " + conn.getStatus().code,
                     conn.getStatus().code == WsStatus.IS_OPEN);
             conn.close();
             delay();
             closeAll("3", webSocket);
 
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
             ex.printStackTrace();
         }
+        log("\r\nCompleted");
 //        webSocket.closeAll();
     }
 }

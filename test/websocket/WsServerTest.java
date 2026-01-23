@@ -1,5 +1,5 @@
 /*
- * WebSocket WsServer test. MIT (c) 2020-2023 miktim@mail.ru
+ * WebSocket WsServer test. MIT (c) 2020-2025 miktim@mail.ru
  * Created: 2020-03-09
  */
 
@@ -7,11 +7,11 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetAddress;
 import org.miktim.websocket.WsConnection;
 import org.miktim.websocket.WsServer;
 import org.miktim.websocket.WebSocket;
+import org.miktim.websocket.WsMessage;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsStatus;
 
@@ -37,7 +37,7 @@ public class WsServerTest implements WsConnection.Handler{
                 .setConnectionSoTimeout(1000, true) // ping on 1 second timeout
                 .setSubProtocols(WEBSOCKET_SUBPROTOCOLS.split(","));
         final WsServer server = webSocket.startServer(8080, new WsServerTest(), wsp);
-//        server.start();
+
 // init shutdown timer
         final Timer timer = new Timer(true); // is daemon
         timer.schedule(new TimerTask() {
@@ -55,15 +55,7 @@ public class WsServerTest implements WsConnection.Handler{
                 + "\r\nTest will be terminated after "
                 + (TEST_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\n");
-// call the default browser
-        /* Android
-        Intent browserIntent = new Intent(Intent.ACTION_VIEW,
-                Uri.parse("file:///android_asset/WsServerTest.html"));
-        startActivity(browserIntent);
-         */
-// /* Desktop 
         java.awt.Desktop.getDesktop().open(new File(path, "WsServerTest.html"));
-// */
     }
 
     String getTestId(WsConnection con) {
@@ -89,15 +81,7 @@ public class WsServerTest implements WsConnection.Handler{
                 (con.getQuery() == null ? "" : "?" + con.getQuery()) //                + " Peer: " + con.getPeerHost()
                 ,
                  " Subprotocol:" + subp));
-        try {
-            con.send(hello);
-        } catch (IOException e) {
-            ws_log(String.format("[%s] server side onOPEN send error: %s",
-                    testId,
-                    e));
-//            e.printStackTrace();
-        }
-        if(testId.equals("0")) con.close("Suddenly... null subProtocol accepted");
+        if(testId.equals("0")) con.close("Suddenly...");
     }
 
     @Override
@@ -119,7 +103,7 @@ public class WsServerTest implements WsConnection.Handler{
     }
 
     @Override
-    public void onMessage(WsConnection con, InputStream is, boolean isText) {
+    public void onMessage(WsConnection con, WsMessage is) {
         String testId = getTestId(con);
         int messageLen;
         byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
@@ -128,7 +112,7 @@ public class WsServerTest implements WsConnection.Handler{
             messageLen = is.read(messageBuffer, 0, messageBuffer.length);
             if (is.read() != -1) {
                 throw new IOException("Message too big");
-            } else if (isText) {
+            } else if (is.isText()) {
                 message = new String(messageBuffer, 0, messageLen, "UTF-8");
                 if (testId.equals("1")) { // wait browser closure
 //                    ws_log(server + " onTEXT: ");
@@ -153,7 +137,7 @@ public class WsServerTest implements WsConnection.Handler{
                     con.send(message);
                 }
             } else {
-                ws_log("Unexpected binary: ignored");
+                con.close(WsStatus.INVALID_DATA, "Unexpected binary");
             }
         } catch (IOException e) {
             ws_log(String.format("[%s] server side onMessage send error: %s",

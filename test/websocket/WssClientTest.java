@@ -1,15 +1,14 @@
 /*
  * WebSocket client test. (c) websocketstest.com
- * Adapted by miktim@mail.ru, march 2021
+ * Adapted by @miktim, march 2021-2025
  */
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.miktim.websocket.WsConnection;
 import org.miktim.websocket.WebSocket;
+import org.miktim.websocket.WsError;
+import org.miktim.websocket.WsMessage;
 import org.miktim.websocket.WsParameters;
 import org.miktim.websocket.WsStatus;
 
@@ -21,14 +20,19 @@ public class WssClientTest {
 
     static String fragmentTest = randomString(512);
     static int counter = 0;
-
-    static void ws_log(String msg) {
-        System.out.println(msg);
+    static final Timer timer = new Timer();
+    
+    static void ws_log(Object obj) {
+        System.out.println(obj);
     }
 
-    static void ws_send(WsConnection con, String msg) throws IOException {
+    static void ws_send(WsConnection con, String msg) {
         ws_log("snd: " + msg);
-        con.send(msg);
+        try {
+            con.send(msg);
+        } catch (WsError err) {
+            ws_log("snd: " + err.getCause());
+        }
     }
 
     static String randomString(int string_length) {
@@ -42,15 +46,11 @@ public class WssClientTest {
     }
 
     public static void main(String[] args) throws Exception {
-        String path = ".";
-        if (args.length > 0) {
-            path = args[0];
-        }
 
         WsConnection.Handler clientHandler = new WsConnection.Handler() {
             @Override
             public void onOpen(WsConnection con, String subp) {
-                ws_log("Connected. " + con.getSSLSessionProtocol()
+                ws_log("Connected: " + con.getSSLSessionProtocol()
                 + " Peer: " + con.getPeerHost());
 //                WsParameters wsp = con.getParameters(); // debug
             }
@@ -58,6 +58,7 @@ public class WssClientTest {
             @Override
             public void onClose(WsConnection con, WsStatus status) {
                 ws_log("Connection closed. " + status);
+                timer.cancel();
             }
 
             @Override
@@ -65,68 +66,61 @@ public class WssClientTest {
                 ws_log("Error: " + e.toString() + " " + con.getStatus());
 //                e.printStackTrace();
             }
-
+ 
+            String tests[] = {
+                "version,",
+                "echo,test message",
+                "ping,",
+                "fragments," + fragmentTest,
+                "timer,"
+            };
+            int testId = 0;
+            
             @Override
-            public void onMessage(WsConnection con, InputStream is, boolean isText) {
-                byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
-                int messageLen = 0;
-
-                try {
-                    messageLen = is.read(messageBuffer, 0, messageBuffer.length);
-                    if (is.read() != -1) {
-                        con.close(WsStatus.MESSAGE_TOO_BIG, "Message too big");
-                    } else if (isText) {
-                        onMessage(con, new String(messageBuffer, 0, messageLen, "UTF-8"));
-                    } else {
-                        onMessage(con, Arrays.copyOfRange(messageBuffer, 0, messageLen));
+            public void onMessage(WsConnection con, WsMessage msg) {
+                if(!msg.isText()) {
+                    ws_log("rcv: unexpected binary");
+                    con.close("Unexpected binary");
+                } else {
+                    String packet = "";
+                    try {
+                        packet = msg.asString();
+                    } catch (WsError err) {
                     }
-                } catch (Exception e) {
-                    ws_log("Listener onMESSAGE: " + con.getPath()
-                            + " read error: " + e);
-//                    e.printStackTrace();
-                }
-            }
-
-            public void onMessage(WsConnection con, String s) {
-                try {
-                    String packet = s;
                     String[] arr = packet.split(",", 2);
                     String cmd = arr[0];
                     String response = arr[1];
                     ws_log("rcv: " + packet);
                     if (cmd.equals("connected")) {
-                        ws_send(con, "version,");
+                        ws_send(con, tests[testId++]);
                     } else if (cmd.equals("version")) {
                         if (!response.equals("hybi-draft-13")) {
                             ws_log("Something wrong...");
                         } else {
                             ws_log("OK");
                         }
-                        counter = 0;
-                        ws_send(con, "echo,test message");
+                        ws_send(con, tests[testId++]);
                     } else if (cmd.equals("ping")) {
                         if (!response.equals("success")) {
                             ws_log("Failed!");
                         } else {
                             ws_log("OK");
                         }
-                        counter = 0;
-                        ws_send(con, "fragments," + fragmentTest);
+                        ws_send(con, tests[testId++]);
                     } else if (cmd.equals("fragments")) {
                         if (!response.equals(fragmentTest)) {
                             ws_log("Failed!");
                         } else {
                             ws_log("OK");
                         }
-                        counter = 0;
-                        ws_send(con, "timer,");
+                        ws_send(con, tests[testId++]);
                     } else if (cmd.equals("echo")) {
                         if (!response.equals("test message")) {
                             ws_log("Failed!");
                         } else {
                             ws_log("OK");
                         }
-                        ws_send(con, "ping,");
+                        ws_send(con, tests[testId++]);
                     } else if (cmd.equals("time")) {
                         if (++counter > 4) {
                             ws_log("OK");
@@ -135,15 +129,9 @@ public class WssClientTest {
                     } else {
                         ws_log("Unknown command.");
                     }
-                } catch (IOException e) {
-                    ws_log("snd error: " + e.toString());
                 }
             }
 
-//            @Override
-            public void onMessage(WsConnection con, byte[] b) {
-                ws_log("rcv: unexpected binary");
-            }
         };
 
         final WebSocket webSocket = new WebSocket();
@@ -163,7 +151,7 @@ public class WssClientTest {
                 + "\r\n");
         final WsConnection wsConnection
                 = webSocket.connect(REMOTE_URI, clientHandler, wsp);
-        final Timer timer = new Timer();
+
         timer.schedule(new TimerTask() {
             @Override
             public void run() {

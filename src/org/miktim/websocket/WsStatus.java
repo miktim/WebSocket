@@ -1,37 +1,39 @@
 /*
- * WsStatus. WebSocket connection status, MIT (c) 2020-2023 miktim@mail.ru
+ * WsStatus. WebSocket connection/server status, MIT (c) 2020-2023 miktim@mail.ru
  *
  * Created: 2021-02-08
  */
 package org.miktim.websocket;
 
 /**
- * WebSocket connection status.
+ * WebSocket status.
  * <p>
- * Contains public properties and predefined WebSocket closing codes:<br>
- * <a href="https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code" target="_blank ">
- * - MDN CloseEvent codes.</a><br>
+ * The class contains public properties and WebSocket predefined close codes.
+ * <br>
  * <a href="https://tools.ietf.org/html/rfc6455#section-7.4" target="_blank ">
  * - RFC6455 section-7.4;</a><br>
  * <a href="https://www.iana.org/assignments/websocket/websocket.xml#close-code-number" target="_blank ">
  * - IANA close codes;</a><br>
+ * <a href="https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code" target="_blank ">
+ * - MDN CloseEvent codes.</a><br>
  * </p>
  */
 public final class WsStatus {
 
         /**
-         * WebSocket connection yet not open.
+         * The WebSocket connection yet not open.
          */
         public static final int IS_INACTIVE = -1; // connection in progress
 
         /**
-         * WebSocket connection is open.
+         * The WebSocket connection is open.
          */
         public static final int IS_OPEN = 0;
         public static final int NORMAL_CLOSURE = 1000; //
         public static final int GOING_AWAY = 1001; //* 
         public static final int PROTOCOL_ERROR = 1002; //* 
-        public static final int UNSUPPORTED_DATA = 1003; // 
+        public static final int UNSUPPORTED_DATA = 1003; //
+        public static final int ENDPOINT_ERROR = 1004;
         public static final int NO_STATUS = 1005; //* 
         public static final int ABNORMAL_CLOSURE = 1006; //* 
         public static final int INVALID_DATA = 1007; // 
@@ -83,8 +85,6 @@ public final class WsStatus {
 
     /**
      * Returns a textual representation of the WebSocket status.
-     *
-     * @return WebSocket status as String.
      */
     @Override
     public String toString() {

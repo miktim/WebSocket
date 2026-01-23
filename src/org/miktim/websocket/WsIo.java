@@ -6,7 +6,6 @@
  */
 package org.miktim.websocket;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketException;
@@ -44,8 +43,8 @@ class WsIo {
     static void sendFrame(WsConnection conn, int opFrame, byte[] payload, int payloadLen)
             throws IOException {
         synchronized (conn.outStream) {
-            if (conn.status.code != WsStatus.IS_OPEN) { // todo: ?shutdown outputStream on close()
-                throw new SocketException("WebSocket is closed");
+            if (conn.status.code != WsStatus.IS_OPEN) { // 
+                throw new SocketException("WebSocket closed");
             }
 // client MUST mask payload, server MUST NOT        
             boolean masked = conn.isClientSide();
@@ -92,13 +91,4 @@ class WsIo {
         }
     }
 
-    static ByteArrayOutputStream toByteOutStream(InputStream is, int buflen) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        byte[] buffer = new byte[buflen];
-        int length;
-            while ((length = is.read(buffer)) != -1) {
-                bos.write(buffer, 0, length);
-            }
-        return bos;
-    }
 }

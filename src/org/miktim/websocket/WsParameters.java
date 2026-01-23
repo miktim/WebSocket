@@ -1,6 +1,6 @@
 /*
- * WsParameters. Common server/connection parameters, MIT (c) 2020-2023 miktim@mail.ru
- *
+ * WsParameters. MIT (c) 2020-2025 miktim@mail.ru
+ * WebSocket connection parameters.
  * Created: 2021-01-29
  */
 package org.miktim.websocket;
@@ -15,8 +15,8 @@ import javax.net.ssl.SSLParameters;
  */
 public class WsParameters {
 
-    public static final int MIN_PAYLOAD_BUFFER_LENGTH = 125;
-    public static final int MIN_INCOMING_MESSAGE_LENGTH = 125;
+//    public static final int MIN_PAYLOAD_BUFFER_LENGTH = 125;
+//    public static final int MIN_INCOMING_MESSAGE_LENGTH = 125;
 
     String[] subProtocols = null; // WebSocket subprotocol[s] in preferred order
     int handshakeSoTimeout = 2000; // millis, TLS and WebSocket open/close handshake timeout
@@ -51,6 +51,7 @@ public class WsParameters {
         clon.payloadBufferLength = payloadBufferLength;
         clon.backlog = backlog;
         clon.maxMessageLength = maxMessageLength;
+        clon.maxMessages = maxMessages;
         SSLParameters sslp = sslParameters;
         if (sslp != null) {
 // Android API 16
@@ -74,7 +75,7 @@ public class WsParameters {
 
     /**
      * Sets supported (server) or requested (client) subprotocols.
-     * @param subps array of subprotocls or null.
+     * @param subps array of subprotocols in preferred order or null.
      * @return this
      */
     public WsParameters setSubProtocols(String[] subps) {
@@ -91,7 +92,7 @@ public class WsParameters {
 
     /**
      * Returns supported (server) or requested (client) subprotocols.
-     * @return array of subprotocols or null (default).
+     * @return array of subprotocols. Default: null.
      */
     public String[] getSubProtocols() {
         return subProtocols;
@@ -109,7 +110,7 @@ public class WsParameters {
 
     /**
      * Returns open/close WebSocket handshake timeout.
-     * @return timeout in milliseconds. Default: 2000
+     * @return timeout. Default: 2000 milliseconds.
      */
     public int getHandshakeSoTimeout() {
         return handshakeSoTimeout;
@@ -129,7 +130,7 @@ public class WsParameters {
 
     /**
      * Returns connection Socket timeout.
-     * @return timeout in milliseconds. Default: 2000
+     * @return timeout. Default: 2000 milliseconds.
      */
     public int getConnectionSoTimeout() {
         return connectionSoTimeout;
@@ -150,7 +151,7 @@ public class WsParameters {
      * @return this
      */
     public WsParameters setPayloadBufferLength(int len) {
-        payloadBufferLength = Math.max(len, MIN_PAYLOAD_BUFFER_LENGTH);
+        payloadBufferLength = Math.max(len, 125);
         return this;
     }
 
@@ -189,7 +190,7 @@ public class WsParameters {
      */
     public WsParameters setMaxMessageLength(int len) {
         maxMessageLength = len < 0 ? -1 :
-             Math.max(len, MIN_INCOMING_MESSAGE_LENGTH);
+             Math.max(len, 125);
         return this;
     }
 
@@ -202,8 +203,10 @@ public class WsParameters {
     }
     
     /**
-     * Sets the maximum number of pending
-     * incoming messages for each current connection.
+     * Sets the maximum number of queued
+     * incoming messages per connection.
+     * Overflow of this value leads to an error and
+     * connection closure with status code 1008 (POLICY_VIOLATION)
      * @param maxMsgs maximum number of messages (min value is 1)
      * @return this
      */
@@ -213,10 +216,9 @@ public class WsParameters {
     }
     
     /**
-     * Returns the maximum number of pending
-     * incoming messages for each current connection.
-     * Default: 3
-     * @return number of pending messages.
+     * Returns the maximum number of queued
+     * incoming messages per connection.
+     * @return number of pending messages. Default: 3
      */
     public int getMaxMessages() {
         return maxMessages;

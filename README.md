@@ -1,4 +1,4 @@
-## Java SE 6+/Android 4.1+ WebSocket client and server package, MIT (c) 2020-2025 @miktim<br/>
+## Java SE 1.6+/Android 4.0+ WebSocket client and server package, MIT (c) 2020-2026 @miktim
 ### Release notes:
 
 \- RFC 6455 compliant package ( [https://datatracker.ietf.org/doc/html/rfc6455/](https://datatracker.ietf.org/doc/html/rfc6455/) );  
@@ -7,19 +7,20 @@
   [https://github.com/miktim/WebSocket-Android-Test](https://github.com/miktim/WebSocket-Android-Test) ).  
 \- WebSocket extensions ( Per-Message Deflate, ... ) are not supported;  
 \- supported WebSocket version: 13;  
-\- supports cleartext/TLS connections;  
+\- supports insecure or TLS connections;  
 \- client supports Internationalized Domain Names (IDNs);  
 \- stream-based messaging.    
 
-Standalone [/dist/websocket-...](./dist) jar file was built with debug info using JDK 1.8 for the target JRE 1.6.  
-
-Overview of the package in the file [./README.txt](./README.txt).
-The JavaDoc is here: [./docs](./docs)  
+The latest standalone jar is here: [./dist](./dist).  
+The package was built with debug info using openJDK 1.8 for the target JRE 1.6.  
+The latest JavaDoc is in the [./docs](./docs) folder or [online](https://miktim.github.io/WebSocket/).  
 
 #### Example1: local echo server for TLS connections:  
 
 ```  
 public class Example1 {
+
+  static final int PORT = 8443; // listening port
 
   static void log(Object obj) {
     System.out.println(obj);
@@ -27,55 +28,54 @@ public class Example1 {
   
   public static void main(String[] args) {
   
+// define server-side connections handler  
     WsConnection.Handler handler = new WsConnection.Handler() {
-      int getSession() {
-       return Thread.currentThread().hashCode();
-      }
 
       @Override
       public void onOpen(WsConnection conn, String subProtocol) {
+        String msg = String.format("Connection %d open.",
+          conn.hashCode());
+        log(msg);
         try {
-          String msg = "Session open: " + getSession();
-          log(msg);
           conn.send(msg);
-        } catch (IOException ex) {
-          log("Send error: " + getSession() + ex);
+        } catch (WsError err) {
+// Do nothing. 
+// An error sending the message means that the connection is closed.
         }
       }
 
       @Override
-      public void onMessage(WsConnection conn, InputStream is, boolean isText) {
-        try {
-          conn.send(is, isText); // echo message
-        } catch (IOException ex) {
-          log(String.format(
-            "Send error: %d %s", getSession(), ex.toString()));
-        }
+      public void onMessage(WsConnection conn, WsMessage msg) {
+        try {      
+// echoing the WebSocket message as an stream  
+          conn.send(msg, msg.isText()); 
+        } catch (IOException e) {
+// Do nothing. 
+// An error reading the message means that the connection is closed.
+        }  
       }
-
+      
       @Override
-      public void onError(WsConnection conn, Throwable ex) {
-        log(String.format(
-          "Handler error: %d %s", getSession(), ex.toString() ));
+      public void onError(WsConnection conn, Throwable err) {
+
       }
 
       @Override
       public void onClose(WsConnection conn, WsStatus status) {
-        log(String.format(
-          "Session closed: %d (%d)", getSession(), status.code));
+ // logs the connection closure and the error that occurred
+        log(String.format("Connection %d closed. %s",
+             conn.hashCode(), status.toString()));
       }
     };
     
     WebSocket webSocket = new WebSocket();
-// register your key store file       
-    WebSocket.setKeyStore("keystore.jks", "passphrase");
-    int port = 8443;
     try {
-      WsServer echoServer = webSocket.startSecureServer(port, handler);
-      log("Echo Server listening port: " + port);
-    } catch (Exception ex) {
-      webSocket.closeAll("Echo Server crashed");
-      log(ex);
+// register your key store file      
+      WebSocket.setKeyStore("./yourfile.jks", "password");
+      webSocket.startSecureServer(PORT, handler);
+      log("Echo Server listening port: " + PORT);
+    } catch (WsError err) {
+      log("Server creation error: " + err.getCause());
     }
   } 
 }
@@ -94,32 +94,27 @@ public class Example2 {
 
   public static void main(String[] args) {
 
+// define client connection event handler
     WsConnection.Handler handler = new WsConnection.Handler() {
 
       @Override
       public void onOpen(WsConnection conn, String subProtocol) {
         log(conn.getSSLSessionProtocol());
-          try {
-            conn.send("Hi, Server!");
-            conn.close("Bye, Server!");
-          } catch (IOException ex) {
-            log(ex);
-          }
+        conn.send("Hi, Server!");
+        conn.close("Bye, Server!");
       }
 
       @Override
-      public void onMessage(WsConnection conn, InputStream is, boolean isText) {
-        try {
-          log(conn.toString(is);
-        } catch (IOException ex) {
-          log(ex);
-          conn.close(WsStatus.UNSUPPORTED_DATA, ex.toString());
-        }
+      public void onMessage(WsConnection conn, WsMessage msg) {
+        if(msg.isText()) 
+          log(msg.asString());
+        else 
+          conn.close(WsStatus.INVALID_DATA, "Unexpected binary");
       }
-
+      
       @Override
-      public void onError(WsConnection conn, Throwable ex) {
-        log(ex);
+      public void onError(WsConnection conn, Throwable err) {
+// Do nothing. Log error in onClose method.      
       }
 
       @Override
@@ -130,10 +125,10 @@ public class Example2 {
 
     WebSocket webSocket = new WebSocket();
     try {
-// use the default Java Trust Store    
+// use the default Java TrustStore for TLS connection   
       webSocket.connect(serverUri, handler);
-    } catch (Exception ex) {
-      log(ex);
+    } catch (WsError err) {
+      log("Connection creation error: " + err.getCause());
     }
   }
 /* console output like this:
