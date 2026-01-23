@@ -36,22 +36,18 @@ public class Example1 {
         String msg = String.format("Connection %d open.",
           conn.hashCode());
         log(msg);
-        try {
-          conn.send(msg);
-        } catch (WsError err) {
-// Do nothing. 
-// An error sending the message means that the connection is closed.
-        }
+        conn.send(msg);
       }
 
       @Override
       public void onMessage(WsConnection conn, WsMessage msg) {
+// WsMessage is an input stream of binary data or UTF-8 encoded text     
         try {      
-// echoing the WebSocket message as an stream  
+// echoing the message as an stream  
           conn.send(msg, msg.isText()); 
         } catch (IOException e) {
-// Do nothing. 
-// An error reading the message means that the connection is closed.
+// Do nothing. An error when reading/sending WsMessage means that 
+// the connection is closed.
         }  
       }
       
@@ -106,7 +102,9 @@ public class Example2 {
 
       @Override
       public void onMessage(WsConnection conn, WsMessage msg) {
-        if(msg.isText()) 
+// WsMessage is an input stream of binary data or UTF-8 encoded text     
+        if(msg.isText())
+// reads WsMessage as String and logs it        
           log(msg.asString());
         else 
           conn.close(WsStatus.INVALID_DATA, "Unexpected binary");
