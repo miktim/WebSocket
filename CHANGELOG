@@ -1,5 +1,10 @@
+5.0.4
+  - fixed WsStatus; 
+  - fixed WsMessage, WsListener;
+  - fixed WsHandshake.waitHandshake;
+  - fixed WsConnection.run, waitMessage, setHandler
 5.0.3
-  - final payloadBuffer added (outgoing messages)
+  - ?final payloadBuffer added (outgoing messages)
   - call onMessage for the first data frame
 5.0.0 - 5.0.2 alpha
   - refactored, see ./docs or README.txt

@@ -1,5 +1,5 @@
 /*
- * WsListener. MIT (c) 2020-2025 miktim@mail.ru
+ * WsListener. MIT (c) 2020-2026 miktim@mail.ru
  * Provides reading and processing of WebSocket frames.
  * Class created: 2021-01-29
  */
@@ -15,7 +15,6 @@ class WsListener extends Thread {
 
     final private WsConnection conn;
 
-    private int opData = OP_FINAL; // data frame opcode
     private final byte[] payloadMask = new byte[8]; // mask & temp buffer for payloadLength
     private long payloadLength;
     private boolean pingFrameSent = false;
@@ -72,24 +71,18 @@ class WsListener extends Thread {
                     case OP_TEXT:
                     case OP_BINARY_FINAL:
                     case OP_TEXT_FINAL:
-                        if ((opData & OP_FINAL) != 0) {
-                            opData = b1;
-                            messageStream = new WsMessage(
-                                    conn, (opData & OP_TEXT) > 0);
-                            messageLength = 0L;
-            conn.messageQueue.add(messageStream);
-                            dataFrame();
+                        if (messageStream == null) {
+                            dataFrame(b1);
                             break;
                         }
                     case OP_CONTINUATION:
-                        if ((opData & OP_FINAL) == 0) {
-                            dataFrame();
+                        if (messageStream != null) {
+                            dataFrame(b1);
                             break;
                         }
                     case OP_FINAL:
-                        if ((opData & OP_FINAL) == 0) {
-                            opData |= OP_FINAL;
-                            dataFrame();
+                        if (messageStream != null) {
+                            dataFrame(b1);
                             break;
                         }
                     case OP_CLOSE:
@@ -111,7 +104,7 @@ class WsListener extends Thread {
                         break; // exit 
                     }
                 } else {
-                    conn.closeDueTo(WsStatus.GOING_AWAY, "Timeout", e);
+                    conn.closeDueTo(WsStatus.POLICY_VIOLATION, "Timeout", e);
                     break; // exit
                 }
             } catch (ProtocolException e) {
@@ -123,18 +116,20 @@ class WsListener extends Thread {
             } catch (Exception e) {
                 conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e.getMessage(), e);
                 break;
-            } catch (Error e) {
+            } catch (Throwable e) {
+                conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, e.getMessage(), e);
                 e.printStackTrace();
-                conn.closeDueTo(WsStatus.INTERNAL_ERROR, "Internal error", e);
                 break;
             }
         }
 // leave listener  
-        if(messageStream != null) messageStream.close();
+        conn.cancelCloseTimer();
+        if (messageStream != null) {
+            messageStream.close(); // incomplete message
+        }
         if (conn.messageQueue.remainingCapacity() > 0) {
             conn.messageQueue.add(new WsMessage());
         }
-        conn.cancelCloseTimer();
     }
 
     void readHeader(int b2) throws IOException {
@@ -166,23 +161,28 @@ class WsListener extends Thread {
         }
     }
 
-    boolean dataFrame() throws IOException, IllegalStateException {
+    boolean dataFrame(int opData) throws IOException, IllegalStateException {
+        if (messageStream == null) {
+            messageStream = new WsMessage((opData & OP_TEXT) > 0);
+            messageLength = 0L;
+            conn.messageQueue.add(messageStream);
+        }
         messageLength += payloadLength;
         if (conn.wsp.maxMessageLength != -1 && messageLength > conn.wsp.maxMessageLength) {
             IOException e = new IOException("Message too big");
             conn.closeDueTo(WsStatus.MESSAGE_TOO_BIG, e.getMessage(), e);
             messageStream.close();
         }
-
-        if (messageStream == null || messageStream.eof) {
+        if (messageStream.closed) {
             skipPayload();
             return false;
         }
         byte[] payload = readPayload();
-        if(payload.length > 0) messageStream.putPayload(payload);
+        if (payload.length > 0) {
+            messageStream.putPayload(payload);
+        }
         if ((opData & OP_FINAL) != 0) {
             messageStream.putPayload(EMPTY_PAYLOAD); // eof
-//            conn.messageQueue.add(messageStream);
             messageStream = null;
         }
         return true;
@@ -221,31 +221,30 @@ class WsListener extends Thread {
             }
             case OP_PING:
                 if (conn.isOpen()) {
-                    WsIo.sendControlFrame(conn,OP_PONG, framePayload, framePayload.length);
+                    WsIo.sendControlFrame(conn, OP_PONG, framePayload, framePayload.length);
                 }
                 return true;
             case OP_CLOSE:  // close handshake
                 synchronized (conn) {
-//                    conn.socket.shutdownInput();
                     if (conn.status.code == WsStatus.IS_OPEN) {
-                        conn.status.remotely = true;
                         conn.socket.setSoTimeout(conn.wsp.handshakeSoTimeout);
                         // send approval
                         WsIo.sendControlFrame(conn, OP_CLOSE,
                                 framePayload, framePayload.length);
                         // extract status code and reason
                         if (framePayload.length > 1) {
-                            conn.status.code = ((framePayload[0] & 0xFF) << 8)
-                                    + (framePayload[1] & 0xFF);
-                            conn.status.reason = new String(framePayload,
-                                    2, framePayload.length - 2, "UTF-8");
+                            conn.status.set(
+                                    ((framePayload[0] & 0xFF) << 8)
+                                    + (framePayload[1] & 0xFF),
+                                    new String(framePayload,
+                                            2, framePayload.length - 2, "UTF-8"),
+                                    true); //remotely
                         } else {
                             conn.status.code = WsStatus.NO_STATUS;
                         }
-                    } 
+                    }
                     conn.status.wasClean = true;
-//
-                }
+                } // synchronized
                 return true;
             default:
                 throw new ProtocolException("Unsupported opcode");

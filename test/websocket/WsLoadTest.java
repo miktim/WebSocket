@@ -1,6 +1,7 @@
 /*
  * WsConnection load test. MIT (c) 2020-2026 miktim@mail.ru
  */
+import java.io.IOException;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.miktim.websocket.WsConnection;
@@ -15,7 +16,7 @@ public class WsLoadTest {
 
     static final int MESSAGE_LENGTH = 100000; //bytes
     static final int TEST_SHUTDOWN_TIMEOUT = 10000; //10 sec 
-    static final int MAX_CONNECTIONS = 10;
+    static final int MAX_CONNECTIONS = 20;
     static final String REMOTE_HOST = "localhost";//"192.168.1.106";
     static final int PORT = 8080;
     static String uri = "ws://" + REMOTE_HOST + ":" + PORT;
@@ -42,13 +43,12 @@ public class WsLoadTest {
        } catch(InterruptedException ex) {
        }
     }
+    
     public static void main(String[] args) throws Exception {
         String path = ".";
         if (args.length > 0) {
             path = args[0];
         }
-
-        int port = 8443;
 
         WsConnection.Handler handler = new WsConnection.Handler() {
             String side(WsConnection con) {
@@ -57,34 +57,14 @@ public class WsLoadTest {
 
             @Override
             public void onOpen(WsConnection con, String subp) {
-//                ws_log(side(con) + " onOpen: ");
                 try {
-//                    con.send(con.isClientSide()
-//                            ? "Привет, Сервер! " : "Hello, Client! ");
                     con.send(new byte[MESSAGE_LENGTH]);
                     messages++;
                 } catch (WsError err) {
                     errors++;
-                    ws_log(side(con) + "onOpen: send error: " + err.getCause());
+//                    ws_log(side(con) + "onOpen: send error: " + err.getCause());
                 }
                 if(con.isClientSide()) connections++;
-            }
-
-            @Override
-            public void onClose(WsConnection con, WsStatus status) {
-//                ws_log(side(con) + "onClose: " + con.getStatus());
-                if(con.isClientSide())
-                    try {
-                        webSocket.connect(uri, this);
-                    } catch (Exception ex) {
-                        ws_log(side(con) + "onClose connect error: " + ex);
-                    }
-            }
-
-            @Override
-            public void onError(WsConnection con, Throwable e) {
-//                    ws_log(side(con) + "onError: " + e );
-//                e.printStackTrace();
             }
 
             @Override
@@ -96,10 +76,27 @@ public class WsLoadTest {
                     if(con.isClientSide() && Math.random() > 0.5) {
                         con.close();
                     }
-                } catch (Exception e) {
+                } catch (IOException e) {
                     errors++;
 //                    ws_log(side(con) + "onMessage send error: " + e);
                 }
+            }
+
+            @Override
+            public void onError(WsConnection con, Throwable e) {
+//                    ws_log(side(con) + "onError: " + e );
+//                e.printStackTrace();
+            }
+
+            @Override
+            public void onClose(WsConnection con, WsStatus status) {
+//                ws_log(side(con) + "onClose: " + con.getStatus());
+                if(con.isClientSide())
+                    try {
+                        webSocket.connect(uri, this);
+                    } catch (WsError ex) {
+//                        ws_log(side(con) + "onClose connect error: " + ex);
+                    }
             }
         };
 
@@ -126,13 +123,13 @@ public class WsLoadTest {
                 + (TEST_SHUTDOWN_TIMEOUT / 1000) + " seconds"
                 + "\r\nMessage Length: " + MESSAGE_LENGTH
                 + "\r\nMax connections: " + MAX_CONNECTIONS
-                + "\r\nConnections are closed and opened randomly");
+                + "\r\nConnections are created and closed randomly");
 
         for (int i = 0; i < MAX_CONNECTIONS; i++)
             webSocket.connect(uri, handler);
         joinAll();
         ws_log(String.format(
-                "\r\nConnections: %d Messages sent: %d IOErrors(WebSocket closed): %d",
+                "Connections: %d Messages sent: %d IOErrors(WebSocket closed): %d",
                 connections, messages, errors));
     }
 

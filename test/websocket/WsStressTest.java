@@ -1,5 +1,5 @@
 /*
- * WsStressTest. MIT (c) 2023-2025 miktim@mail.ru
+ * WsStressTest. MIT (c) 2023-2026 miktim@mail.ru
  */
 import java.io.IOException;
 import static java.lang.Thread.sleep;
@@ -15,12 +15,10 @@ import org.miktim.websocket.WsStatus;
 
 public class WsStressTest {
 
-//    static final int MAX_MESSAGE_LENGTH = 1000000; // 1MB
     static final int MAX_CLIENT_CONNECTIONS = 3; // allowed by setPending
     static final int TEST_SHUTDOWN_TIMEOUT = 10000; // millis
     static final int PORT = 8080;
     static final String ADDRESS = "ws://localhost:" + PORT;
-    interface Handler extends WsConnection.Handler, WsServer.Handler {};
     static void ws_log(String msg) {
         System.out.println(String.valueOf(msg));
     }
@@ -153,7 +151,7 @@ public class WsStressTest {
                 }
             }, TEST_SHUTDOWN_TIMEOUT);
 
-            ws_log("\r\nWs client-server stress test "
+            ws_log("\r\nWebSocket " + WebSocket.VERSION + " client-server stress test "
                     + "\r\nClient try to connect to " + ADDRESS
                     + "\r\nConnections allowed by server: " + MAX_CLIENT_CONNECTIONS
                     + "\r\nTest will be terminated after "
@@ -191,7 +189,7 @@ public class WsStressTest {
                     .setConnectionSoTimeout(400, false);
             conn = webSocket.connect(ADDRESS, handler, wsp);
             joinAll(webSocket);
-            testResult(conn, 1001);
+            testResult(conn, 1008);
 
             ws_log("\r\n4. Check server allowed connections ("
             + MAX_CLIENT_CONNECTIONS + "):");
@@ -209,7 +207,7 @@ public class WsStressTest {
             }
             joinAll(webSocket);
 
-            ws_log("\r\n5. Trying NullPointerException in the handler (1006): " );
+            ws_log("\r\n5. Trying NullPointerException in the server handler (1006): " );
             wsp.setSubProtocols(new String[] {"5"});
             conn = webSocket.connect(ADDRESS, handler, wsp);
             joinAll(webSocket);

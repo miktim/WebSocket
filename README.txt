@@ -7,7 +7,7 @@ Release notes:
   - WebSocket extensions (Per-Message Deflate, ...) are not supported;
   - supports insecure or TLS connections;
   - client supports Internationalized Domain Names (IDNs);
-  - "2/3 duplex": incoming messages are queued;
+  - incoming messages are queued;
   - stream-based messaging.
   
 The jar ./dist/websocket-... file was generated with debugging info using JDK1.8 for target JRE1.6
@@ -31,7 +31,7 @@ Overview:
     The creator of WebSocket servers and client-side connections.
 
     Constant:
-      static final String VERSION = "5.0.3";
+      static final String VERSION = "5.0.4";
 
     Constructors:
       WebSocket();
@@ -247,11 +247,11 @@ Overview:
       boolean isText();
         - returns true if WebSocket message is UTF-8 encoded text
       String asString();
-        - converts this stream to String;
+        - reads this stream as String;
         - throws WsError on IOException;
         - cause IOException when not is text.
       byte[] asByteArray();
-        - converts this stream to byte array;
+        - reads this stream as byte array;
         - throws WsError on IOException
       void close();
         - closes this stream. Further reading causes an IOException.
@@ -339,14 +339,15 @@ Overview:
         - the server shutdown
       int PROTOCOL_ERROR = 1002;
         - TLS handshake error or WebSocket HTTP handshake failed 
-          or WebSocket data exchange protocol violation 
+          or WebSocket data exchange protocol violation
+      int ENDPOINT_ERROR = 1004;
+        - the connection handler runtime exception
       int NO_STATUS = 1005;
         - the connection was closed without code and reason.
       int ABNORMAL_CLOSURE = 1006;
-        - the connection not closed properly (endpoint problems:
-          the socket timeout expired, unchecked exception in the handler, etc)
+        - the connection not closed properly (without close frame)
       int POLICY_VIOLATION = 1008;
-        - the number of pending messages has been exceeded
+        - socket timeout or the number of pending messages has been exceeded
           (see WsConnection.setMaxMessages method)
       int MESSAGE_TOO_BIG = 1009;
         - the length of the message or frame payload size has been exceeded

@@ -1,5 +1,5 @@
 /*
- * WsError. MIT (c) 2025 miktim@mail.ru
+ * WsError. MIT (c) 2026 miktim@mail.ru
  * Indicates serious WebSocket problem.
  */
 package org.miktim.websocket;

@@ -1,5 +1,5 @@
 /*
- * WebSocket Example2. MIT (c) 2025 miktim@mail.ru
+ * WebSocket Example2. MIT (c) 2025-2026 miktim@mail.ru
  * Connecting to the echo server.
  */
 
@@ -11,7 +11,7 @@ import org.miktim.websocket.WsStatus;
 
 public class Example2 {
     static String serverURI = "wss://echo.websocket.org";
-//    static String serverURI = "wss://127.0.0.1:8443"; // local echo server   
+//    static String serverURI = "wss://localhost:8443"; // local echo server   
     static void log(Object obj) {
         System.out.println(obj);
     }
@@ -34,12 +34,9 @@ public class Example2 {
             @Override
             public void onMessage(WsConnection conn, WsMessage msg) {
                 if(!msg.isText()) 
-                    conn.close(WsStatus.INVALID_DATA, "Unexpected binary");
+                    conn.close(WsStatus.UNSUPPORTED_DATA, "Unexpected binary");
                 else
-                    try {
-                        log(msg.asString());
-                    } catch (WsError err) {
-                    }
+                    log(msg.asString());
             }
 
             @Override
@@ -58,7 +55,7 @@ public class Example2 {
 // for local echo server
 //            webSocket.setKeyFile(new File("./localhost.jks"), "password");
             webSocket.connect(serverURI, handler);
-        } catch (Exception err) {
+        } catch (WsError err) {
             log("Connection creation error: " + err);
         }
     }

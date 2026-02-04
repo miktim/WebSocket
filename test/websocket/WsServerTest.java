@@ -137,7 +137,7 @@ public class WsServerTest implements WsConnection.Handler{
                     con.send(message);
                 }
             } else {
-                con.close(WsStatus.INVALID_DATA, "Unexpected binary");
+                con.close(WsStatus.UNSUPPORTED_DATA, "Unexpected binary");
             }
         } catch (IOException e) {
             ws_log(String.format("[%s] server side onMessage send error: %s",

@@ -1,10 +1,12 @@
 /*
- * HttpHead. Read/write/store HTTP message head. MIT (c) 2020-2025 miktim@mail.ru
+ * HttpHead. Read/write/store HTTP message head. MIT (c) 2020-2026 miktim@mail.ru
  *
  * Notes:
  *  - the header names are case-insensitive;
  *  - multiple header values are stored in a comma separated string
- *
+ * 
+ * 2026-01
+ * - fixed tiString() method
  * 2025-11:
  * - setStartLine, getStartLine methods added
  * - fixed excepion's messages
@@ -58,16 +60,16 @@ class HttpHead extends TreeMap<String, String> {
     }
 // Create or overwrite header value 
     public HttpHead set(String header, String value) {
-        put(header, value);
+        put(header, value.trim());
         return this;
     }
 // Create header or add comma separated value
     public HttpHead add(String header, String value) {
         String val = get(header);
         if (val == null || val.trim().isEmpty()) {
-            put(header, value);
+            put(header, value.trim());
         } else {
-            put(header, val + ", " + value);
+            put(header, val + ", " + value.trim());
         }
         return this;
     }
@@ -142,7 +144,7 @@ class HttpHead extends TreeMap<String, String> {
     public String toString() {
         StringBuilder sb = (new StringBuilder(getStartLine())).append("\r\n");
         for (String hn : listHeaders()) {
-            sb.append(hn).append(": ").append(get(hn)).append("\r\n");
+            sb.append(hn.trim()).append(": ").append(get(hn).trim()).append("\r\n");
         }
         sb.append("\r\n");
         return sb.toString();

@@ -1,5 +1,5 @@
 /*
- * WsHandlerTest. MIT (c) 2025 miktim@mail.ru
+ * WsHandlerTest. MIT (c) 2025-2026 miktim@mail.ru
  * The test throws a NullPointerException in event handlers.
  * Created 2025-09-01
  */
@@ -19,7 +19,7 @@ public class WsHandlerTest {
 
     static int testId = 0;
     static boolean testClient = true; // test client or server side connection
-    static final int DELAY = 300; // timeout to close connection
+    static final int DELAY = 500; // timeout to close connection
     
     static String clientSideCalls = "";
     static String serverSideCalls = "";
@@ -44,18 +44,24 @@ public class WsHandlerTest {
         }
     }
 
+    static void handlerCalls(WsConnection conn, String method) {
+        if (conn.isClientSide()) {
+            clientSideCalls += (clientSideCalls.isEmpty() ? "" : ":")
+                    + method;
+        } else {
+            serverConn = conn;
+            serverSideCalls += (serverSideCalls.isEmpty() ? "" : ":")
+                    + method;
+        }
+    }
+
     public static void main(String[] args) throws NoSuchAlgorithmException, Exception {
         WsServer.Handler handler = new WsServer.Handler() {
 
             @Override
             public void onOpen(WsConnection conn, String subProtocol) {
                 String method = "onOpen";
-                if (conn.isClientSide()) {
-                    clientSideCalls = "onOpen";
-                } else {
-                    serverConn = conn;
-                    serverSideCalls = "onOpen";
-                }
+                handlerCalls(conn, method);
                 String message = conn.isClientSide() ? "Hi, Server!" : "Hi, Client!";
                 try {
                     conn.send(message);
@@ -72,11 +78,7 @@ public class WsHandlerTest {
             @Override
             public void onMessage(WsConnection conn, WsMessage is) {
                 String method = "onMessage";
-                if (conn.isClientSide()) {
-                    clientSideCalls += (":" + method);
-                } else {
-                    serverSideCalls += (":" + method);
-                }
+                handlerCalls(conn, method);
                 if (testClient == conn.isClientSide()) {
                     if (testId == 2) {
                         throw new NullPointerException(method);
@@ -96,12 +98,7 @@ public class WsHandlerTest {
             @Override
             public void onError(WsConnection conn, Throwable e) {
                 String method = "onError";
-                if (conn.isClientSide()) {
-                    clientSideCalls += (":" + method);
-                } else {
-                    serverSideCalls += (":" + method);
-                }
- //               logErr(e);
+                handlerCalls(conn, method);
                 if (testClient == conn.isClientSide()) {
                     if (testId == 3) {
                         throw new NullPointerException(method);
@@ -112,18 +109,11 @@ public class WsHandlerTest {
             @Override
             public void onClose(WsConnection conn, WsStatus status) {
                 String method = "onClose";
-                String calls = String.format(":%s(%d)",
-                        method,
-                        conn.getStatus().code);
-                if (conn.isClientSide()) {
-                    clientSideCalls += calls;
-                } else {
-                    serverSideCalls += calls;
-                }
+                handlerCalls(conn, method);
                 if (testId > 5) { //server handler test
                     log(String.format("[%d] %s %d",
                             testId,
-                            conn.isClientSide() ? "client-side" : "server-side",
+                            conn.isClientSide() ? "Client-side" : "Server-side",
                             status.code));
                 }
                 if (testClient == conn.isClientSide()) {
@@ -218,18 +208,20 @@ public class WsHandlerTest {
     static void testConnection(WebSocket webSocket, WsServer.Handler handler)
             throws Exception {
         for (testId = 1; testId < 5; testId++) {
+            serverSideCalls = "";
+            clientSideCalls = "";
             WsConnection conn = webSocket.connect("ws://localhost:8080", handler, new WsParameters());
             sleep(DELAY);
             conn.join(DELAY);
-            log(clientSideCalls + " " + conn.getStatus().code);
+            log("Client-side " + clientSideCalls + " " + conn.getStatus().code);
             serverConn.join(DELAY);
-            log(serverSideCalls + " " + serverConn.getStatus().code);
+            log("Server-side " + serverSideCalls + " " + serverConn.getStatus().code);
             String result = "Ok";
             if (webSocket.listConnections().length 
                     + webSocket.listServers()[0].listConnections().length > 0) {
                 result = "Failed!";
-                if(conn.isAlive()) log(String.format("[%d] %s", testId, "client-side Failed"));
-                if(serverConn.isAlive()) log(String.format("[%d] %s", testId, "server-side Failed"));
+                if(conn.isAlive()) log(String.format("[%d] %s", testId, "Client-side Failed"));
+                if(serverConn.isAlive()) log(String.format("[%d] %s", testId, "Server-side Failed"));
                 conn.close();
                 serverConn.close();
             }

@@ -1,12 +1,12 @@
 /*
- * WsStatus. WebSocket connection/server status, MIT (c) 2020-2023 miktim@mail.ru
+ * WsStatus. WebSocket connection/server status, MIT (c) 2020-2026 miktim@mail.ru
  *
  * Created: 2021-02-08
  */
 package org.miktim.websocket;
 
 /**
- * WebSocket status.
+ * WebSocket connection status.
  * <p>
  * The class contains public properties and WebSocket predefined close codes.
  * <br>
@@ -48,7 +48,7 @@ public final class WsStatus {
     /**
      * Closing code (1000-4999).
      */
-    public int code = IS_INACTIVE;  // closing code (1000-4999)
+    volatile public int code = IS_INACTIVE;  // closing code (1000-4999)
 
     /**
      * Closing reason (max length 123 BYTES).
@@ -73,7 +73,7 @@ public final class WsStatus {
     WsStatus() {
     }
 
-    WsStatus deepClone() {
+    synchronized WsStatus deepClone() {
         WsStatus clone = new WsStatus();
         clone.code = code;
         clone.reason = reason;
@@ -81,6 +81,12 @@ public final class WsStatus {
         clone.remotely = remotely;
         clone.error = error;
         return clone;
+    }
+    
+    synchronized void set(int code, String reason, boolean remotely) {
+       this.code = code;
+       this.reason = reason;
+       this.remotely = remotely;
     }
 
     /**

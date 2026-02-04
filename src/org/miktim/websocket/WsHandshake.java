@@ -1,5 +1,5 @@
 /*
- * WsHandshake. WebSocket client/server handshake, MIT (c) 2020-2025 miktim@mail.ru
+ * WsHandshake. WebSocket client/server handshake, MIT (c) 2020-2026 miktim@mail.ru
  *
  * Static handshaking methods moved from WsConnection.
  * Created: 2025-07-18
@@ -19,32 +19,25 @@ class WsHandshake {
 
     static final String SERVER_AGENT = "WsLite/" + WebSocket.VERSION;
 
-    static boolean waitHandshake(WsConnection conn) {
-        synchronized (conn) {
-            try {
-                conn.inStream = new BufferedInputStream(conn.socket.getInputStream());
-                conn.outStream =new BufferedOutputStream(conn.socket.getOutputStream());
-                if (conn.isClientSide()) {
-                    handshakeServer(conn);
-                } else {
-                    handshakeClient(conn);
-                }
-                conn.socket.setSoTimeout(conn.wsp.connectionSoTimeout);
-                conn.status.code = WsStatus.IS_OPEN;
-                conn.status.remotely = !conn.isClientSide();
-                conn.notifyAll();
-                return true;
-            } catch (Throwable e) {
-//System.err.println(e.toString());
-                conn.status.code = WsStatus.PROTOCOL_ERROR;
-                conn.status.reason = "Handshake error";
-                conn.status.remotely = conn.isClientSide();
-                conn.status.error = e;
-                conn.closeSocket();
-                conn.notifyAll();
-                WsConnection.callHandler(conn, e); // onError
-                return false;
+    static void waitHandshake(WsConnection conn) {
+        try {
+            conn.inStream = new BufferedInputStream(conn.socket.getInputStream());
+            conn.outStream = new BufferedOutputStream(conn.socket.getOutputStream());
+            if (conn.isClientSide()) {
+                handshakeServer(conn);
+            } else {
+                handshakeClient(conn);
             }
+            conn.socket.setSoTimeout(conn.wsp.connectionSoTimeout);
+            conn.status.code = WsStatus.IS_OPEN;
+            conn.status.remotely = !conn.isClientSide();
+        } catch (Throwable err) {
+            conn.status.set(WsStatus.PROTOCOL_ERROR,
+                    "Handshake error",
+                    conn.isClientSide());
+            conn.status.error = err;
+            conn.closeSocket();
+            WsConnection.callHandler(conn, err); // onError
         }
     }
 
@@ -67,11 +60,10 @@ class WsHandshake {
             conn.responseHead
                     .setStartLine("HTTP/1.1 101 Upgrade")
                     .set("Upgrade", "websocket")
-                    .set("Connection", "Upgrade,keep-alive")
+                    .set("Connection", "Upgrade") //,keep-alive")
                     .set("Sec-WebSocket-Accept", sha1Hash(key));
 
-//            onRequest(conn, conn.responseHead); // see onRequest below
-
+//TODO            onRequest(conn, conn.responseHead); // see onRequest below
             conn.responseHead.write(conn.outStream);
         } else {
             conn.responseHead
@@ -83,21 +75,19 @@ class WsHandshake {
         }
     }
 
-/*
+    /* TODO
     static void onRequest(WsConnection conn, HttpHead target) {
         if (!(conn.handler instanceof WsConnection.OnRequest)) return;
         Map<String, String> map = ((WsConnection.OnRequest) conn.handler)
-                                .onRequest(conn, conn.getRequestHead());
+                                .onRequest(conn, conn.getRequest());
         if(map == null) return;
         for (String hdr : map.keySet().toArray(new String[0])) {
-            if (!(conn.requestHead.exists(hdr)
-                    || conn.responseHead.exists(hdr))) {
-                target.set(hdr, map.get(hdr));
+            if (!conn.target.exists(hdr.trim())) { // 
+                target.set(hdr.trim(), map.get(hdr).trim());
             }
         }
     }
-*/
-
+     */
     private static boolean setSubprotocol(WsConnection conn, String[] requestedSubps, HttpHead rs) {
         if (requestedSubps == null) {
             return true;
@@ -136,16 +126,15 @@ class WsHandshake {
                 .set("Host", host)
                 .set("Origin", conn.requestURI.getScheme() + "://" + host)
                 .set("Upgrade", "websocket")
-                .set("Connection", "Upgrade,keep-alive")
+                .set("Connection", "Upgrade") //,keep-alive")
                 .set("Sec-WebSocket-Key", key)
                 .set("Sec-WebSocket-Version", "13")
                 .set("User-Agent", SERVER_AGENT);
         if (conn.wsp.subProtocols != null) {
             conn.requestHead.setValues("Sec-WebSocket-Protocol", conn.wsp.subProtocols);
         }
-        
-//        onRequest(conn, conn.requestHead); // see onRequest above
 
+//TODO        onRequest(conn, conn.requestHead); // see onRequest above
         conn.requestHead.write(conn.outStream);
 
         conn.responseHead = (new HttpHead()).read(conn.inStream);

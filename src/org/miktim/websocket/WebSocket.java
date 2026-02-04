@@ -1,5 +1,5 @@
 /*
- * WebSocket. MIT (c) 2020-2025 miktim@mail.ru
+ * WebSocket. MIT (c) 2020-2026 miktim@mail.ru
  * Creator of WebSocket servers and client connections.
  */
 package org.miktim.websocket;
@@ -41,7 +41,7 @@ public class WebSocket {
     /**
      * Current package version {@value VERSION}.
      */
-    public static final String VERSION = "5.0.3";
+    public static final String VERSION = "5.0.4";
 
     private InetAddress interfaceAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
@@ -85,7 +85,7 @@ public class WebSocket {
     }
 
     /**
-     * Sets the system properties link javax.net.ssl.keyStore/keyStorePassword.
+     * Sets the system properties javax.net.ssl.keyStore/keyStorePassword.
      *
      * @param filePath key store file path
      * @param passphrase password

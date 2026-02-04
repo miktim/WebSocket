@@ -29,7 +29,7 @@ public class WsParameters {
     int maxMessages = 3; // 
 
     /**
-     * Creates connection parameters.
+     * Creates default connection parameters.
      */
     public WsParameters() {
         try {
@@ -203,11 +203,11 @@ public class WsParameters {
     }
     
     /**
-     * Sets the maximum number of queued
+     * Sets the maximum number of pending
      * incoming messages per connection.
      * Overflow of this value leads to an error and
      * connection closure with status code 1008 (POLICY_VIOLATION)
-     * @param maxMsgs maximum number of messages (min value is 1)
+     * @param maxMsgs maximum number of pending messages (min value is 1)
      * @return this
      */
     public WsParameters setMaxMessages(int maxMsgs) {
@@ -216,7 +216,7 @@ public class WsParameters {
     }
     
     /**
-     * Returns the maximum number of queued
+     * Returns the maximum number of pending
      * incoming messages per connection.
      * @return number of pending messages. Default: 3
      */

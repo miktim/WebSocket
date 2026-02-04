@@ -1,5 +1,5 @@
 /*
- * WsServer. WebSocket Server, MIT (c) 2020-2025 miktim@mail.ru
+ * WsServer. WebSocket Server, MIT (c) 2020-2026 miktim@mail.ru
  *
  * Accepts sockets, creates and starts connection threads.
  *
@@ -206,16 +206,14 @@ public class WsServer extends Thread {
                 stopServer(WsStatus.INTERNAL_ERROR, "Abnormal shutdown");
             }
         }
-        servers.remove(this);
         closeServerSocket();
+        servers.remove(this);
         try {
             if (connectionHandler instanceof ServerHandler) {
                 ((ServerHandler) connectionHandler).onStop(this, serverError);
             }
         } catch (Throwable err) {
-//            if (serverError == null) {
-                serverError = err;
-//            }
+            serverError = err;
             err.printStackTrace();
         }
 
@@ -245,7 +243,7 @@ public class WsServer extends Thread {
     }
 
     /**
-     * WebSocket server event handler extends connection handler.
+     * WebSocket server event handler inherits the connection handler.
      */
     public interface Handler extends WsConnection.Handler, ServerHandler { };
 

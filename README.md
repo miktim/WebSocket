@@ -3,17 +3,18 @@
 
 \- RFC 6455 compliant package ( [https://datatracker.ietf.org/doc/html/rfc6455/](https://datatracker.ietf.org/doc/html/rfc6455/) );  
 \- no external dependencies;  
-\- Java SE 6+/Android 4.1+ compatible (see WebSocket-Android-Test repo:  
+\- Java SE 6+/Android 4+ compatible (see WebSocket-Android-Test repo:  
   [https://github.com/miktim/WebSocket-Android-Test](https://github.com/miktim/WebSocket-Android-Test) ).  
 \- WebSocket extensions ( Per-Message Deflate, ... ) are not supported;  
 \- supported WebSocket version: 13;  
-\- supports insecure or TLS connections;  
+\- supports insecure (cleartext) or TLS connections;  
+\- supports user-defined HTTP headers and secondary connection handler assignment;  
 \- client supports Internationalized Domain Names (IDNs);  
 \- stream-based messaging.    
 
-The latest standalone jar is here: [./dist](./dist).  
+The latest standalone jar is here: [./dist](./dist). 
 The package was built with debug info using openJDK 1.8 for the target JRE 1.6.  
-The latest JavaDoc is in the [./docs](./docs) folder or [online](https://miktim.github.io/WebSocket/).  
+The latest JavaDoc is in the [./docs](./docs) folder and [online](https://miktim.github.io/WebSocket/).  
 
 #### Example1: local echo server for TLS connections:  
 
@@ -107,7 +108,7 @@ public class Example2 {
 // reads WsMessage as String and logs it        
           log(msg.asString());
         else 
-          conn.close(WsStatus.INVALID_DATA, "Unexpected binary");
+          conn.close(WsStatus.UNSUPPORTED_DATA, "Unexpected binary");
       }
       
       @Override

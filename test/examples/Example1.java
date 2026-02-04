@@ -84,7 +84,7 @@ public class Example1 {
         if(msg.isText()) 
           log("Client onMessage: " + msg.asString());
         else 
-          conn.close(WsStatus.INVALID_DATA, "Unexpected binary");
+          conn.close(WsStatus.UNSUPPORTED_DATA, "Unexpected binary");
       }
       
       @Override
@@ -102,7 +102,7 @@ public class Example1 {
 // register client trust store key file
       webSocket.setKeyFile(new File(key), pwd);
       webSocket.connect("wss://localhost:" + PORT, connHandler);
-    } catch (Exception err) {
+    } catch (WsError err) {
       log("Connection creation error: " + err.getCause());
     }
   }
