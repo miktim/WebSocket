@@ -219,7 +219,7 @@ Overview:
       - onError - onClose, when the SSL/WebSocket handshake failed;  
       - onOpen [- onMessage - onMessage - ...] [- onError] - onClose.  
     A runtime error in the handler terminates the connection with status
-    code 1004 (ENDPOINT_ERROR) and calls the onError method.
+    code 1006 (ABNORMAL_CLOSURE) and calls the onError method.
 
     Methods:
       void onOpen(WsConnection conn, String subProtocol);
@@ -338,10 +338,9 @@ Overview:
         - the server shutdown or connection timeout
           (see WsParameters.setConnectionSoTimeout method)
       int PROTOCOL_ERROR = 1002;
-        - TLS handshake error or WebSocket HTTP handshake failed 
+        - socket connection (TLS/cleartext) error
+          or WebSocket HTTP handshake failed
           or WebSocket data exchange protocol violation
-      int ENDPOINT_ERROR = 1004;
-        - the connection handler runtime exception
       int NO_STATUS = 1005;
         - the connection was closed without code and reason.
       int ABNORMAL_CLOSURE = 1006;
@@ -350,7 +349,7 @@ Overview:
         - the number of pending messages has been exceeded
           (see WsParameters.setMaxMessages method)
       int MESSAGE_TOO_BIG = 1009;
-        - the length of the message or frame payload size has been exceeded
+        - the length of the message or frame size has been exceeded
           (see WsParameters.setMaxMessageLength method)
       int INTERNAL_ERROR = 1011;
         - the server crashed
