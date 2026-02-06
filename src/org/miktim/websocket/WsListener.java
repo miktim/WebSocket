@@ -104,7 +104,7 @@ class WsListener extends Thread {
                         break; // exit 
                     }
                 } else {
-                    conn.closeDueTo(WsStatus.POLICY_VIOLATION, "Timeout", e);
+                    conn.closeDueTo(WsStatus.GOING_AWAY, "Timeout", e);
                     break; // exit
                 }
             } catch (ProtocolException e) {

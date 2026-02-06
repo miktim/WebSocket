@@ -18,7 +18,7 @@ Overview:
 
   Class WebSocket - the creator of WebSocket servers and client-side connections;  
   Class WsServer - implements a WebSocket server for insecure or TLS connections;  
-  Interface WsServer.Handler - a server event handler;  
+  Interface WsServer.Handler - the server event handler inherits connection handler;
   Class WsConnection - implements a WebSocket connection on the server or client side;  
   Interface WsConnection.Handler - a connection event handler; 
   Class WsMessage - streaming representation of the incoming WebSocket message; 
@@ -135,8 +135,8 @@ Overview:
 
       void stopServer(); 
       void stopServer(String closeReason);
-        - stop listening and close all active connections with 
-          code 1001 (GOING_AWAY). Default closeReason: "Shutdown".
+        - stops listening and closes all active connections with 
+          code 1001 (GOING_AWAY). The default closeReason: "Shutdown".
         
   Interface WsServer.Handler extends WsConnection.Handler:  
     The default server handler does nothing.
@@ -219,7 +219,7 @@ Overview:
       - onError - onClose, when the SSL/WebSocket handshake failed;  
       - onOpen [- onMessage - onMessage - ...] [- onError] - onClose.  
     A runtime error in the handler terminates the connection with status
-    code 1006 (ABNORMAL_CLOSURE) and calls the onError method.  
+    code 1004 (ENDPOINT_ERROR) and calls the onError method.
 
     Methods:
       void onOpen(WsConnection conn, String subProtocol);
@@ -241,18 +241,17 @@ Overview:
 
 
   Class WsMessage extends InputStream;
-    Streaming representation of incoming WebSocket messages.
+    Streaming representation of incoming WebSocket message.
 
     Methods:
       boolean isText();
         - returns true if WebSocket message is UTF-8 encoded text
       String asString();
         - reads this stream as String;
-        - throws WsError on IOException;
-        - cause IOException when not is text.
+        - throws WsError on Exception.
       byte[] asByteArray();
         - reads this stream as byte array;
-        - throws WsError on IOException
+        - throws WsError on Exception.
       void close();
         - closes this stream. Further reading causes an IOException.
 
@@ -278,7 +277,7 @@ Overview:
       WsParameters setConnectionSoTimeout(int millis, boolean pingEnabled)
         - sets data exchange timeout;
         - if the timeout is exceeded and ping is disabled, 
-          the connection is closed with status code 1001 (GOING_AWAY)
+          the connection is closed with status code 1008 (POLICY_VIOLATION)
       int getConnectionSoTimeout();
         - default: 2000 milliseconds
       boolean isPingEnabled();
@@ -324,7 +323,7 @@ Overview:
       int code;         // closing code (-1, 0, 1000-4999)
       String reason;    // closing reason (max length 123 BYTES)
       boolean wasClean; // WebSocket closing handshake completed cleanly
-      boolean remotely; // closed remotely
+      boolean remotely; // connection closed remotely
       Throwable error;  // connection execution error or null
 
     Constants:
@@ -336,7 +335,8 @@ Overview:
       int NORMAL_CLOSURE = 1000; 
         - the connection successfully closed 
       int GOING_AWAY = 1001; 
-        - the server shutdown
+        - the server shutdown or connection timeout
+          (see WsParameters.setConnectionSoTimeout method)
       int PROTOCOL_ERROR = 1002;
         - TLS handshake error or WebSocket HTTP handshake failed 
           or WebSocket data exchange protocol violation
@@ -347,11 +347,11 @@ Overview:
       int ABNORMAL_CLOSURE = 1006;
         - the connection not closed properly (without close frame)
       int POLICY_VIOLATION = 1008;
-        - socket timeout or the number of pending messages has been exceeded
-          (see WsConnection.setMaxMessages method)
+        - the number of pending messages has been exceeded
+          (see WsParameters.setMaxMessages method)
       int MESSAGE_TOO_BIG = 1009;
         - the length of the message or frame payload size has been exceeded
-          (see WsConnection.setMaxMessageLength method)
+          (see WsParameters.setMaxMessageLength method)
       int INTERNAL_ERROR = 1011;
         - the server crashed
  

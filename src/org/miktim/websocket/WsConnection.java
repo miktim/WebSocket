@@ -464,11 +464,11 @@ public final class WsConnection extends Thread {
                         + arg.getClass().getName());
             }
         } catch (WsError err) {
-            conn.closeDueTo(WsStatus.ENDPOINT_ERROR, "Endpoint error", err.getCause());
+            conn.closeDueTo(WsStatus.ABNORMAL_CLOSURE, err.getMessage(), err.getCause());
         } catch (Throwable err) {
             synchronized (conn) {
-                conn.status.set(WsStatus.ENDPOINT_ERROR,
-                        handlerName + " handler failed",
+                conn.status.set(WsStatus.ABNORMAL_CLOSURE,
+                        handlerName + " handler crashed",
                         false);
                 conn.status.error = err;
                 conn.closeSocket();
@@ -502,7 +502,7 @@ public final class WsConnection extends Thread {
                 }
                 callHandler(this, msg);
             } catch (InterruptedException ex) {
-                closeDueTo(WsStatus.ENDPOINT_ERROR, "WebSocket interrupted", ex);
+                closeDueTo(WsStatus.ABNORMAL_CLOSURE, "WebSocket connection interrupted", ex);
                 break;
             }
         } while (messageQueue.size() > 0 || listener.isAlive());

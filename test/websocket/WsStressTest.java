@@ -189,7 +189,7 @@ public class WsStressTest {
                     .setConnectionSoTimeout(400, false);
             conn = webSocket.connect(ADDRESS, handler, wsp);
             joinAll(webSocket);
-            testResult(conn, 1008);
+            testResult(conn, 1001);
 
             ws_log("\r\n4. Check server allowed connections ("
             + MAX_CLIENT_CONNECTIONS + "):");

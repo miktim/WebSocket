@@ -21,37 +21,69 @@ package org.miktim.websocket;
 public final class WsStatus {
 
         /**
-         * The WebSocket connection yet not open.
+         * {@value IS_INACTIVE} The WebSocket connection yet not open.
          */
         public static final int IS_INACTIVE = -1; // connection in progress
 
         /**
-         * The WebSocket connection is open.
+         * {@value IS_OPEN} The WebSocket connection is open.
          */
         public static final int IS_OPEN = 0;
-        public static final int NORMAL_CLOSURE = 1000; //
+        /**
+         * {@value NORMAL_CLOSURE} The WebSocket connection successfully completed.
+         */
+        public static final int NORMAL_CLOSURE = 1000; //*
+        /**
+         * {@value GOING_AWAY} The WebSocket server shutdown or connection timeout.
+         */
         public static final int GOING_AWAY = 1001; //* 
+        /**
+         * {@value PROTOCOL_ERROR} Socket connection (SSL/cleartext) error or WebSocket protocol violation.
+         */
         public static final int PROTOCOL_ERROR = 1002; //* 
+        /**
+         * {@value UNSUPPORTED_DATA} Unused.
+         */
         public static final int UNSUPPORTED_DATA = 1003; //
-        public static final int ENDPOINT_ERROR = 1004;
+        /**
+         * {@value NO_STATUS} The connection closed without status code and reason.
+         */
         public static final int NO_STATUS = 1005; //* 
+        /**
+         * {@value ABNORMAL_CLOSURE} Network failure or connection handler crashed.
+         */
         public static final int ABNORMAL_CLOSURE = 1006; //* 
-        public static final int INVALID_DATA = 1007; // 
-        public static final int POLICY_VIOLATION = 1008; //
+        /**
+         * {@value INVALID_FRAME} Unused.
+         */
+        public static final int INVALID_FRAME = 1007; // 
+        /**
+         * {@value POLICY_VIOLATION} The number of pending messages has been exceeded.
+         */
+        public static final int POLICY_VIOLATION = 1008; //*
+        /**
+         * {@value MESSAGE_TOO_BIG} The message or data frame size has been exceeded.
+         */
         public static final int MESSAGE_TOO_BIG = 1009; //*
-        public static final int MANDATORY_EXT = 1010; //* 
+        /**
+         * {@value MANDATORY_EXT} Unused.
+         */
+        public static final int MANDATORY_EXT = 1010; // 
+        /**
+         * {@value INTERNAL_ERROR} The WebSocket server crashed.
+         */
         public static final int INTERNAL_ERROR = 1011; //*
-        public static final int SERVICE_RESTART = 1012; //  
-        public static final int TRY_AGAIN_LATER = 1013; //
-        public static final int TLS_HANDSHAKE = 1015; //
+//        public static final int SERVICE_RESTART = 1012; //  
+//        public static final int TRY_AGAIN_LATER = 1013; //
+//        public static final int TLS_HANDSHAKE = 1015; //
 
     /**
-     * Closing code (1000-4999).
+     * Connection closing code (1000-4999).
      */
     volatile public int code = IS_INACTIVE;  // closing code (1000-4999)
 
     /**
-     * Closing reason (max length 123 BYTES).
+     * Connection closing reason (max length 123 BYTES).
      */
     public String reason = "";     // closing reason (max length 123 BYTES)
 
@@ -61,7 +93,7 @@ public final class WsStatus {
     public boolean wasClean = false;    // WebSocket closing handshake completed
 
     /**
-     * WebSocket closed remotely.
+     * WebSocket connection closed remotely.
      */
     public boolean remotely = false;     // closed remotely
 
