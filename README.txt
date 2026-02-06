@@ -31,7 +31,7 @@ Overview:
     The creator of WebSocket servers and client-side connections.
 
     Constant:
-      static final String VERSION = "5.0.4";
+      static final String VERSION = "5.0.5";
 
     Constructors:
       WebSocket();

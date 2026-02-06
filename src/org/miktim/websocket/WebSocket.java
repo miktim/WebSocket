@@ -41,7 +41,7 @@ public class WebSocket {
     /**
      * Current package version {@value VERSION}.
      */
-    public static final String VERSION = "5.0.4";
+    public static final String VERSION = "5.0.5";
 
     private InetAddress interfaceAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
