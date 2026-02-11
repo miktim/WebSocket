@@ -8,7 +8,7 @@
 \- WebSocket extensions ( Per-Message Deflate, ... ) are not supported;  
 \- supported WebSocket version: 13;  
 \- supports insecure (cleartext) or TLS connections;  
-\- supports user-defined HTTP headers and secondary connection handler assignment;  
+\- supports assignment of a secondary connection handler;  
 \- client supports Internationalized Domain Names (IDNs);  
 \- stream-based messaging.    
 
