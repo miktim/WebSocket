@@ -1,6 +1,10 @@
+5.0.6
+  - fixed WsConnection.setHandler();
+  - fixed WsServer.isActive(), stopServer;
+  - fixed docs
 5.0.5
   - WsStatus some definitions of status codes removed;
-  - WsConnection connection handler crash with status code 1006 (ABNORMAL_CLOSURE);
+  - WsConnection handler crash with status code 1006 (ABNORMAL_CLOSURE);
   - WsListener connection timeout with status code 1001 (GOING_AWAY)
 5.0.4
   - fixed WsStatus; 

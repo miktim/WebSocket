@@ -19,6 +19,7 @@ public class WsStressTest {
     static final int TEST_SHUTDOWN_TIMEOUT = 10000; // millis
     static final int PORT = 8080;
     static final String ADDRESS = "ws://localhost:" + PORT;
+    
     static void ws_log(String msg) {
         System.out.println(String.valueOf(msg));
     }
@@ -151,7 +152,7 @@ public class WsStressTest {
                 }
             }, TEST_SHUTDOWN_TIMEOUT);
 
-            ws_log("\r\nWebSocket " + WebSocket.VERSION + " client-server stress test "
+            ws_log("\r\nWsStressTest " + WebSocket.VERSION
                     + "\r\nClient try to connect to " + ADDRESS
                     + "\r\nConnections allowed by server: " + MAX_CLIENT_CONNECTIONS
                     + "\r\nTest will be terminated after "
@@ -165,7 +166,7 @@ public class WsStressTest {
             joinAll(webSocket);
             testResult(conn, 1002);
 
-            ws_log("\r\n0. Unsupported WebSocket subProtocol (1008):");
+            ws_log("\r\n0. WebSocket subProtocol is null (1008):");
             wsp.setSubProtocols(new String[]{"10"});
             conn = webSocket.connect(ADDRESS, handler, wsp);
             joinAll(webSocket);

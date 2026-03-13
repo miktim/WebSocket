@@ -21,6 +21,7 @@ public class WsLoadTest {
     static final int PORT = 8080;
     static String uri = "ws://" + REMOTE_HOST + ":" + PORT;
     static WebSocket webSocket = null;
+    static WsServer wsServer = null;
     static int connections = 0;
     static int messages = 0;
     static int errors = 0;
@@ -91,11 +92,11 @@ public class WsLoadTest {
             @Override
             public void onClose(WsConnection con, WsStatus status) {
 //                ws_log(side(con) + "onClose: " + con.getStatus());
-                if(con.isClientSide())
+                if(con.isClientSide() && wsServer.isActive())
                     try {
                         webSocket.connect(uri, this);
                     } catch (WsError ex) {
-//                        ws_log(side(con) + "onClose connect error: " + ex);
+                        ws_log(side(con) + "onClose connect error: " + ex);
                     }
             }
         };
@@ -104,7 +105,8 @@ public class WsLoadTest {
 
         WsParameters swsp = new WsParameters(); // server parameters
 //        swsp.setConnectionSoTimeout(1000, true); // ping
-        final WsServer wsServer = 
+//        final WsServer 
+                wsServer = 
                 webSocket.startServer(PORT, handler, swsp);
 
         final Timer timer = new Timer();

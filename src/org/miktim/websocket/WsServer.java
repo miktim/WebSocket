@@ -19,14 +19,14 @@ import java.util.List;
  */
 public class WsServer extends Thread {
 
-    private int serverStatus = WsStatus.IS_INACTIVE;
+    private volatile int serverStatus = WsStatus.IS_INACTIVE;
     private Throwable serverError = null;
 
     private final boolean isSecure;
     private final WsParameters wsp;
     private final ServerSocket serverSocket;
     private final WsConnection.Handler connectionHandler; // connection handler
-    List<WsServer> servers = null;
+    List<WsServer> servers = null; // WebSocket servers list
     private final List<WsConnection> connections
             = Collections.synchronizedList(new ArrayList<WsConnection>());
 
@@ -47,7 +47,7 @@ public class WsServer extends Thread {
         synchronized (this) {
             if (serverStatus == WsStatus.IS_INACTIVE) {
                 try {
-                    this.wait(wsp.connectionSoTimeout); //
+                    this.wait(wsp.handshakeSoTimeout); //
                 } catch (InterruptedException ex) {
                 }
             }
@@ -70,8 +70,8 @@ public class WsServer extends Thread {
      * @return true if is it.
      * @since 4.3
      */
-    public boolean isActive() {
-        return isAlive() && serverStatus == WsStatus.IS_OPEN; //
+    synchronized public boolean isActive() {
+        return serverStatus == WsStatus.IS_OPEN;// && this.isAlive();
     }
 
     /**
@@ -144,15 +144,15 @@ public class WsServer extends Thread {
         stopServer(WsStatus.GOING_AWAY, reason);
     }
 
-    void stopServer(int code, String reason) {
-        if (serverStatus == WsStatus.IS_OPEN) {
+    synchronized void stopServer(int code, String reason) {
+//        if (serverStatus == WsStatus.IS_OPEN) {
             serverStatus = code;
             closeServerSocket();
 // close associated connections
             for (WsConnection conn : listConnections()) {
                 conn.ready().close(code, reason);
             }
-        }
+//        }
     }
 
     void closeServerSocket() {

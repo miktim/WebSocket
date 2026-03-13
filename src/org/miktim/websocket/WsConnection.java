@@ -110,7 +110,7 @@ public final class WsConnection extends Thread {
      * @return true if so.
      */
     public boolean isOpen() {
-        return isAlive() && status.code == WsStatus.IS_OPEN;
+        return status.code == WsStatus.IS_OPEN;// && isAlive();
     }
 
     /**
@@ -131,19 +131,24 @@ public final class WsConnection extends Thread {
         return isClientSide;
     }
 
+    boolean isPrimaryHandler = true;
+
     /**
      * Sets the secondary handler for this connection.
      * <br>
-     * Sets the connection handler. Calls onClose in the old handler
-     * (conn.isOpen() returns true), then calls onOpen in the new handler.
+     * Calls onClose in the old handler
+     * ({@link #isOpen()} returns true), then calls onOpen in the new handler.
      *
      * @param newHandler new connectin handler.
+     * @throws NullPointerException
+     * @throws IllegalStateException if the method is called outside of
+     * a connection handler, or the WebSocket is closed,
+     * or newHandler is equal to the current handler.
      */
-    boolean isPrimaryHandler = true;
-
-    public synchronized void setHandler(Handler newHandler) { // 
-        if (!handler.equals(newHandler) && Thread.currentThread().equals(this)) {
-            status.remotely = false;
+    public synchronized void setHandler(Handler newHandler) { //
+        if (status.code == WsStatus.IS_OPEN &&
+                !newHandler.equals(handler) && // also checks for a null
+                Thread.currentThread().equals(this)) {
             callHandler(this, getStatus());
             handler = newHandler;
             isPrimaryHandler = false;
@@ -315,9 +320,9 @@ public final class WsConnection extends Thread {
      * without sending close frame;<br>
      * - a reason that is longer than 123 BYTES is truncated;<br>
      * - method blocks outgoing messages (send methods throw IOException);<br>
-     * - isOpen() returns false;<br>
      * - incoming messages are available until the closing handshake completed
-     * or timeout is over.
+     * or closing timeout expires;<br>
+     * - {@link #isOpen()} returns false.
      * </p>
      *
      * @param code closing code.

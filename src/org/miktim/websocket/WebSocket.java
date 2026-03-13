@@ -41,7 +41,7 @@ public class WebSocket {
     /**
      * Current package version {@value VERSION}.
      */
-    public static final String VERSION = "5.0.5";
+    public static final String VERSION = "5.0.6";
 
     private InetAddress interfaceAddress = null;
     private final List<WsConnection> connections = Collections.synchronizedList(new ArrayList<WsConnection>());
@@ -77,22 +77,22 @@ public class WebSocket {
      * Sets the system properties javax.net.ssl.trustStore/trustStorePassword.
      *
      * @param filePath trust store file path
-     * @param passphrase password
+     * @param password password
      */
-    public static void setTrustStore(String filePath, String passphrase) {
+    public static void setTrustStore(String filePath, String password) {
         System.setProperty("javax.net.ssl.trustStore", filePath);
-        System.setProperty("javax.net.ssl.trustStorePassword", passphrase);
+        System.setProperty("javax.net.ssl.trustStorePassword", password);
     }
 
     /**
      * Sets the system properties javax.net.ssl.keyStore/keyStorePassword.
      *
      * @param filePath key store file path
-     * @param passphrase password
+     * @param password password
      */
-    public static void setKeyStore(String filePath, String passphrase) {
+    public static void setKeyStore(String filePath, String password) {
         System.setProperty("javax.net.ssl.keyStore", filePath);
-        System.setProperty("javax.net.ssl.keyStorePassword", passphrase);
+        System.setProperty("javax.net.ssl.keyStorePassword", password);
     }
 
     /**

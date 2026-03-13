@@ -1,4 +1,4 @@
-Java SE/Android WebSocket client and server package,  MIT (c) 2020-2025 miktim@mail.ru
+Java SE/Android WebSocket client and server package,  MIT (c) 2020-2026 miktim@mail.ru
 
 Release notes:
   - RFC 6455 compliant package ( https://datatracker.ietf.org/doc/html/rfc6455/ );
@@ -31,13 +31,13 @@ Overview:
     The creator of WebSocket servers and client-side connections.
 
     Constant:
-      static final String VERSION = "5.0.5";
+      static final String VERSION = "5.0.6";
 
     Constructors:
       WebSocket();
         - creates WebSocket instance
       WebSocket(InetAddress intfAddr) throws SocketException;
-        - creates WebSocket instance on interface;
+        - creates WebSocket instance on specified interface;
         - throws WsError when interface does not exists 
 
 
@@ -66,9 +66,8 @@ Overview:
           wsp: the server-side connections creation and execution parameters;  
         - throws WsError on IOException, GeneralSecurityException, NullPointerException  
 
-
       WsServer startServer(int port, WsConnection.Handler handler)
-        - creates and starts insecure connections server;
+        - creates and starts insecure connections server with default parameters;
         - see above.
  
       WsServer startSecureServer(int port, WsConnection.Handler handler, WsParameters wsp) 
@@ -80,7 +79,7 @@ Overview:
         - see above.
 
     NOTE:
-      if you need to handle server events, use WsServer.Handler wich extends
+      if you need to handle server events, use WsServer.Handler wich inherits
       WsConnection.Handler (see below).
  
       WsConnection connect(String uri, WsConnection.Handler handler, WsParameters wsp);
@@ -166,6 +165,7 @@ Overview:
 
       void close();
         - closes connection with status code 1000 (NORMAL_CLOSURE)
+          and empty reason
       void close(String reason);
         - closes connection with status code 1000 (NORMAL_CLOSURE)
           and specified reason
@@ -177,12 +177,14 @@ Overview:
         - a reason that is longer than 123 BYTES is truncated;
         - the method blocks outgoing messages (sending methods throw IOException);
         - isOpen() returns false;
-        - incoming messages are available until the closing handshake completed.
+        - incoming messages are available until the closing handshake completed
+          or closing timeout expires.
 
       void setHandler(WsConnection.Handler newHandler);
         - sets the secondary connection handler;
         - calls onClose in the old handler (conn.isOpen() returns true),
-          then calls onOpen in the new handler.
+          then calls onOpen in the new handler;
+        - throws NullPointerException, IllegalStateException
       boolean isPrimaryHandler();
         - returns true if it is so
 
@@ -211,7 +213,7 @@ Overview:
       String getQuery();
         - returns http request query or null
       WsParameters getParameters();
-        - returns connection parameters
+        - returns the clone of the connection parameters
         
 
   Interface WsConnection.Handler  
@@ -248,10 +250,10 @@ Overview:
         - returns true if WebSocket message is UTF-8 encoded text
       String asString();
         - reads this stream as String;
-        - throws WsError on Exception.
+        - throws WsError on any Exception.
       byte[] asByteArray();
         - reads this stream as byte array;
-        - throws WsError on Exception.
+        - throws WsError on any Exception.
       void close();
         - closes this stream. Further reading causes an IOException.
 
